@@ -7,6 +7,8 @@
 
 /// Guards rogue subordinate units
 module slv_guard (
+    /// Number of subordinates
+    parameter int unsigned NumSub = 1,
     /// Subordinate request type
     parameter type req_t = logic,
     /// Subordinate response type
@@ -17,27 +19,27 @@ module slv_guard (
     parameter type reg_rsp_t = logic
 )(
     /// Clock
-    input  logic     clk_i,
+    input  logic              clk_i,
     /// Asynchronous reset
-    input  logic     rst_ni,
+    input  logic              rst_ni,
     /// Request from manager
-    input  req_t     req_i,
+    input  req_t [NumSub-1:0] req_i,
     /// Response to manager
-    output rsp_t     rsp_o,
+    output rsp_t [NumSub-1:0] rsp_o,
     /// Request to subordinate
-    output req_t     req_o,
+    output req_t [NumSub-1:0] req_o,
     /// Response from subordinate
-    input  rsp_t     rsp_i,
+    input  rsp_t [NumSub-1:0] rsp_i,
     /// Register bus request
-    input  reg_req_t reg_req_i,
+    input  reg_req_t          reg_req_i,
     /// Register bus response
-    output reg_rsp_t reg_rsp_o,
+    output reg_rsp_t          reg_rsp_o,
     /// Interrupt line
-    output logic     irq_o,
+    output logic              irq_o,
     /// Reset request
-    output logic     rst_req_o,
+    output logic [NumSub-1:0] rst_req_o,
     /// Reset status
-    input  logic     rst_stat_i
+    input  logic [NumSub-1:0] rst_stat_i
     /// TBD: Reset configuration
 );
 
