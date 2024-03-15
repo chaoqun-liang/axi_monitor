@@ -1,0 +1,208 @@
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+// Licensed under Solderpad Hardware License, Version 0.51, see LICENSE for details.
+
+
+{
+  name: "slv_guard"
+  clock_primary: "clk_i"
+  bus_interfaces: [
+    { protocol: "reg_iface", direction: "device" }
+  ]
+  regwidth: "32",
+  registers: [
+  { name:     "guard_enable"
+    desc:     "Enable slave guard feature"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "0:0", name: "enable", desc: "Enable slave guard feature" }
+    ]
+  },
+    
+  { name:     "budget_awvld_awrdy"
+    desc:     "time budget from awvld to awrdy"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_awvld_awrdy", desc: "time budget from awvld to awrdy" }
+    ]
+  },
+  
+  { name:     "budget_awvld_wfirst"
+    desc:     "time budget from awvld to wfirst"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_awvld_wfirst", desc: "time budget from awvld to wfirst" }
+    ]
+  },
+
+  { name:     "budget_wvld_wrdy"
+    desc:     "time budget from wvld to wrdy"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_wvld_wrdy", desc: "time budget from wvld to wrdy" }
+    ]
+  }
+
+  { name:     "budget_wvld_wlast"
+    desc:     "time budget from wvld to wlast"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_wvld_wlast", desc: "time budget from wvld to wlast" }
+    ]
+  },
+
+  { name:     "budget_wlast_bvld"
+    desc:     "time budget from wlast to bvld"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_wlast_bvld", desc: "time budget from wlast to bvld" }
+    ]
+  },
+
+  { name:     "budget_wlast_brdy"
+    desc:     "time budget from wlast to brdy"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_wlast_brdy", desc: "time budget from wlast to brdy" }
+    ]
+  },
+
+  { name:     "budget_arvld_arrdy"
+    desc:     "time budget from arvld to arrdy"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_arvld_arrdy", desc: "time budget from arvld to arrdy" }
+    ]
+  },
+  
+  { name:     "budget_arvld_rvld"
+    desc:     "time budget from arvld to rvld"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_arvld_rvld", desc: "time budget from arvld to rvld" }
+    ]
+  },
+
+  { name:     "budget_rvld_rrdy"
+    desc:     "time budget from rvld to rrdy"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_rvld_rrdy", desc: "time budget from rvld to rrdy" }
+    ]
+  },
+
+  { name:     "budget_rvld_rlast"
+    desc:     "time budget from rvld to rlast"
+    swaccess: "wo"
+    hwaccess: "hro"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "budget_rvld_rlast", desc: "time budget from rvld to rlast" }
+    ]
+  },
+   
+  { name:     "reset"
+    desc:     "Is the interface requested to be reset?"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    fields: [
+      { bits: "0:0", name: "reset", desc: "Is the interface requested to be reset?" }
+    ]
+  },
+
+  { name: "irq",
+          desc: "interrpt cause and clear",
+          swaccess: "rw",
+          hwaccess: "hwo",
+          fields: [
+              { bits: "0", name: "w0",
+                desc: "timeout at w0 phase"
+                resval: "0"
+              },
+              { bits: "1", name: "w1",
+                desc: "timeout at w1 phase"
+                resval: "0"
+              },
+              { bits: "2", name: "w2",
+                desc: "timeout at w2 phase"
+                resval: "0"
+              },
+              { bits: "3", name: "w3",
+                desc: "timeout at w3 phase"
+                resval: "0"
+              },
+              { bits: "4", name: "w4",
+                desc: "timeout at w4 phase"
+                resval: "0"
+              },
+              { bits: "5", name: "w5",
+                desc: "timeout at w5 phase"
+                resval: "0"
+              },
+              { bits: "6", name: "r0",
+                desc: "timeout at r0 phase"
+                resval: "0"
+              },
+              { bits: "7", name: "r1",
+                desc: "timeout at r1 phase"
+                resval: "0"
+              },
+              { bits: "8", name: "r2",
+                desc: "timeout at r2 phase"
+                resval: "0"
+              },
+              { bits: "9", name: "r3",
+                desc: "timeout at r3 phase"
+                resval: "0"
+              },
+              { bits: "10", name: "mis_id_wr",
+                desc: "write id mismatch "
+                resval: "0"
+              },
+              { bits: "11", name: "mis_id_rd",
+                desc: " id mismatch "
+                resval: "0"
+              },
+              { bits: "12", name: "requested_txn",
+                desc: "  if the txn is requested "
+                resval: "0"
+              },
+              { bits: "24:13", name: "txn_id",
+                desc: "id of the transaction going wrong"
+              }
+          ]
+  },
+
+  { name:     "irq_addr"
+    desc:     "address of the transaction going wrong"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    fields: [
+      { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
+    ]
+  },
+
+  ]
+}
+
