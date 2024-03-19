@@ -9,10 +9,11 @@
 `include "axi/typedef.svh"
 `include "common_cells/registers.svh"
 
-module slv_guard (
+module slv_guard_top #(
   /// Number of subordinates 
   parameter int unsigned NumSub = 1,
   /// ID remapper
+  parameter int unsigned MaxUniqIds   = 4,
   parameter int unsigned MaxTxnsPerId = 4, 
   /// Write transaction unique IDs
   parameter int unsigned MaxWrUniqIds = 4,
@@ -24,6 +25,8 @@ module slv_guard (
   parameter int unsigned MaxRdTxns  = 4,
   /// Counter width
   parameter int unsigned CntWidth = 0,
+  /// Internal ID width
+  parameter int unsigned IntIdWidth = 2, 
   /// Subordinate request type
   parameter type req_t = logic, 
   /// Subordinate response type
@@ -66,7 +69,7 @@ module slv_guard (
 
   slv_guard_reg_top #(
     .reg_req_t(reg_req_t),
-    .reg_rsp_t(reg_rsp_t),
+    .reg_rsp_t(reg_rsp_t)
   ) i_regs (
     .clk_i,
     .rst_ni,
@@ -85,8 +88,6 @@ module slv_guard (
   localparam int unsigned StrbWidth  = DataWidth/8;
   localparam int unsigned UserWidth  = $bits(req_i.aw.user);
   localparam int unsigned AxiIdWidth = $bits(req_i.aw.id); 
-  /// Q: it gives the mimimum internal id width here. or should i leave this decision to the users? 
-  localparam int unsigned IntIdWidth = cf_math_pkg::idx_width(MaxUniqIds);
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
@@ -96,7 +97,22 @@ module slv_guard (
   typedef logic [UserWidth-1:0] user_t;
 
   /// AXI types
-  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
+  //`AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
+  //`define AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)  
+  typedef struct packed {                                       
+    id_t              id;                                       
+    addr_t            addr;                                     
+    axi_pkg::len_t    len;                                      
+    axi_pkg::size_t   size;                                     
+    axi_pkg::burst_t  burst;                                    
+    logic             lock;                                     
+    axi_pkg::cache_t  cache;                                    
+    axi_pkg::prot_t   prot;                                     
+    axi_pkg::qos_t    qos;                                      
+    axi_pkg::region_t region;                                   
+    axi_pkg::atop_t   atop;                                     
+    user_t            user;                                     
+  } aw_chan_t;
   // `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
   // `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
   // `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
@@ -113,22 +129,12 @@ module slv_guard (
   `AXI_TYPEDEF_REQ_T(int_req_t, int_aw_t, w_t, int_ar_t);
   `AXI_TYPEDEF_RESP_T(int_rsp_t, int_b_t, int_r_t );
 
-  assign idma_reg_req.opt.beo.dst_max_llen       = reg2hw.beo.dst_max_llen.q;
-  assign idma_reg_req.opt.beo.src_reduce_len     = reg2hw.beo.src_reduce_len.q;
-  assign idma_reg_req.opt.beo.dst_reduce_len     = reg2hw.beo.dst_reduce_len.q;
-
-  assign idma_reg_req.opt.last                   = reg2hw.last.q;
-
-  assign idma_req_valid                          = reg2hw.req_valid.q;
-  assign idma_rsp_ready                          = reg2hw.rsp_ready.q;
-
   /// Intermediate AXI channel
   int_req_t [NumSub-1:0] int_req;
   int_rsp_t [NumSub-1:0] int_rsp;
   
   // counter typedef
   typedef logic [CntWidth-1:0] latency_t;
-  typedef logic [IntIdWidth-1:0] id_t;
 
   latency_t   budget_awvld_awrdy;
   latency_t   budget_awvld_wvld;
@@ -160,9 +166,9 @@ module slv_guard (
     .AxiSlvPortMaxUniqIds ( MaxUniqIds    ),
     .AxiMaxTxnsPerId      ( MaxTxnsPerId  ),
     .AxiMstPortIdWidth    ( IntIdWidth    ),
-    .slv_req_t            ( req_t         )
-    .slv_resp_t           ( rsp_t         )
-    .mst_req_t            ( int_req_t     )
+    .slv_req_t            ( req_t         ),
+    .slv_resp_t           ( rsp_t         ),
+    .mst_req_t            ( int_req_t     ),
     .mst_resp_t           ( int_rsp_t     )
   ) i_axi_id_remap (
     .clk_i,
@@ -182,8 +188,9 @@ module slv_guard (
     .rsp_t      ( rsp_t        ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
-    .reg2hw_t   ( slv_guard_reg2hw_t ),
-    .hw2reg_t   ( slv_guard_hw2reg_t ),
+    .aw_chan_t ( aw_chan_t),
+    .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
+    .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
     .clk_i,
     .rst_ni,
@@ -209,7 +216,4 @@ module slv_guard (
     .budget_wlast_brdy_i ( budget_wlast_brdy  )
   );
 
-
-//assign irq_o = submod1_irq | submod2_irq; // both read and write 
-
-endmodule
+endmodule: slv_guard_top

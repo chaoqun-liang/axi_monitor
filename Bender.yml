@@ -22,11 +22,13 @@ sources:
   - target: rtl
     files:
       # Level 0
-      - src/id_queue_write_req.sv
-      - src/id_queue_read.sv
+      - src/registers/slv_guard_reg_pkg.sv
+      - src/registers/slv_guard_reg_top.sv
+      - src/write_guard.sv
       - src/slv_guard_top.sv
-
-  # - target: test
-  #   files:
-  #     # Level 0
-  #     - test/
+      
+  
+  - target: test
+    files:
+       # Level 0
+      - target/sim/src/slave_tb.sv

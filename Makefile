@@ -14,7 +14,7 @@
 
 # Author: Chaoqun Liang <chaoqun.liang@unibo.it>
 
-ETH_ROOT ?= $(shell pwd)
+SLV_ROOT ?= $(shell pwd)
 BENDER	 ?= bender -d $(SLV_ROOT)
 
 clean:

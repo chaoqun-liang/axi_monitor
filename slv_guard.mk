@@ -9,7 +9,7 @@ BENDER   ?= bender
 PYTHON3  ?= python3
 REGTOOL  ?= $(shell $(BENDER) path register_interface)/vendor/lowrisc_opentitan/util/regtool.py
 QUESTA 	 ?= questa-2022.3
-TBENCH   ?= slv_tb
+TBENCH   ?= tb_slv_guard
 DUT      ?= slv_guard_top
 
 # Design and simulation variables
@@ -28,15 +28,6 @@ else
 	RUN_AND_EXIT := run -all; exit
 endif
 
-########
-# Deps #
-########
-
-slv-checkout:
-	$(BENDER) checkout
-	touch Bender.lock
-
-include $(IDMA_ROOT)/slv_guard.mk
 
 ##############
 # Simulation #
@@ -50,27 +41,20 @@ $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl: Bender.yml
 	--vlog-arg="-suppress 2583" > $@
 	echo 'vopt $(VOPT_FLAGS) $(TBENCH) -o $(TBENCH)_opt' >> $@
 
+slv-sim-init: $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl
+
 slv-build: slv-sim-init
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl]"
 
-slv-vsim-sim-run:
+slv-sim:
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim $(VSIM_FLAGS) -do \
 		"set TESTBENCH $(TBENCH); \
 		 set VSIM_FLAGS \"$(VSIM_FLAGS)\"; \
 		 source $(SLV_ROOT)/target/sim/vsim/start.slv.tcl ; \
 		 $(RUN_AND_EXIT)"
 
-slv-vsim-sim-clean:
-	cd $(SLV_VSIM_DIR) && rm -rf work transcript
-
-# Global targets
-
-slv-sim-init: $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl
-slv-sim-build: slv-vsim-sim-build
-slv-sim-clean: slv-vsim-sim-clean
-
 #################################
 # Phonies (KEEP AT END OF FILE) #
 #################################
 
-.PHONY: slv-all slv-checkout slv-sim-init slv-sim-build slv-sim-clean slv-vsim-sim-build slv-vsim-sim-clean slv-vsim-sim-run
+.PHONY: slv-all slv-sim-init slv-build slv-sim 
