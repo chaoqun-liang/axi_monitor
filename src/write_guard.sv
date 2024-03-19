@@ -248,7 +248,10 @@ module write_guard #(
         linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.aw,
           next: '0,
-          free: 1'b0
+          free: 1'b0,
+          id: mst_req_i.aw.id,
+          write_state: IDLE,
+          counters: 0
         };
       end else if (no_in_id_match) begin
         // Else, if no head_tail corresponds to the input id.
@@ -262,7 +265,10 @@ module write_guard #(
           linked_data_d[oup_data_free_idx] = '{
             metadata: mst_req_i.aw,
             next: '0,
-            free: 1'b0
+            free: 1'b0,
+            id: mst_req_i.aw.id,
+            write_state: IDLE,
+            counters: 0
           };
         end else begin
           if (oup_data_popped) begin
@@ -275,7 +281,10 @@ module write_guard #(
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.aw,
               next: '0,
-              free: 1'b0
+              free: 1'b0,
+              id: mst_req_i.aw.id,
+              write_state: IDLE,
+              counters: 0
             };
             end else begin
               head_tail_d[head_tail_free_idx] = '{
@@ -287,7 +296,10 @@ module write_guard #(
               linked_data_d[linked_data_free_idx] = '{
                 metadata: mst_req_i.aw,
                 next: '0,
-                free: 1'b0
+                free: 1'b0,
+                id: mst_req_i.aw.id,
+                write_state: IDLE,
+                counters: 0
               };
             end
           end
@@ -299,7 +311,10 @@ module write_guard #(
           linked_data_d[oup_data_free_idx] = '{
             metadata: mst_req_i.aw,
             next: '0,
-            free: 1'b0
+            free: 1'b0,
+            id: mst_req_i.aw.id,
+            write_state: IDLE,
+            counters: 0
           };
         end else begin
           linked_data_d[head_tail_q[match_in_idx].tail].next = linked_data_free_idx;
@@ -307,13 +322,16 @@ module write_guard #(
           linked_data_d[linked_data_free_idx] = '{
             metadata: mst_req_i.aw,
             next: '0,
-            free: 1'b0
+            free: 1'b0,
+            id: mst_req_i.aw.id,
+            write_state: IDLE,
+            counters: 0
           };
         end
       end
+    end
   end
-  end
-  
+
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     always_ff @(posedge clk_i, negedge rst_ni) begin
