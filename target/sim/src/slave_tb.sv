@@ -27,15 +27,22 @@ module tb_slv_guard #(
   localparam int unsigned MaxRdTxns = 32'd4;
   localparam int unsigned CntWidth  = 32'd8;
 
+  localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
+
   /// AXI4+ATOP typedefs
   typedef logic [TbAxiIdWidth-1    :0] id_t;
   typedef logic [TbAxiAddrWidth-1  :0] addr_t;
   typedef logic [TbAxiDataWidth-1  :0] data_t;
-  typedef logic [TbAxiDataWidth/8-1:0] strb_t;
+  typedef logic [AxiStrbWidth-1    :0] strb_t;
   typedef logic [TbAxiUserWidth-1  :0] user_t;
 
-  `AXI_TYPEDEF_ALL(axi,     addr_t, id_t,     data_t, strb_t, user_t)
-  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t) 
+  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
+  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
+  `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
+  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
+  `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
+  `AXI_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t);
+  `AXI_TYPEDEF_RESP_T(axi_rsp_t, b_chan_t, r_chan_t );
   
   `REG_BUS_TYPEDEF_ALL(cfg, addr_t, logic[31:0], logic[3:0]) 
 
@@ -113,10 +120,10 @@ module tb_slv_guard #(
   ) slave_dv(clk);
 
   axi_req_t    master_req;
-  axi_resp_t   master_rsp;
+  axi_rsp_t   master_rsp;
 
   axi_req_t   slave_req;
-  axi_resp_t  slave_rsp;
+  axi_rsp_t  slave_rsp;
 
   `AXI_ASSIGN (master,           master_dv)
   `AXI_ASSIGN_TO_REQ(master_req, master)
@@ -155,6 +162,11 @@ module tb_slv_guard #(
   // DUT
   //-----------------------------------
   slv_guard_top #(
+    .AddrWidth    ( TbAxiAddrWidth ),
+    .DataWidth    ( TbAxiDataWidth ),
+    .StrbWidth    ( AxiStrbWidth   ),
+    .AxiIdWidth   ( TbAxiIdWidth   ),
+    .AxiUserWidth ( TbAxiUserWidth ),
     .MaxTxnsPerId ( MaxTxnsPerId ),
     .MaxWrUniqIds ( MaxWrUniqIds ),
     .MaxRdUniqIds ( MaxRdUniqIds ),
@@ -162,7 +174,7 @@ module tb_slv_guard #(
     .MaxRdTxns    ( MaxRdTxns    ),
     .CntWidth     ( CntWidth     ),
     .req_t        ( axi_req_t    ), 
-    .rsp_t        ( axi_resp_t   ),
+    .rsp_t        ( axi_rsp_t    ),
     .reg_req_t    ( cfg_req_t    ), 
     .reg_rsp_t    ( cfg_rsp_t    )
 ) i_slv_guard (
@@ -195,7 +207,7 @@ module tb_slv_guard #(
     
     ax_beat.ax_id = 0;
     ax_beat.ax_addr = 'h1000;
-    ax_beat.axi_len = 15;
+    ax_beat.ax_len = 15;
     ax_beat.ax_size = 2;
     ax_beat.ax_burst = 1;
     ax_beat.ax_lock = 0;

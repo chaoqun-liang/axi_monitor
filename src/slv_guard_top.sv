@@ -12,6 +12,11 @@
 module slv_guard_top #(
   /// Number of subordinates 
   parameter int unsigned NumSub = 1,
+  parameter int unsigned AddrWidth = 0,
+  parameter int unsigned DataWidth = 0,
+  parameter int unsigned StrbWidth = 0,
+  parameter int unsigned AxiIdWidth = 0,
+  parameter int unsigned AxiUserWidth = 0,
   /// ID remapper
   parameter int unsigned MaxUniqIds   = 4,
   parameter int unsigned MaxTxnsPerId = 4, 
@@ -81,20 +86,14 @@ module slv_guard_top #(
   );
   
 
-  logic enqueue;
-  assign enqueue = req_i.aw_valid;
-  localparam int unsigned AddrWidth  = $bits(req_i.aw.addr);
-  localparam int unsigned DataWidth  = $bits(req_i.w.data);
-  localparam int unsigned StrbWidth  = DataWidth/8;
-  localparam int unsigned UserWidth  = $bits(req_i.aw.user);
-  localparam int unsigned AxiIdWidth = $bits(req_i.aw.id); 
+
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
   typedef logic [StrbWidth-1:0] strb_t;
   typedef logic [AxiIdWidth-1:0] id_t;
   typedef logic [IntIdWidth-1:0] int_id_t;
-  typedef logic [UserWidth-1:0] user_t;
+  typedef logic [AxiUserWidth-1:0] user_t;
 
   /// AXI types
   //`AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
@@ -126,12 +125,15 @@ module slv_guard_top #(
   `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
   `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
   `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(int_req_t, int_aw_t, w_t, int_ar_t);
-  `AXI_TYPEDEF_RESP_T(int_rsp_t, int_b_t, int_r_t );
+  `AXI_TYPEDEF_REQ_T(internal_req_t, int_aw_t, w_t, int_ar_t);
+  `AXI_TYPEDEF_RESP_T(internal_rsp_t, int_b_t, int_r_t );
 
   /// Intermediate AXI channel
-  int_req_t [NumSub-1:0] int_req;
-  int_rsp_t [NumSub-1:0] int_rsp;
+  internal_req_t  int_req;
+  internal_rsp_t  int_rsp;
+
+  logic enqueue;
+  assign enqueue = int_req.aw_valid;
   
   // counter typedef
   typedef logic [CntWidth-1:0] latency_t;
@@ -168,8 +170,8 @@ module slv_guard_top #(
     .AxiMstPortIdWidth    ( IntIdWidth    ),
     .slv_req_t            ( req_t         ),
     .slv_resp_t           ( rsp_t         ),
-    .mst_req_t            ( int_req_t     ),
-    .mst_resp_t           ( int_rsp_t     )
+    .mst_req_t            ( internal_req_t     ),
+    .mst_resp_t           ( internal_rsp_t     )
   ) i_axi_id_remap (
     .clk_i,
     .rst_ni,
@@ -195,8 +197,8 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i),
-    .mst_req_i    (  req_i     ),  
-    .mst_rsp_o    (  rsp_o     ),
+    .mst_req_i    (  int_req   ),  
+    .mst_rsp_o    (  int_rsp   ),
     .slv_rsp_i    (  rsp_i     ),
     .slv_req_o    (  req_o     ), 
   

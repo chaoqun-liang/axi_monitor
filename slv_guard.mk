@@ -8,7 +8,7 @@
 BENDER   ?= bender
 PYTHON3  ?= python3
 REGTOOL  ?= $(shell $(BENDER) path register_interface)/vendor/lowrisc_opentitan/util/regtool.py
-QUESTA 	 ?= questa-2022.3
+QUESTA 	 ?= questa-2023.4
 TBENCH   ?= tb_slv_guard
 DUT      ?= slv_guard_top
 
