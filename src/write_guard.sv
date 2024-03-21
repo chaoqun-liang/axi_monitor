@@ -29,7 +29,6 @@ module write_guard #(
 
   output logic       reset_req_o,
   output logic       irq_o,
-
   // register configs
   input  reg2hw_t    reg2hw_i,
   output hw2reg_t    hw2reg_o,
@@ -370,7 +369,7 @@ module write_guard #(
       //if (guard_ena_i) begin
           linked_data_q[i]   <= linked_data_d[i];
           if (!linked_data_q[i].free) begin // only if slot is in use
-          case (linked_data_q[i].write_state) 
+            case (linked_data_q[i].write_state) 
               IDLE: begin
                 if (mst_req_i.aw_valid) begin // aw_valid enables enqueue into the ID queue
                   linked_data_q[i].write_state <= WRITE_ADDRESS;

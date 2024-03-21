@@ -25,6 +25,7 @@ sources:
       - src/registers/slv_guard_reg_pkg.sv
       - src/registers/slv_guard_reg_top.sv
       - src/write_guard.sv
+      - src/read_guard.sv
       - src/slv_guard_top.sv
       
   
