@@ -190,7 +190,7 @@ module slv_guard_top #(
     .rsp_t      ( rsp_t        ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
-    .aw_chan_t ( aw_chan_t),
+    .aw_chan_t  ( aw_chan_t    ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
@@ -203,7 +203,7 @@ module slv_guard_top #(
     .slv_req_o    (  req_o     ), 
   
     .inp_req_i    (  enqueue   ), 
-    .inp_gnt_o    (            ),
+   // .inp_gnt_o    (            ),
                                                                                           
     .reset_req_o  ( rst_req_o  ),
     .irq_o        ( irq_o      ),

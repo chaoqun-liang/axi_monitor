@@ -1,5 +1,4 @@
-// to-do: take out queue, pass linked-data-t to it from wr/rd guard
-// add another remapper for repsonse
+// to-do: take out queue into a seprate module
 module write_guard #(
   parameter int unsigned MaxUniqIds = 0,
   parameter int unsigned MaxWrTxns = 0, 
@@ -214,9 +213,9 @@ module write_guard #(
         oup_data_valid_o = 1'b1;
         oup_data_popped = 1;
           // Set free bit of linked data entry, all other bits are don't care.
-         linked_data_d[head_tail_q[match_out_idx].head]      = {'0,1'b1};
-         // linked_data_d[head_tail_q[match_out_idx].head]      = '0;
-         // linked_data_d[head_tail_q[match_out_idx].head][0]   = 1'b1;
+         //linked_data_d[head_tail_q[match_out_idx].head]      = {'0,1'b1};
+          linked_data_d[head_tail_q[match_out_idx].head]      = '0;
+          linked_data_d[head_tail_q[match_out_idx].head][0]   = 1'b1;
         /// If it is the last cell of this ID
          if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
           oup_ht_popped = 1'b1;
@@ -250,7 +249,7 @@ module write_guard #(
           next: '0,
           free: 1'b0,
           id: mst_req_i.aw.id,
-          write_state: IDLE,
+          write_state: WRITE_ADDRESS,
           counters: 0
         };
       end else if (no_in_id_match) begin
@@ -267,7 +266,7 @@ module write_guard #(
             next: '0,
             free: 1'b0,
             id: mst_req_i.aw.id,
-            write_state: IDLE,
+            write_state:WRITE_ADDRESS,
             counters: 0
           };
         end else begin
@@ -282,7 +281,7 @@ module write_guard #(
               metadata: mst_req_i.aw,
               next: '0,
               id: mst_req_i.aw.id,
-              write_state: IDLE,
+              write_state: WRITE_ADDRESS,
               counters: 0, 
               free: 1'b0
             };
@@ -297,7 +296,7 @@ module write_guard #(
                 metadata: mst_req_i.aw,
                 next: '0,
                 id: mst_req_i.aw.id,
-                write_state: IDLE,
+                write_state: WRITE_ADDRESS,
                 counters: 0, 
                 free: 1'b0
               };
@@ -312,7 +311,7 @@ module write_guard #(
             metadata: mst_req_i.aw,
             next: '0,
             id: mst_req_i.aw.id,
-            write_state: IDLE,
+            write_state: WRITE_ADDRESS,
             counters: 0, 
             free: 1'b0
           };
@@ -323,7 +322,7 @@ module write_guard #(
             metadata: mst_req_i.aw,
             next: '0,
             id: mst_req_i.aw.id,
-            write_state: IDLE,
+            write_state: WRITE_ADDRESS,
             counters: 0, 
             free: 1'b0
           };
@@ -347,24 +346,29 @@ module write_guard #(
   /// AW channel
   assign slv_req_o.aw_valid = guard_ena_i ? (mst_req_i.aw_valid && !timeout_detected) : mst_req_i.aw_valid;
   assign mst_rsp_o.aw_ready = guard_ena_i ? (slv_rsp_i.aw_ready || timeout_detected) : slv_rsp_i.aw_ready;
-  assign slv_req_o.aw = guard_ena_i ? (mst_req_i.aw && !timeout_detected) : mst_req_i.aw;
+  //assign slv_req_o.aw = guard_ena_i ? (mst_req_i.aw && !timeout_detected) : mst_req_i.aw;
+  assign slv_req_o.aw = mst_req_i.aw;
+
   /// W channel
   assign slv_req_o.w_valid = guard_ena_i ? (mst_req_i.w_valid && !timeout_detected) : mst_req_i.w_valid;
   assign mst_rsp_o.w_ready = guard_ena_i ? (slv_rsp_i.w_ready || timeout_detected) : slv_rsp_i.w_ready;
-  assign slv_req_o.w = guard_ena_i ? (mst_req_i.w && !timeout_detected) : mst_req_i.w;
+  // assign slv_req_o.w = guard_ena_i ? (mst_req_i.w && !timeout_detected) : mst_req_i.w;
+  assign slv_req_o.w = mst_req_i.w;
   /// B channel
   assign mst_rsp_o.b_valid = guard_ena_i ? (slv_rsp_i.b_valid && !timeout_detected) : slv_rsp_i.b_valid;
   assign slv_req_o.b_ready = guard_ena_i ? (mst_req_i.b_ready || timeout_detected) : mst_req_i.b_ready;
-  assign mst_rsp_o.b = guard_ena_i ? (slv_rsp_i.b && !timeout_detected) : slv_rsp_i.b;
+ // assign mst_rsp_o.b = guard_ena_i ? (slv_rsp_i.b && !timeout_detected) : slv_rsp_i.b;
+  assign mst_rsp_o.b = slv_rsp_i.b;
  
   for (genvar i = 0; i < MaxWrTxns; i++) begin
   /// state transitions and counter updates
    always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
       // Reset for all slots
-      linked_data_q[i] <= {'0,1'b1};
-      //linked_data_q[i] <= '0;
-       // linked_data_q[i][0] <= 1'b1;//????????????????????????????
+      //linked_data_q[i] <= {'0,1'b1};
+        linked_data_q[i] <= '0;
+        linked_data_q[i][0] <= 1'b1;//????????????????????????????
+        timeout_detected[i] <= '0;
       end else begin
       //if (guard_ena_i) begin
           linked_data_q[i]   <= linked_data_d[i];
@@ -377,87 +381,84 @@ module write_guard #(
               end
 
               WRITE_ADDRESS: begin
-                if (!slv_rsp_i.aw_ready && mst_req_i.aw_valid) begin
-                  linked_data_q[i].counters.cnt_awvalid_awready++;
+                //if (!slv_rsp_i.aw_ready && mst_req_i.aw_valid) begin
+                  if (slv_rsp_i.aw_ready) begin
+                  linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready ;
                 end
-                linked_data_q[i].counters.cnt_awvalid_wfirst++;
+                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst;
                 if (mst_req_i.w_valid ) begin
                   linked_data_q[i].write_state <= WRITE_DATA;
                 end
                   
-                if (linked_data_q[i].counters.cnt_awvalid_awready >= budget_awvld_awrdy_i 
-                || linked_data_q[i].counters.cnt_awvalid_wfirst  >= budget_awvld_wvld_i) begin
+                if (linked_data_q[i].counters.cnt_awvalid_awready > budget_awvld_awrdy_i 
+                || linked_data_q[i].counters.cnt_awvalid_wfirst  > budget_awvld_wvld_i) begin
                   linked_data_q[i].write_state <= WRITE_TIMEOUT;
-              
                 end
               end
 
               WRITE_DATA: begin
-                if (!slv_rsp_i.w_ready && mst_req_i.w_valid) begin
-                  linked_data_q[i].counters.cnt_wvalid_wready_first++;
+                //if (!slv_rsp_i.w_ready && mst_req_i.w_val id) begin
+                if (slv_rsp_i.w_ready) begin
+                  linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
                 end
-                linked_data_q[i].counters.cnt_wfirst_wlast++;
+                linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
                   
                 if (mst_req_i.w.last) begin
                   linked_data_q[i].write_state <= WRITE_RESPONSE;
                 end
                   
-                if (linked_data_q[i].counters.cnt_wvalid_wready_first >= budget_wvld_wrdy_i 
-                || linked_data_q[i].counters.cnt_wfirst_wlast  >= budget_wvld_wlast_i) begin
+                if (linked_data_q[i].counters.cnt_wvalid_wready_first > budget_wvld_wrdy_i 
+                || linked_data_q[i].counters.cnt_wfirst_wlast  > budget_wvld_wlast_i) begin
                   linked_data_q[i].write_state <= WRITE_TIMEOUT;
-                
                 end
               end
 
-                WRITE_RESPONSE: begin
-                  if (!slv_rsp_i.b_valid) begin
-                    linked_data_q[i].counters.cnt_wlast_bvalid++;
-                  end
-                  linked_data_q[i].counters.cnt_wlast_bready++;
-                    
-                  if (mst_req_i.b_ready) begin
-                    oup_id[i] <= slv_rsp_i.b.id;
-                    oup_req[i] <= 1'b1;
-                    linked_data_q[i].counters <= '0;
-                    if (linked_data_q[i].metadata.id == slv_rsp_i.b.id) begin
-                      linked_data_q[i].write_state <= IDLE;
-                    end else begin
-                      irq[i] <= 1'b1;
-                     // hw2reg_o.irq.mis_id_wr.d <= 1'b1;
-                     // mst_rsp_o.b.resp <= 2'b10; 
-                      linked_data_q[i]    <= {'0,1'b1};
-                      // linked_data_q[i][0] <= 1'b1;//????????????????????????????
-                      reset_req[i]  <= 1'b1;
-                      //hw2reg_o.irq.txn_id.d <= linked_data_q[i].metadata.id;
-                      //hw2reg_o.irq_addr.d <= linked_data_q[i].metadata.address;
-                    end 
-                  end
-
-                  if (linked_data_q[i].counters.cnt_wlast_bvalid >= budget_wlast_bvld_i 
-                  || linked_data_q[i].counters.cnt_wlast_bready >= budget_wlast_brdy_i ) begin
-                    linked_data_q[i].write_state <= WRITE_TIMEOUT;
-        
-                   end
+              WRITE_RESPONSE: begin
+                if (!slv_rsp_i.b_valid) begin
+                  linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
+                end
+                linked_data_q[i].counters.cnt_wlast_bready <= linked_data_q[i].counters.cnt_wlast_bready +1;
+                if (mst_req_i.b_ready) begin
+                  oup_id[i] <= slv_rsp_i.b.id;
+                  oup_req[i] <= 1'b1;
+                  linked_data_q[i].counters <= '0;
+                  if (linked_data_q[i].metadata.id == slv_rsp_i.b.id) begin
+                    linked_data_q[i].write_state <= IDLE;
+                  end else begin
+                  irq[i] <= 1'b1;
+                    // hw2reg_o.irq.mis_id_wr.d <= 1'b1;
+                    // mst_rsp_o.b.resp <= 2'b10; 
+                    linked_data_q[i]    <= {'0,1'b1};
+                    // linked_data_q[i][0] <= 1'b1;//????????????????????????????
+                    reset_req[i]  <= 1'b1;
+                    //hw2reg_o.irq.txn_id.d <= linked_data_q[i].metadata.id;
+                    //hw2reg_o.irq_addr.d <= linked_data_q[i].metadata.address;
+                  end 
                 end
 
-            WRITE_TIMEOUT: begin
-              irq[i] <= 1'b1;
-              //hw2reg_o. <= 1'b1;
-             // mst_rsp_o.b.resp = 2'b10;
-              linked_data_q[i]    <= {'0,1'b1};
-              // linked_data_q[i][0] <= 1'b1;//????????????????????????????
-              reset_req[i]  <= 1'b1;
-              timeout_detected[i]  <= 1'b1;
-             
-            end
-          endcase
+                if (linked_data_q[i].counters.cnt_wlast_bvalid >= budget_wlast_bvld_i 
+                  || linked_data_q[i].counters.cnt_wlast_bready >= budget_wlast_brdy_i ) begin
+                  linked_data_q[i].write_state <= WRITE_TIMEOUT;
+                end
+              end
+
+              WRITE_TIMEOUT: begin
+                irq[i] <= 1'b1;
+                //hw2reg_o. <= 1'b1;
+                // mst_rsp_o.b.resp = 2'b10;
+                linked_data_q[i]    <= {'0,1'b1};
+                // linked_data_q[i][0] <= 1'b1;//???????????????what the heck.....
+                reset_req[i]  <= 1'b1;
+                timeout_detected[i]  <= 1'b1;
+              end
+            endcase
         end
       end
     //end
     end
   end
 
-      // Validate parameters.
+  // Validate parameters.
 `ifndef SYNTHESIS
 `ifndef COMMON_CELLS_ASSERTS_OFF
     initial begin: validate_params

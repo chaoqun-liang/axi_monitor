@@ -32,4 +32,4 @@ sources:
   - target: test
     files:
        # Level 0
-      - target/sim/src/slave_tb.sv
+      - test/slave_tb.sv
