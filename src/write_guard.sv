@@ -383,9 +383,9 @@ module write_guard #(
               WRITE_ADDRESS: begin
                 //if (!slv_rsp_i.aw_ready && mst_req_i.aw_valid) begin
                   if (slv_rsp_i.aw_ready) begin
-                  linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready ;
+                  linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ;
                 end
-                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst;
+                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
                 if (mst_req_i.w_valid ) begin
                   linked_data_q[i].write_state <= WRITE_DATA;
                 end
