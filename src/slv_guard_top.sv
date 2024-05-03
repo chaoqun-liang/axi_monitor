@@ -202,7 +202,7 @@ module slv_guard_top #(
     .slv_rsp_i    (  rsp_i     ),
     .slv_req_o    (  req_o     ), 
   
-    .inp_req_i    (  enqueue   ), 
+    // .inp_req_i    (  enqueue   ), 
    // .inp_gnt_o    (            ),
                                                                                           
     .reset_req_o  ( rst_req_o  ),

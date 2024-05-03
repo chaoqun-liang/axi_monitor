@@ -23,7 +23,7 @@ module tb_slv_guard #(
   localparam int unsigned MaxTxnsPerId = 32'd4; 
   localparam int unsigned MaxWrUniqIds = 32'd4;
   localparam int unsigned MaxRdUniqIds = 32'd4;
-  localparam int unsigned MaxWrTxns = 32'd4;
+  localparam int unsigned MaxWrTxns = 32'd8;
   localparam int unsigned MaxRdTxns = 32'd4;
   localparam int unsigned CntWidth  = 32;
 
@@ -348,11 +348,11 @@ module tb_slv_guard #(
     // budget from aw_valid to w_valid of first word
     reg_drv.send_write(32'h0000_0008, 32'h0000_0300, 8'hff, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_0200, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_000c, 32'h0000_0300, 8'hff, reg_error); 
     // budget from w_valid to w_last
-    reg_drv.send_write(32'h0000_0010, 32'h0000_0500, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0010, 32'h0000_0300, 8'hff, reg_error);
     // budget from w_last to b_valid
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0020, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0014, 32'h0000_0300, 8'hff, reg_error); 
     // budget from w_last to b_ready
     reg_drv.send_write(32'h0000_0018, 32'h0000_0100, 8'hff, reg_error);
 
