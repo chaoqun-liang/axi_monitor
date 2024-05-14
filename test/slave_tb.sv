@@ -26,6 +26,7 @@ module tb_slv_guard #(
   localparam int unsigned MaxWrTxns = 32'd8;
   localparam int unsigned MaxRdTxns = 32'd4;
   localparam int unsigned CntWidth  = 32;
+  localparam int unsigned IntIdWidth = 2;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
 
@@ -36,6 +37,9 @@ module tb_slv_guard #(
   typedef logic [AxiStrbWidth-1    :0] strb_t;
   typedef logic [TbAxiUserWidth-1  :0] user_t;
 
+  typedef logic [IntIdWidth-1:0] int_id_t;
+ 
+
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
   `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
@@ -44,27 +48,21 @@ module tb_slv_guard #(
   `AXI_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t);
   `AXI_TYPEDEF_RESP_T(axi_rsp_t, b_chan_t, r_chan_t );
   
+  /// Intermediate AXI types
+  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
+  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
+  `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
+  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
+  `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
+  `AXI_TYPEDEF_REQ_T(slv_req_t, int_aw_t, w_t, int_ar_t);
+  `AXI_TYPEDEF_RESP_T(slv_rsp_t, int_b_t, int_r_t );
+
   `REG_BUS_TYPEDEF_ALL(cfg, addr_t, logic[31:0], logic[3:0]) 
 
   cfg_req_t cfg_req;
   cfg_rsp_t cfg_rsp;
 
-  /// Random AXI slave type
-  // typedef axi_test::axi_rand_slave#(
-  //     .AW                   ( TbAxiAddrWidth  ),
-  //     .DW                   ( TbAxiDataWidth  ),
-  //     .IW                   ( TbAxiIdWidth    ),
-  //     .UW                   ( TbAxiUserWidth  ),
-  //     .TA                   ( ApplTime        ),
-  //     .TT                   ( TestTime        ),
-  //     .AX_MIN_WAIT_CYCLES   ( 32'd0           ),
-  //     .AX_MAX_WAIT_CYCLES   ( 32'd0           ),
-  //     .R_MIN_WAIT_CYCLES    ( 32'd0           ),
-  //     .R_MAX_WAIT_CYCLES    ( 32'd0           ),
-  //     .RESP_MIN_WAIT_CYCLES ( 32'd0           ),
-  //     .RESP_MAX_WAIT_CYCLES ( 32'd0           ),
-  //     .MAPPED               ( 1'b0            )
-  // ) axi_rand_slave_t;
+ 
 
   typedef reg_test::reg_driver #(
     .AW ( TbAxiAddrWidth ),
@@ -217,8 +215,11 @@ module tb_slv_guard #(
     .MaxWrTxns    ( MaxWrTxns      ),
     .MaxRdTxns    ( MaxRdTxns      ),
     .CntWidth     ( CntWidth       ),
+    .IntIdWidth   ( IntIdWidth     ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
+    .slv_req_t    ( slv_req_t      ),
+    .slv_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
@@ -346,13 +347,13 @@ module tb_slv_guard #(
     // budget from aw_valid to aw_ready
     reg_drv.send_write(32'h0000_0004, 32'h0000_0010, 8'hf, reg_error); 
     // budget from aw_valid to w_valid of first word
-    reg_drv.send_write(32'h0000_0008, 32'h0000_0300, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_00f0, 8'hff, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_0300, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_000c, 32'h0000_00a0, 8'hff, reg_error); 
     // budget from w_valid to w_last
-    reg_drv.send_write(32'h0000_0010, 32'h0000_0300, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0010, 32'h0000_0010, 8'hff, reg_error);
     // budget from w_last to b_valid
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0300, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0014, 32'h0000_0010, 8'hff, reg_error); 
     // budget from w_last to b_ready
     reg_drv.send_write(32'h0000_0018, 32'h0000_0100, 8'hff, reg_error);
 
