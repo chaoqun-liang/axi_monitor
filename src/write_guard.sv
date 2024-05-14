@@ -33,12 +33,6 @@ logic  reset_req, irq;
 logic  oup_data_valid;
 
 assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
-assign hw2reg_o.irq.w0.de = 1'b1;
-assign hw2reg_o.irq.w1.de = 1'b1;
-assign hw2reg_o.irq.w2.de = 1'b1;
-assign hw2reg_o.irq.w3.de = 1'b1;
-assign hw2reg_o.irq.w4.de = 1'b1;
-assign hw2reg_o.irq.w5.de = 1'b1;
 assign hw2reg_o.irq_addr.de = 1'b1;
 assign hw2reg_o.reset.de = 1'b1; 
 
@@ -46,20 +40,10 @@ assign hw2reg_o.reset.de = 1'b1;
   assign reset_req_o = reset_req;
   assign irq_o = irq;
 
-  cnt_t  budget_awvld_awrdy;
-  cnt_t  budget_awvld_wvld;
-  cnt_t  budget_wvld_wrdy;
-  cnt_t  budget_wvld_wlast;
-  cnt_t  budget_wlast_bvld;
-  cnt_t  budget_wlast_brdy;
+  cnt_t  budget;
 
-  assign budget_awvld_awrdy = reg2hw_i.budget_awvld_awrdy.q;
-  assign budget_awvld_wvld  = reg2hw_i.budget_awvld_wfirst.q;
-  assign budget_wvld_wrdy   = reg2hw_i.budget_wvld_wrdy.q;
-  assign budget_wvld_wlast  = reg2hw_i.budget_wvld_wlast.q;
-  assign budget_wlast_bvld  = reg2hw_i.budget_wlast_bvld.q;
-  assign budget_wlast_brdy  = reg2hw_i.budget_wlast_brdy.q;
-
+  assign budget = reg2hw_i.budget_wvld_wrdy.q;
+ 
   // Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxWrTxns) ? MaxUniqIds : MaxWrTxns;
   localparam int unsigned HtIdxWidth = cf_math_pkg::idx_width(HtCapacity);
@@ -79,29 +63,11 @@ assign hw2reg_o.reset.de = 1'b1;
     logic       free;
   } head_tail_t;
 
-  typedef struct packed {
-    logic [CntWidth -1:0] cnt_awvalid_awready; // AWVALID to AWREADY
-    logic [CntWidth -1:0] cnt_awvalid_wfirst;  // AWVALID to WFIRST
-    logic [CntWidth -1:0] cnt_wvalid_wready_first; // WVALID to WREADY of WFIRST
-    logic [CntWidth -1:0] cnt_wfirst_wlast;    // WFIRST to WLAST
-    logic [CntWidth -1:0] cnt_wlast_bvalid;    // WLAST to BVALID
-    logic [CntWidth  -1:0] cnt_wlast_bready;   // WLAST to BREADY
-  } write_cnters_t;
-
-  // state enum of the FSM
-  typedef enum logic [1:0] {
-    IDLE,
-    WRITE_ADDRESS,
-    WRITE_DATA,
-    WRITE_RESPONSE
-  } write_state_t;
-
   // Type of an entry in the linked data table.
   typedef struct packed {
     aw_chan_t       metadata;
     logic           timeout;
-    write_state_t   write_state;
-    write_cnters_t  counters; 
+    cnt_t           counter; 
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
@@ -245,49 +211,12 @@ assign hw2reg_o.reset.de = 1'b1;
     end
    
     for ( int i = 0; i < MaxWrTxns; i++ ) begin 
-      case ( linked_data_q[i].write_state )
-        IDLE: begin
-          if ( mst_req_i.aw_valid ) begin
-            linked_data_d[i].write_state = WRITE_ADDRESS;
-          end
-        end
-        WRITE_ADDRESS: begin
-          if ( mst_req_i.w_valid && !linked_data_q[i].timeout ) begin
-            linked_data_d[i].write_state = WRITE_DATA;
-          end
-          if (linked_data_q[i].counters.cnt_awvalid_awready >= budget_awvld_awrdy
-            || linked_data_d[i].counters.cnt_awvalid_wfirst  >= budget_awvld_wvld) begin
-            linked_data_d[i].timeout = 1'b1;
-            reset_req = 1'b1;
-            oup_req  = 1;
-            oup_id = linked_data_q[i].metadata.id;
-            linked_data_d[i].write_state = IDLE; 
-            end
-        end
-        WRITE_DATA: begin
-          if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
-            linked_data_d[i].write_state = WRITE_RESPONSE;
-          end
-          if (linked_data_q[i].counters.cnt_wvalid_wready_first >= budget_wvld_wrdy 
-            || linked_data_q[i].counters.cnt_wfirst_wlast  >= budget_wvld_wlast) begin
-            linked_data_d[i].timeout = 1'b1;
-            reset_req = 1'b1;
-            oup_req  = 1;
-            oup_id = linked_data_q[i].metadata.id;
-            mst_rsp_o.b.resp = 2'b10;   
-            linked_data_d[i].write_state = IDLE;
-          end
-        end
-        // dequeue in both faulty and fault-free case
-        WRITE_RESPONSE: begin
-          if (linked_data_q[i].counters.cnt_wlast_bvalid >= budget_wlast_bvld 
-            || linked_data_q[i].counters.cnt_wlast_bready >= budget_wlast_brdy) begin
+      if (linked_data_q[i].counter >= budget) begin
             // reset request in faulty case
             linked_data_d[i].timeout = 1'b1;
             reset_req = 1'b1;
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
-            linked_data_d[i].write_state = IDLE;
             // write into irq regs
             // no timeout, still need to dequeue
           end
@@ -295,7 +224,6 @@ assign hw2reg_o.reset.de = 1'b1;
           if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.b.id )) begin
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
-            linked_data_d[i].write_state = IDLE;
           end else begin 
             if( mst_req_i.b_ready & slv_rsp_i.b_valid  && !linked_data_q[i].timeout ) begin
               oup_req = 1;
@@ -305,7 +233,6 @@ assign hw2reg_o.reset.de = 1'b1;
               hw2reg_o.irq.mis_id_wr.d = 1'b1;
               mst_rsp_o.b.resp = 2'b10;   
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-              linked_data_d[i].write_state = IDLE;
             end else if( mst_req_i.b_ready & slv_rsp_i.b_valid && (linked_data_q[i].metadata.id == slv_rsp_i.b.id )) begin
               // there is still timeout
               oup_req = 1;
@@ -313,20 +240,18 @@ assign hw2reg_o.reset.de = 1'b1;
               mst_rsp_o.b.resp = 2'b10;   
               // write into reg for timeout
               reset_req = 1'b1;
-              linked_data_d[i].write_state = IDLE;
             end else begin
               oup_req = 1;
               oup_id = linked_data_q[i].metadata.id;
               mst_rsp_o.b.resp = 2'b10;   
               // write into reg for timeout
               reset_req = 1'b1;
-              linked_data_d[i].write_state = IDLE;
             // no timeout implies valid handshake 
             end
           end
         end
-      endcase 
-    end
+    
+
     if (oup_req) begin
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
@@ -335,7 +260,6 @@ assign hw2reg_o.reset.de = 1'b1;
         oup_data_popped = 1;
         // Set free bit of linked data entry, all other bits are don't care.
         linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
         linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
 
         // If it is the last cell of this ID
@@ -369,8 +293,7 @@ assign hw2reg_o.reset.de = 1'b1;
         linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.aw,
           timeout: 0,
-          write_state: WRITE_ADDRESS,
-          counters: 0,
+          counter: 0,
           next: '0,
           free: 1'b0
         };
@@ -387,8 +310,7 @@ assign hw2reg_o.reset.de = 1'b1;
           linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.aw,
           timeout: 0,
-          write_state: WRITE_ADDRESS,
-          counters: 0,
+          counter: 0,
           next: '0,
           free: 1'b0
           };
@@ -403,8 +325,7 @@ assign hw2reg_o.reset.de = 1'b1;
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.aw,
               timeout: 0,
-              write_state: WRITE_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0, 
               free: 1'b0
             };
@@ -418,8 +339,7 @@ assign hw2reg_o.reset.de = 1'b1;
               linked_data_d[oup_data_free_idx] = '{
                 metadata: mst_req_i.aw,
                 timeout: 0,
-                write_state: WRITE_ADDRESS,
-                counters: 0,
+                counter: 0,
                 next: '0,
                 free: 1'b0
               };
@@ -433,8 +353,7 @@ assign hw2reg_o.reset.de = 1'b1;
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.aw,
               timeout: 0,
-              write_state: WRITE_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0,
               free: 1'b0
             };
@@ -444,8 +363,7 @@ assign hw2reg_o.reset.de = 1'b1;
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.aw,
               timeout: 0,
-              write_state: WRITE_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0,
               free: 1'b0
             };
@@ -466,42 +384,11 @@ assign hw2reg_o.reset.de = 1'b1;
           linked_data_q[i]  <= linked_data_d[i];
           // only if this slot is in use, that is to say there is an outstanding transaction
           if (!linked_data_q[i].free) begin 
-            case (linked_data_q[i].write_state) 
-              IDLE: begin
-                  linked_data_q[i] <= '0;
-                  linked_data_q[i][0] <= 1'b1;
-              end
-              WRITE_ADDRESS: begin
-                // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
-                if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready) begin
-                  linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do auto-increment
-                end
-                // Counter 1: AW Phase - AW_VALID to W_VALID (first data)
-                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
-              end
-          
-              WRITE_DATA: begin
-                // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
-                if (mst_req_i.w_valid && !slv_rsp_i.w_ready) begin
-                  linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
-                end
-                // Counter 3: W Phase - W_VALID to W_LAST
-                linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
-                // Timeout check W state
-              end
-
-              WRITE_RESPONSE: begin
-                // Counter 4: B Phase - W_LAST to B_VALID, handshake is checked, stop counting upon handshake
-                if(mst_req_i.b_ready && !slv_rsp_i.b_valid) begin
-                  linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
-                end
-                //  Counter 5: B Phase - B_VALID to B_READY
-                linked_data_q[i].counters.cnt_wlast_bready <= linked_data_q[i].counters.cnt_wlast_bready +1;
-                // Timeout check B state 
-              end 
-            endcase
+            if(! (mst_req_i.b_ready && slv_rsp_i.b_valid)) begin
+              linked_data_q[i].counter <= linked_data_q[i].counter + 1;
+            end 
+          end
         end
-      end
     end
    end
  end

@@ -31,26 +31,17 @@ module read_guard #(
   logic  reset_req, irq;
   logic  oup_data_valid;
 
-  assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
+  assign hw2reg_o.irq.mis_id_rd.de = 1'b1;
   assign hw2reg_o.irq.r0.de = 1'b1;
-  assign hw2reg_o.irq.r1.de = 1'b1;
-  assign hw2reg_o.irq.r2.de = 1'b1;
-  assign hw2reg_o.irq.r3.de = 1'b1;
   assign hw2reg_o.irq_addr.de = 1'b1;
   assign hw2reg_o.reset.de = 1'b1; 
 
   assign reset_req_o = reset_req;
   assign irq_o = irq;
 
-  cnt_t  budget_arvld_arrdy;
-  cnt_t  budget_arvld_rvld;
-  cnt_t  budget_rvld_rrdy;
-  cnt_t  budget_rvld_rlast;
+  cnt_t  budget;
 
-  assign budget_arvld_arrdy = reg2hw_i.budget_arvld_arrdy.q;
-  assign budget_arvld_rvld  = reg2hw_i.budget_arvld_rvld.q;
-  assign budget_rvld_rrdy   = reg2hw_i.budget_rvld_rrdy.q;
-  assign budget_rvld_rlast  = reg2hw_i.budget_rvld_rlast.q;
+  assign budget = reg2hw_i.budget_rvld_rrdy.q;
 
   // Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxRdTxns) ? MaxUniqIds : MaxRdTxns;
@@ -71,27 +62,12 @@ module read_guard #(
     logic       free;
   } head_tail_t;
 
-  typedef struct packed {
-    logic [CntWidth -1:0] cnt_arvalid_arready; // AWVALID to AWREADY
-    logic [CntWidth -1:0] cnt_arvalid_rfirst;  // AWVALID to WFIRST
-    logic [CntWidth -1:0] cnt_rvalid_rready_first; // WVALID to WREADY of WFIRST
-    logic [CntWidth -1:0] cnt_rfirst_rlast;    // WFIRST to WLAST
-  } read_cnters_t;
-
-  // state enum of the FSM
-  typedef enum logic [1:0] {
-    IDLE,
-    READ_ADDRESS,
-    READ_DATA,
-    READ_RESPONSE
-  } read_state_t;
 
   // Type of an entry in the linked data table.
   typedef struct packed {
     aw_chan_t       metadata;
     logic           timeout;
-    read_state_t    read_state;
-    read_cnters_t   counters; 
+    cnt_t           counter; 
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
@@ -228,44 +204,18 @@ module read_guard #(
     end
    
     for ( int i = 0; i < MaxRdTxns; i++ ) begin 
-      case ( linked_data_q[i].read_state )
-        IDLE: begin
-          if ( mst_req_i.ar_valid ) begin
-            linked_data_d[i].read_state = READ_ADDRESS;
-          end
-        end
-        READ_ADDRESS: begin
-          if ( slv_rsp_i.r_valid && !linked_data_q[i].timeout ) begin
-            linked_data_d[i].read_state = READ_DATA;
-          end
-          if (linked_data_q[i].counters.cnt_arvalid_arready >= budget_arvld_arrdy
-            || linked_data_d[i].counters.cnt_arvalid_rfirst  >= budget_arvld_rvld) begin
-            linked_data_d[i].timeout = 1'b1;
-            reset_req = 1'b1;
-            oup_req  = 1;
-            oup_id = linked_data_q[i].metadata.id;
-            linked_data_d[i].read_state = IDLE; 
-            end
-        end
-        READ_DATA: begin
-          if ( slv_rsp_i.r.last && !linked_data_q[i].timeout ) begin
-            linked_data_d[i].read_state = IDLE;
-          end
-          if (linked_data_q[i].counters.cnt_rvalid_rready_first >= budget_rvld_rrdy 
-            || linked_data_q[i].counters.cnt_rfirst_rlast  >= budget_rvld_rlast) begin
+      if (linked_data_q[i].counter >= budget ) begin
             linked_data_d[i].timeout = 1'b1;
             reset_req = 1'b1;
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
             mst_rsp_o.r.resp = 2'b10;   
-            linked_data_d[i].read_state = IDLE;
           end
           // dequeue in both faulty and fault-free case
           // handshake, id match and no timeout, successul completion
           if ( mst_req_i.r_ready && slv_rsp_i.r_valid && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id )) begin
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
-            linked_data_d[i].read_state = IDLE;
           end else begin 
             if( mst_req_i.r_ready & slv_rsp_i.r_valid  && !linked_data_q[i].timeout ) begin
               oup_req = 1;
@@ -275,28 +225,24 @@ module read_guard #(
               hw2reg_o.irq.mis_id_rd.d = 1'b1;
               mst_rsp_o.r.resp = 2'b10;   
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-              linked_data_d[i].read_state = IDLE;
-            end else if( mst_req_i.b_ready & slv_rsp_i.b_valid && (linked_data_q[i].metadata.id == slv_rsp_i.r.id )) begin
+            end else if( mst_req_i.r_ready & slv_rsp_i.r_valid && (linked_data_q[i].metadata.id == slv_rsp_i.r.id )) begin
               // there is still timeout
               oup_req = 1;
               oup_id = linked_data_q[i].metadata.id;
               mst_rsp_o.r.resp = 2'b10;   
               // write into reg for timeout
               reset_req = 1'b1;
-              linked_data_d[i].read_state = IDLE;
             end else begin
               oup_req = 1;
               oup_id = linked_data_q[i].metadata.id;
               mst_rsp_o.r.resp = 2'b10;   
               // write into reg for timeout
               reset_req = 1'b1;
-              linked_data_d[i].read_state = IDLE;
             // no timeout implies valid handshake 
             end
           end
         end
-      endcase 
-    end
+  
     if (oup_req) begin
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
@@ -305,7 +251,6 @@ module read_guard #(
         oup_data_popped = 1;
         // Set free bit of linked data entry, all other bits are don't care.
         linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].read_state     = IDLE;
         linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
 
         // If it is the last cell of this ID
@@ -339,8 +284,7 @@ module read_guard #(
         linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.ar,
           timeout: 0,
-          read_state: READ_ADDRESS,
-          counters: 0,
+          counter: 0,
           next: '0,
           free: 1'b0
         };
@@ -357,8 +301,7 @@ module read_guard #(
           linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.ar,
           timeout: 0,
-          read_state: READ_ADDRESS,
-          counters: 0,
+          counter: 0,
           next: '0,
           free: 1'b0
           };
@@ -373,8 +316,7 @@ module read_guard #(
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.ar,
               timeout: 0,
-              read_state: READ_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0, 
               free: 1'b0
             };
@@ -388,8 +330,7 @@ module read_guard #(
               linked_data_d[oup_data_free_idx] = '{
                 metadata: mst_req_i.ar,
                 timeout: 0,
-                read_state: READ_ADDRESS,
-                counters: 0,
+                counter: 0,
                 next: '0,
                 free: 1'b0
               };
@@ -403,8 +344,7 @@ module read_guard #(
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.ar,
               timeout: 0,
-              read_state: READ_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0,
               free: 1'b0
             };
@@ -414,8 +354,7 @@ module read_guard #(
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.ar,
               timeout: 0,
-              read_state: READ_ADDRESS,
-              counters: 0,
+              counter: 0,
               next: '0,
               free: 1'b0
             };
@@ -429,43 +368,20 @@ module read_guard #(
    always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
         linked_data_q[i] <= '0;
-        // mark all slots as free
-        linked_data_q[i].read_state <= IDLE;
         linked_data_q[i][0] <= 1'b1;
       end else begin
         if (guard_ena_i) begin
           linked_data_q[i]  <= linked_data_d[i];
           // only if this slot is in use, that is to say there is an outstanding transaction
           if (!linked_data_q[i].free) begin 
-            case (linked_data_q[i].read_state) 
-              IDLE: begin
-                  linked_data_q[i] <= '0;
-                  linked_data_q[i].read_state <= IDLE;
-                  linked_data_q[i][0] <= 1'b1;
-              end
-              READ_ADDRESS: begin
-                // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
-                if (mst_req_i.ar_valid && !slv_rsp_i.ar_ready) begin
-                  linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
-                end
-                // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
-                linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
-              end
-          
-              READ_DATA: begin
-                // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
-                if (slv_rsp_i.r_valid && !mst_req_i.r_ready) begin
-                  linked_data_q[i].counters.cnt_rvalid_rready_first  <= linked_data_q[i].counters.cnt_rvalid_rready_first + 1;
-                end
-                // Counter 3: R Phase - R_VALID to R_LAST
-                linked_data_q[i].counters.cnt_rfirst_rlast  <= linked_data_q[i].counters.cnt_rfirst_rlast + 1;
-              end
-            endcase
+            if(! (mst_req_i.r_ready && slv_rsp_i.r_valid)) begin
+              linked_data_q[i].counter <= linked_data_q[i].counter + 1;
+            end 
+          end
         end
       end
     end
-   end
- end
+  end
 
 // Validate parameters.
 `ifndef SYNTHESIS
