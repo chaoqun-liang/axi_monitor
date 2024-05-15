@@ -302,11 +302,11 @@ module monitor_synth_wrap
   assign reg_rsp_ready_o =  cfg_rsp.ready;
 
   slv_guard_top #(
-    .AddrWidth    ( TbAxiAddrWidth ),
-    .DataWidth    ( TbAxiDataWidth ),
-    .StrbWidth    ( AxiStrbWidth   ),
-    .AxiIdWidth   ( TbAxiIdWidth   ),
-    .AxiUserWidth ( TbAxiUserWidth ),
+    .AddrWidth    ( AxiAddrWidth   ),
+    .DataWidth    ( AxiDataWidth   ),
+    .StrbWidth    ( AxiDataWidth/8 ),
+    .AxiIdWidth   ( AxiIdWidth     ),
+    .AxiUserWidth ( AxiUserWidth   ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
     .MaxWrUniqIds ( MaxUniqIds     ),
     .MaxRdUniqIds ( MaxUniqIds     ),
