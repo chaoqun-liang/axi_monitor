@@ -27,7 +27,10 @@ sources:
       - src/write_guard.sv
       - src/read_guard.sv
       - src/slv_guard_top.sv
-      
+  
+  - target: monitor_synth
+    files:
+      - src/monitor_wrap.sv    
   
   - target: test
     files:
