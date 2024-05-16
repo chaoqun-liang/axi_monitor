@@ -16,6 +16,8 @@ DUT      ?= slv_guard_top
 SLV_ROOT      ?= $(shell $(BENDER) path slv_guard)
 SLV_VSIM_DIR  := $(SLV_ROOT)/target/sim/vsim
 
+compile_script_synth ?= $(SLV_ROOT)/target/sim/vsim/synth_compile.tcl
+
 QUESTA_FLAGS := -permissive -suppress 3009 -suppress 8386 -error 7 +UVM_NO_RELNOTES
 #QUESTA_FLAGS :=
 ifdef DEBUG
@@ -28,6 +30,18 @@ else
 	RUN_AND_EXIT := run -all; exit
 endif
 
+# Download bender
+bender:
+	curl --proto '=https'  \
+	--tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- 0.24.0
+
+synth_targs += -t rtl -t monitor_synth
+
+synth-ips:
+	$(BENDER) update
+	$(BENDER) script synopsys \
+    $(synth_targs) \
+	> ${compile_script_synth}
 
 ##############
 # Simulation #
