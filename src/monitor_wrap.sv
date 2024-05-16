@@ -7,7 +7,7 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module monitor_synth_wrap 
+module monitor_wrap 
   import axi_pkg::*;
 #(
   // Monitor parameters
@@ -20,7 +20,6 @@ module monitor_synth_wrap
   parameter int unsigned MaxWrTxns     = 4,
   parameter int unsigned MaxRdTxns     = 4,
   parameter int unsigned CntWidth      = 32,
-  parameter int unsigned IntIdWidth    = 4, 
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 64,
   parameter int unsigned AxiDataWidth  = 64,
@@ -43,6 +42,7 @@ module monitor_synth_wrap
   parameter type reg_data_t   = logic [RegDataWidth-1:0],
   parameter type reg_strb_t   = logic [RegDataWidth/8-1:0]
 )( 
+
   input  logic                  clk_i,
   input  logic                  rst_ni,
   input  logic                  guard_ena_i,
@@ -203,92 +203,92 @@ module monitor_synth_wrap
   assign mst_axi_ar_valid_o  = mst_req.ar_valid;
   assign mst_axi_r_ready_o   = mst_req.r_ready;
   
-  assign mst_axi_read_rsp.ar_ready = mst_axi_ar_ready_i;
-  assign mst_axi_read_rsp.r.id     = mst_axi_r_id_i;
-  assign mst_axi_read_rsp.r.data   = mst_axi_r_data_i;
-  assign mst_axi_read_rsp.r.resp   = mst_axi_r_resp_i;
-  assign mst_axi_read_rsp.r.last   = mst_axi_r_last_i;
-  assign mst_axi_read_rsp.r.user   = mst_axi_r_user_i;
-  assign mst_axi_read_rsp.r_valid  = mst_axi_r_valid_i;
+  assign mst_rsp.ar_ready = mst_axi_ar_ready_i;
+  assign mst_rsp.r.id     = mst_axi_r_id_i;
+  assign mst_rsp.r.data   = mst_axi_r_data_i;
+  assign mst_rsp.r.resp   = mst_axi_r_resp_i;
+  assign mst_rsp.r.last   = mst_axi_r_last_i;
+  assign mst_rsp.r.user   = mst_axi_r_user_i;
+  assign mst_rsp.r_valid  = mst_axi_r_valid_i;
 
   // AXI4+ATOP Write Master
-  assign mst_axi_aw_id_o     = mst_axi_write_req.aw.id;
-  assign mst_axi_aw_addr_o   = mst_axi_write_req.aw.addr;
-  assign mst_axi_aw_len_o    = mst_axi_write_req.aw.len;
-  assign mst_axi_aw_size_o   = mst_axi_write_req.aw.size;
-  assign mst_axi_aw_burst_o  = mst_axi_write_req.aw.burst;
-  assign mst_axi_aw_lock_o   = mst_axi_write_req.aw.lock;
-  assign mst_axi_aw_cache_o  = mst_axi_write_req.aw.cache;
-  assign mst_axi_aw_prot_o   = mst_axi_write_req.aw.prot;
-  assign mst_axi_aw_qos_o    = mst_axi_write_req.aw.qos;
-  assign mst_axi_aw_region_o = mst_axi_write_req.aw.region;
-  assign mst_axi_aw_atop_o   = mst_axi_write_req.aw.atop;
-  assign mst_axi_aw_user_o   = mst_axi_write_req.aw.user;
-  assign mst_axi_aw_valid_o  = mst_axi_write_req.aw_valid;
-  assign mst_axi_w_data_o    = mst_axi_write_req.w.data;
-  assign mst_axi_w_strb_o    = mst_axi_write_req.w.strb;
-  assign mst_axi_w_last_o    = mst_axi_write_req.w.last;
-  assign mst_axi_w_user_o    = mst_axi_write_req.w.user;
-  assign mst_axi_w_valid_o   = mst_axi_write_req.w_valid;
-  assign mst_axi_b_ready_o   = mst_axi_write_req.b_ready;
+  assign mst_axi_aw_id_o     = mst_req.aw.id;
+  assign mst_axi_aw_addr_o   = mst_req.aw.addr;
+  assign mst_axi_aw_len_o    = mst_req.aw.len;
+  assign mst_axi_aw_size_o   = mst_req.aw.size;
+  assign mst_axi_aw_burst_o  = mst_req.aw.burst;
+  assign mst_axi_aw_lock_o   = mst_req.aw.lock;
+  assign mst_axi_aw_cache_o  = mst_req.aw.cache;
+  assign mst_axi_aw_prot_o   = mst_req.aw.prot;
+  assign mst_axi_aw_qos_o    = mst_req.aw.qos;
+  assign mst_axi_aw_region_o = mst_req.aw.region;
+  assign mst_axi_aw_atop_o   = mst_req.aw.atop;
+  assign mst_axi_aw_user_o   = mst_req.aw.user;
+  assign mst_axi_aw_valid_o  = mst_req.aw_valid;
+  assign mst_axi_w_data_o    = mst_req.w.data;
+  assign mst_axi_w_strb_o    = mst_req.w.strb;
+  assign mst_axi_w_last_o    = mst_req.w.last;
+  assign mst_axi_w_user_o    = mst_req.w.user;
+  assign mst_axi_w_valid_o   = mst_req.w_valid;
+  assign mst_axi_b_ready_o   = mst_req.b_ready;
   
-  assign mst_axi_write_rsp.aw_ready = mst_axi_aw_ready_i;
-  assign mst_axi_write_rsp.w_ready  = mst_axi_w_ready_i;
-  assign mst_axi_write_rsp.b.id     = mst_axi_b_id_i;
-  assign mst_axi_write_rsp.b.resp   = mst_axi_b_resp_i;
-  assign mst_axi_write_rsp.b.user   = mst_axi_b_user_i;
-  assign mst_axi_write_rsp.b_valid  = mst_axi_b_valid_i;
+  assign mst_rsp.aw_ready = mst_axi_aw_ready_i;
+  assign mst_rsp.w_ready  = mst_axi_w_ready_i;
+  assign mst_rsp.b.id     = mst_axi_b_id_i;
+  assign mst_rsp.b.resp   = mst_axi_b_resp_i;
+  assign mst_rsp.b.user   = mst_axi_b_user_i;
+  assign mst_rsp.b_valid  = mst_axi_b_valid_i;
 
   // AXI4+ATOP Read Slave
-  assign slv_axi_ar_id_o     = slv_axi_read_req.ar.id;
-  assign slv_axi_ar_addr_o   = slv_axi_read_req.ar.addr;
-  assign slv_axi_ar_len_o    = slv_axi_read_req.ar.len;
-  assign slv_axi_ar_size_o   = slv_axi_read_req.ar.size;
-  assign slv_axi_ar_burst_o  = slv_axi_read_req.ar.burst;
-  assign slv_axi_ar_lock_o   = slv_axi_read_req.ar.lock;
-  assign slv_axi_ar_cache_o  = slv_axi_read_req.ar.cache;
-  assign slv_axi_ar_prot_o   = slv_axi_read_req.ar.prot;
-  assign slv_axi_ar_qos_o    = slv_axi_read_req.ar.qos;
-  assign slv_axi_ar_region_o = slv_axi_read_req.ar.region;
-  assign slv_axi_ar_user_o   = slv_axi_read_req.ar.user;
-  assign slv_axi_ar_valid_o  = slv_axi_read_req.ar_valid;
-  assign slv_axi_r_ready_o   = slv_axi_read_req.r_ready;
+  assign slv_axi_ar_id_o     = slv_req.ar.id;
+  assign slv_axi_ar_addr_o   = slv_req.ar.addr;
+  assign slv_axi_ar_len_o    = slv_req.ar.len;
+  assign slv_axi_ar_size_o   = slv_req.ar.size;
+  assign slv_axi_ar_burst_o  = slv_req.ar.burst;
+  assign slv_axi_ar_lock_o   = slv_req.ar.lock;
+  assign slv_axi_ar_cache_o  = slv_req.ar.cache;
+  assign slv_axi_ar_prot_o   = slv_req.ar.prot;
+  assign slv_axi_ar_qos_o    = slv_req.ar.qos;
+  assign slv_axi_ar_region_o = slv_req.ar.region;
+  assign slv_axi_ar_user_o   = slv_req.ar.user;
+  assign slv_axi_ar_valid_o  = slv_req.ar_valid;
+  assign slv_axi_r_ready_o   = slv_req.r_ready;
   
-  assign slv_axi_read_rsp.ar_ready = slv_axi_ar_ready_i;
-  assign slv_axi_read_rsp.r.id     = slv_axi_r_id_i;
-  assign slv_axi_read_rsp.r.data   = slv_axi_r_data_i;
-  assign slv_axi_read_rsp.r.resp   = slv_axi_r_resp_i;
-  assign slv_axi_read_rsp.r.last   = slv_axi_r_last_i;
-  assign slv_axi_read_rsp.r.user   = slv_axi_r_user_i;
-  assign slv_axi_read_rsp.r_valid  = slv_axi_r_valid_i;
+  assign slv_rsp.ar_ready = slv_axi_ar_ready_i;
+  assign slv_rsp.r.id     = slv_axi_r_id_i;
+  assign slv_rsp.r.data   = slv_axi_r_data_i;
+  assign slv_rsp.r.resp   = slv_axi_r_resp_i;
+  assign slv_rsp.r.last   = slv_axi_r_last_i;
+  assign slv_rsp.r.user   = slv_axi_r_user_i;
+  assign slv_rsp.r_valid  = slv_axi_r_valid_i;
 
   // AXI4+ATOP Slave
-  assign slv_axi_aw_id_o     = slv_axi_write_req.aw.id;
-  assign slv_axi_aw_addr_o   = slv_axi_write_req.aw.addr;
-  assign slv_axi_aw_len_o    = slv_axi_write_req.aw.len;
-  assign slv_axi_aw_size_o   = slv_axi_write_req.aw.size;
-  assign slv_axi_aw_burst_o  = slv_axi_write_req.aw.burst;
-  assign slv_axi_aw_lock_o   = slv_axi_write_req.aw.lock;
-  assign slv_axi_aw_cache_o  = slv_axi_write_req.aw.cache;
-  assign slv_axi_aw_prot_o   = slv_axi_write_req.aw.prot;
-  assign slv_axi_aw_qos_o    = slv_axi_write_req.aw.qos;
-  assign slv_axi_aw_region_o = slv_axi_write_req.aw.region;
-  assign slv_axi_aw_atop_o   = slv_axi_write_req.aw.atop;
-  assign slv_axi_aw_user_o   = slv_axi_write_req.aw.user;
-  assign slv_axi_aw_valid_o  = slv_axi_write_req.aw_valid;
-  assign slv_axi_w_data_o    = slv_axi_write_req.w.data;
-  assign slv_axi_w_strb_o    = slv_axi_write_req.w.strb;
-  assign slv_axi_w_last_o    = slv_axi_write_req.w.last;
-  assign slv_axi_w_user_o    = slv_axi_write_req.w.user;
-  assign slv_axi_w_valid_o   = slv_axi_write_req.w_valid;
-  assign slv_axi_b_ready_o   = slv_axi_write_req.b_ready;
+  assign slv_axi_aw_id_o     = slv_req.aw.id;
+  assign slv_axi_aw_addr_o   = slv_req.aw.addr;
+  assign slv_axi_aw_len_o    = slv_req.aw.len;
+  assign slv_axi_aw_size_o   = slv_req.aw.size;
+  assign slv_axi_aw_burst_o  = slv_req.aw.burst;
+  assign slv_axi_aw_lock_o   = slv_req.aw.lock;
+  assign slv_axi_aw_cache_o  = slv_req.aw.cache;
+  assign slv_axi_aw_prot_o   = slv_req.aw.prot;
+  assign slv_axi_aw_qos_o    = slv_req.aw.qos;
+  assign slv_axi_aw_region_o = slv_req.aw.region;
+  assign slv_axi_aw_atop_o   = slv_req.aw.atop;
+  assign slv_axi_aw_user_o   = slv_req.aw.user;
+  assign slv_axi_aw_valid_o  = slv_req.aw_valid;
+  assign slv_axi_w_data_o    = slv_req.w.data;
+  assign slv_axi_w_strb_o    = slv_req.w.strb;
+  assign slv_axi_w_last_o    = slv_req.w.last;
+  assign slv_axi_w_user_o    = slv_req.w.user;
+  assign slv_axi_w_valid_o   = slv_req.w_valid;
+  assign slv_axi_b_ready_o   = slv_req.b_ready;
   
-  assign slv_axi_write_rsp.aw_ready = slv_axi_aw_ready_i;
-  assign slv_axi_write_rsp.w_ready  = slv_axi_w_ready_i;
-  assign slv_axi_write_rsp.b.id     = slv_axi_b_id_i;
-  assign slv_axi_write_rsp.b.resp   = slv_axi_b_resp_i;
-  assign slv_axi_write_rsp.b.user   = slv_axi_b_user_i;
-  assign slv_axi_write_rsp.b_valid  = slv_axi_b_valid_i;
+  assign slv_rsp.aw_ready = slv_axi_aw_ready_i;
+  assign slv_rsp.w_ready  = slv_axi_w_ready_i;
+  assign slv_rsp.b.id     = slv_axi_b_id_i;
+  assign slv_rsp.b.resp   = slv_axi_b_resp_i;
+  assign slv_rsp.b.user   = slv_axi_b_user_i;
+  assign slv_rsp.b_valid  = slv_axi_b_valid_i;
 
   // Reg
   assign cfg_req.addr    =  reg_req_addr_i;
@@ -313,7 +313,7 @@ module monitor_synth_wrap
     .MaxWrTxns    ( MaxTxns        ),
     .MaxRdTxns    ( MaxTxns        ),
     .CntWidth     ( CntWidth       ),
-    .IntIdWidth   ( IntIdWidth     ),
+    .IntIdWidth   ( AxiIntIdWidth  ),
     .req_t        ( mst_req_t      ), 
     .rsp_t        ( mst_rsp_t      ),
     .slv_req_t    ( slv_req_t      ),
@@ -321,8 +321,8 @@ module monitor_synth_wrap
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
   ) i_slv_guard (
-    .clk_i       (   clk          ),
-    .rst_ni      (   rst_n        ),
+    .clk_i       (   clk_i        ),
+    .rst_ni      (   rst_ni       ),
     .guard_ena_i (   1'b1         ),
     .req_i       (   mst_req      ), 
     .rsp_o       (   mst_rsp      ),
@@ -333,4 +333,4 @@ module monitor_synth_wrap
     .irq_o       (                ),
     .rst_req_o   (                )
   );
-endmodule: monitor_synth_wrap
+endmodule: monitor_wrap

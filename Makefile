@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Author: Chaoqun Liang <chaoqun.liang@unibo.it>
+#
+# Top-level Makefile
 
 SLV_ROOT ?= $(shell pwd)
 BENDER	 ?= bender -d $(SLV_ROOT)

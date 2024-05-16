@@ -62,7 +62,6 @@ module tb_slv_guard #(
   cfg_req_t cfg_req;
   cfg_rsp_t cfg_rsp;
 
- 
 
   typedef reg_test::reg_driver #(
     .AW ( TbAxiAddrWidth ),

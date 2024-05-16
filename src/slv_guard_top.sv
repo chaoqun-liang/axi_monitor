@@ -121,17 +121,17 @@ module slv_guard_top #(
   // `AXI_TYPEDEF_RESP_T(axi_rsp_t, b_chan_t, r_chan_t );
 
   /// Intermediate AXI types
-  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
-  `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(internal_req_t, int_aw_t, w_t, int_ar_t);
-  `AXI_TYPEDEF_RESP_T(internal_rsp_t, int_b_t, int_r_t );
+  // `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
+  // `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
+  // `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
+  // `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
+  // `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
+  // `AXI_TYPEDEF_REQ_T(internal_req_t, int_aw_t, w_t, int_ar_t);
+  // `AXI_TYPEDEF_RESP_T(internal_rsp_t, int_b_t, int_r_t );
 
   /// Intermediate AXI channel
-  internal_req_t  int_req, int_req_wr, int_req_rd, wr_req_o, rd_req_o;
-  internal_rsp_t  int_rsp, rd_rsp, wr_rsp, int_rsp_wr, int_rsp_rd;
+  slv_req_t  int_req, int_req_wr, int_req_rd, wr_req_o, rd_req_o;
+  slv_rsp_t  int_rsp, rd_rsp, wr_rsp, int_rsp_wr, int_rsp_rd;
 
   // counter typedef
   typedef logic [CntWidth-1:0] latency_t;
@@ -168,8 +168,8 @@ module slv_guard_top #(
     .AxiMstPortIdWidth    ( IntIdWidth    ),
     .slv_req_t            ( req_t         ),
     .slv_resp_t           ( rsp_t         ),
-    .mst_req_t            ( internal_req_t     ),
-    .mst_resp_t           ( internal_rsp_t     )
+    .mst_req_t            ( slv_req_t     ),
+    .mst_resp_t           ( slv_rsp_t     )
   ) i_axi_id_remap (
     .clk_i,
     .rst_ni,
@@ -181,10 +181,10 @@ module slv_guard_top #(
 
   logic  write_req, read_req;
   logic  write_irq, read_irq;
-  logic rst_req_wr, rst_req_rd;
+  logic  rst_req_wr, rst_req_rd;
   assign write_req = int_req.aw_valid;
   assign read_req = int_req.ar_valid;
-  internal_rsp_t slv_rsp;
+  slv_rsp_t slv_rsp;
   assign  slv_rsp = rsp_i;
   
   always_comb begin
@@ -226,8 +226,8 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxWrUniqIds ),
     .MaxWrTxns  ( MaxWrTxns    ), // total writes
     .CntWidth   ( CntWidth     ),
-    .req_t      ( req_t        ),
-    .rsp_t      ( rsp_t        ),
+    .req_t      ( slv_req_t    ),
+    .rsp_t      ( slv_rsp_t    ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
     .aw_chan_t  ( aw_chan_t    ),
@@ -239,10 +239,10 @@ module slv_guard_top #(
     .guard_ena_i  ( guard_ena_i  ),
     .inp_req_i    ( write_req    ),
     .mst_req_i    ( int_req_wr   ),  
-    .mst_rsp_o    ( int_req_wr   ),
+    .mst_rsp_o    ( int_rsp_wr   ),
     .slv_rsp_i    ( wr_rsp       ),
     .slv_req_o    ( wr_req_o     ),                                                                                
-    .reset_req_o  ( rst_req_wr      ),
+    .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
     .reg2hw_i     ( reg2hw_w     ),
     .hw2reg_o     ( hw2reg_w     )
@@ -252,8 +252,8 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxRdUniqIds ),
     .MaxRdTxns  ( MaxRdTxns    ), 
     .CntWidth   ( CntWidth     ),
-    .req_t      ( req_t        ),
-    .rsp_t      ( rsp_t        ),
+    .req_t      ( slv_req_t        ),
+    .rsp_t      ( slv_rsp_t        ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
     .aw_chan_t  ( aw_chan_t    ),
