@@ -13,7 +13,6 @@ module read_guard #(
   input  logic       clk_i,
   input  logic       rst_ni,
   input  logic       guard_ena_i,
-  input  logic       inp_req_i,
   
   input  req_t       mst_req_i,  
   output rsp_t       mst_rsp_o,
@@ -25,12 +24,13 @@ module read_guard #(
   input  reg2hw_t    reg2hw_i,
   output hw2reg_t    hw2reg_o
 );
- 
+  logic  inp_req;
   logic  inp_gnt;
   logic  oup_gnt;
   logic  reset_req, irq;
   logic  oup_data_valid;
-
+  
+  assign inp_req = mst_req_i.ar_valid;
   assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
   assign hw2reg_o.irq.r0.de = 1'b1;
   assign hw2reg_o.irq.r1.de = 1'b1;
@@ -324,7 +324,7 @@ module read_guard #(
     /* 1. ID just popped out HT table, does not exist in HT.*/
     /* 2. Not popped, but does not exist in HT. */
     /* 3. it exits in HT table */
-    if (inp_req_i && inp_gnt ) begin
+    if (inp_req && inp_gnt ) begin
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
       // If output data was popped for this ID, which lead the head_tail to be popped,

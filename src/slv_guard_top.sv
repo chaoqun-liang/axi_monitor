@@ -11,50 +11,50 @@
 
 module slv_guard_top #(
   /// Number of subordinates 
-  parameter int unsigned NumSub = 1,
-  parameter int unsigned AddrWidth = 0,
-  parameter int unsigned DataWidth = 0,
-  parameter int unsigned StrbWidth = 0,
-  parameter int unsigned AxiIdWidth = 0,
-  parameter int unsigned AxiUserWidth = 0,
+  parameter int unsigned NumSub        = 1,
+  parameter int unsigned AddrWidth     = 0,
+  parameter int unsigned DataWidth     = 0,
+  parameter int unsigned StrbWidth     = 0,
+  parameter int unsigned AxiIdWidth    = 0,
+  parameter int unsigned AxiUserWidth  = 0,
   /// ID remapper
-  parameter int unsigned MaxUniqIds   = 4,
-  parameter int unsigned MaxTxnsPerId = 4, 
+  parameter int unsigned MaxUniqIds    = 4,
+  parameter int unsigned MaxTxnsPerId  = 4, 
   /// Write transaction unique IDs
-  parameter int unsigned MaxWrUniqIds = 4,
+  parameter int unsigned MaxWrUniqIds  = 4,
   /// Read transaction unique IDs
-  parameter int unsigned MaxRdUniqIds = 4,
+  parameter int unsigned MaxRdUniqIds  = 4,
   /// Maximum number outstanding write transactions 
-  parameter int unsigned MaxWrTxns = 4,
+  parameter int unsigned MaxWrTxns     = 4,
   /// Maximum number outstanding read transactions 
-  parameter int unsigned MaxRdTxns  = 4,
+  parameter int unsigned MaxRdTxns     = 4,
   /// Counter width
-  parameter int unsigned CntWidth = 0,
+  parameter int unsigned CntWidth      = 0,
   /// Internal ID width
-  parameter int unsigned IntIdWidth = 2, 
+  parameter int unsigned IntIdWidth    = 2, 
   /// Subordinate request type
-  parameter type req_t = logic, 
+  parameter type req_t                 = logic, 
   /// Subordinate response type
-  parameter type rsp_t = logic, 
+  parameter type rsp_t                 = logic, 
   /// Subordinate request type op
-  parameter type slv_req_t = logic, 
+  parameter type slv_req_t             = logic, 
   /// Subordinate response type op
-  parameter type slv_rsp_t = logic, 
+  parameter type slv_rsp_t             = logic, 
   /// Configuration register bus request type
-  parameter type reg_req_t = logic,
+  parameter type reg_req_t             = logic,
   /// Configuration register bus response type
-  parameter type reg_rsp_t = logic
+  parameter type reg_rsp_t             = logic
 )(
   /// Clock
-  input  logic              clk_i,
+  input  logic               clk_i,
   /// Asynchronous reset
-  input  logic              rst_ni,
+  input  logic               rst_ni,
   /// Guard enable
-  input  logic              guard_ena_i,
+  input  logic               guard_ena_i,
   /// Request from manager
-  input  req_t [NumSub-1:0] req_i,
+  input  req_t [NumSub-1:0]  req_i,
   /// Response to manager
-  output rsp_t [NumSub-1:0] rsp_o,
+  output rsp_t [NumSub-1:0]  rsp_o,
   /// Request to subordinate
   output slv_req_t [NumSub-1:0] req_o,
   /// Response from subordinate
@@ -71,7 +71,8 @@ module slv_guard_top #(
   input  logic [NumSub-1:0] rst_stat_i
   /// TBD: Reset configuration
 );
-
+  logic rst_req_rd, rst_req_wr;
+  logic write_irq, read_irq;
   // register signals
   slv_guard_reg_pkg::slv_guard_reg2hw_t reg2hw, reg2hw_w, reg2hw_r;
   slv_guard_reg_pkg::slv_guard_hw2reg_t hw2reg, hw2reg_w, hw2reg_r;
@@ -113,26 +114,13 @@ module slv_guard_top #(
     axi_pkg::atop_t   atop;                                     
     user_t            user;                                     
   } aw_chan_t;
-  // `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
-  // `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
-  // `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
-  // `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
-  // `AXI_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t);
-  // `AXI_TYPEDEF_RESP_T(axi_rsp_t, b_chan_t, r_chan_t );
-
-  /// Intermediate AXI types
-  // `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
-  // `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
-  // `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
-  // `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
-  // `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
-  // `AXI_TYPEDEF_REQ_T(internal_req_t, int_aw_t, w_t, int_ar_t);
-  // `AXI_TYPEDEF_RESP_T(internal_rsp_t, int_b_t, int_r_t );
 
   /// Intermediate AXI channel
-  slv_req_t  int_req, int_req_wr, int_req_rd, wr_req_o, rd_req_o;
-  slv_rsp_t  int_rsp, rd_rsp, wr_rsp, int_rsp_wr, int_rsp_rd;
-
+  slv_req_t  int_req, int_req_wr, int_req_rd, wr_req, rd_req, req_oup;
+  slv_rsp_t  int_rsp, rd_rsp, wr_rsp, int_rsp_wr, int_rsp_rd, rsp_inp;
+  
+  assign req_o = req_oup;
+  assign rsp_inp = rsp_i;
   // counter typedef
   typedef logic [CntWidth-1:0] latency_t;
 
@@ -179,48 +167,13 @@ module slv_guard_top #(
     .mst_resp_i ( int_rsp  )
   );
 
-  logic  write_req, read_req;
-  logic  write_irq, read_irq;
-  logic  rst_req_wr, rst_req_rd;
-  assign write_req = int_req.aw_valid;
-  assign read_req = int_req.ar_valid;
-  slv_rsp_t slv_rsp;
-  assign  slv_rsp = rsp_i;
-  
-  always_comb begin
-    int_req_wr = '0;
-    int_req_rd = '0;
-    int_rsp = '0;
-    rd_rsp = '0;
-    wr_rsp = '0;
-    req_o = '0;
+  assign int_req_wr.aw = int_req.aw;
+  assign int_req_wr.w  = int_req.w;
+  assign int_req_rd.ar = int_req.ar;
 
-    if (int_req.aw_valid) begin
-      int_req_wr = int_req;
-    end else if (int_req.ar_valid) begin
-      int_req_rd = int_req;
-    end
+  assign int_rsp.b    = int_rsp_wr.b;
+  assign int_rsp.r    = int_rsp_rd.r;
 
-    if (int_rsp_rd.ar_ready) begin
-      int_rsp = int_rsp_rd;
-    end else if (int_rsp_wr.aw_ready) begin
-      int_rsp = int_rsp_wr;
-    end 
-
-    if (slv_rsp.ar_ready) begin
-      rd_rsp = slv_rsp;
-    end else if (slv_rsp.aw_ready) begin
-      wr_rsp = slv_rsp;
-    end
-    // slv type wrong
-
-    if (wr_req_o.aw_valid) begin
-      req_o = wr_req_o;
-    end else if (rd_req_o.ar_valid) begin
-      req_o = rd_req_o;
-    end
-
-  end
 
   write_guard #(
     .MaxUniqIds ( MaxWrUniqIds ),
@@ -237,11 +190,10 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i  ),
-    .inp_req_i    ( write_req    ),
     .mst_req_i    ( int_req_wr   ),  
     .mst_rsp_o    ( int_rsp_wr   ),
     .slv_rsp_i    ( wr_rsp       ),
-    .slv_req_o    ( wr_req_o     ),                                                                                
+    .slv_req_o    ( wr_req       ),                                                                                
     .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
     .reg2hw_i     ( reg2hw_w     ),
@@ -263,17 +215,35 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i  ),
-    .inp_req_i    ( read_req     ),
     .mst_req_i    ( int_req_rd   ),  
     .mst_rsp_o    ( int_rsp_rd   ),
     .slv_rsp_i    ( rd_rsp       ),
-    .slv_req_o    ( rd_req_o     ),                                                                                
+    .slv_req_o    ( rd_req       ),                                                                                
     .reset_req_o  ( rst_req_rd   ),
     .irq_o        ( read_irq     ),
     .reg2hw_i     ( reg2hw_r     ),
     .hw2reg_o     ( hw2reg_r     )
   );
+
+  assign req_oup.aw        =  wr_req.aw;
+  assign req_oup.aw_valid  =  wr_req.aw_valid;
+  assign wr_rsp.aw_ready =  rsp_inp.aw_ready;
+
+  assign req_oup.w         =  wr_req.w;
+  assign req_oup.w_valid   =  wr_req.w_valid;
+  assign wr_rsp.w_ready  =  rsp_inp.w_ready;
+
+  assign req_oup.ar        =  rd_req.ar;
+  assign req_oup.ar_valid  =  rd_req.ar_valid;
+  assign rd_rsp.ar_ready =  rsp_inp.ar_ready;
+
+  assign wr_rsp.b        =  rsp_inp.b;
+  assign wr_rsp.b_valid  =  rsp_inp.b_valid;
+  assign req_oup.b_ready   =  wr_req.b_ready;
+  
+  assign rd_rsp.r  =  rsp_inp.r;
   
   assign rst_req_o = rst_req_wr | rst_req_rd;
+  assign irq_o   =  read_irq  | write_irq;
 
 endmodule: slv_guard_top

@@ -14,7 +14,6 @@ module write_guard #(
   input  logic       clk_i,
   input  logic       rst_ni,
   input  logic       guard_ena_i,
-  input  logic       inp_req_i,
   
   input  req_t       mst_req_i,  
   output rsp_t       mst_rsp_o,
@@ -27,22 +26,24 @@ module write_guard #(
   output hw2reg_t    hw2reg_o
 );
 
-logic  inp_gnt;
-logic  oup_gnt;
-logic  reset_req, irq;
-logic  oup_data_valid;
+  logic  inp_req;
+  logic  inp_gnt;
+  logic  oup_gnt;
+  logic  reset_req, irq;
+  logic  oup_data_valid;
 
-assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
-assign hw2reg_o.irq.w0.de = 1'b1;
-assign hw2reg_o.irq.w1.de = 1'b1;
-assign hw2reg_o.irq.w2.de = 1'b1;
-assign hw2reg_o.irq.w3.de = 1'b1;
-assign hw2reg_o.irq.w4.de = 1'b1;
-assign hw2reg_o.irq.w5.de = 1'b1;
-assign hw2reg_o.irq_addr.de = 1'b1;
-assign hw2reg_o.reset.de = 1'b1; 
+  assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
+  assign hw2reg_o.irq.w0.de = 1'b1;
+  assign hw2reg_o.irq.w1.de = 1'b1;
+  assign hw2reg_o.irq.w2.de = 1'b1;
+  assign hw2reg_o.irq.w3.de = 1'b1;
+  assign hw2reg_o.irq.w4.de = 1'b1;
+  assign hw2reg_o.irq.w5.de = 1'b1;
+  assign hw2reg_o.irq_addr.de = 1'b1;
+  assign hw2reg_o.reset.de = 1'b1; 
 
- 
+  assign inp_req = mst_req_i.aw_valid;
+
   assign reset_req_o = reset_req;
   assign irq_o = irq;
 
@@ -193,7 +194,7 @@ assign hw2reg_o.reset.de = 1'b1;
   // Data potentially freed by the output.
   assign oup_data_free_idx = head_tail_q[match_out_idx].head;
 
-  // Data can be accepted if the linked list pool is not full, or some data is simultaneously.
+  // Data can be accepted if the linked list pool is not full, or some da  ta is simultaneously.
   assign inp_gnt = ~full || oup_data_popped;
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
@@ -354,7 +355,7 @@ assign hw2reg_o.reset.de = 1'b1;
     /* 1. ID just popped out HT table, does not exist in HT.*/
     /* 2. Not popped, but does not exist in HT. */
     /* 3. it exits in HT table */
-    if (inp_req_i && inp_gnt ) begin
+    if (inp_req && inp_gnt ) begin
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
       // If output data was popped for this ID, which lead the head_tail to be popped,
