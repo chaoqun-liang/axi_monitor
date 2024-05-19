@@ -60,6 +60,9 @@ slv-sim-init: $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl
 slv-build: slv-sim-init
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl]"
 
+slv-build-ps: slv-sim-init
+	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl; source $(SLV_ROOT)/target/sim/vsim/test.tcl]"
+
 slv-sim:
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim $(VSIM_FLAGS) -do \
 		"set TESTBENCH $(TBENCH); \

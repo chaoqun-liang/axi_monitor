@@ -71,6 +71,7 @@ module slv_guard_top #(
   input  logic [NumSub-1:0] rst_stat_i
   /// TBD: Reset configuration
 );
+
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
   // register signals
@@ -89,6 +90,22 @@ module slv_guard_top #(
     .hw2reg    ( hw2reg       ),  
     .devmode_i ( 1'b1         )
   );
+
+  assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
+  assign hw2reg.irq_addr = hw2reg_w.irq_addr | hw2reg_r.irq_addr;
+  assign hw2reg.irq      = hw2reg_w.irq | hw2reg_r.irq;
+  
+  assign reg2hw_w.budget_awvld_awrdy = reg2hw.budget_awvld_awrdy;
+  assign reg2hw_w.budget_awvld_wfirst = reg2hw.budget_awvld_wfirst;
+  assign reg2hw_w.budget_wvld_wrdy = reg2hw.budget_wvld_wrdy;
+  assign reg2hw_w.budget_wvld_wlast = reg2hw.budget_wvld_wlast;
+  assign reg2hw_w.budget_wlast_bvld = reg2hw.budget_wlast_bvld;
+  assign reg2hw_w.budget_wlast_brdy = reg2hw.budget_wlast_brdy;
+
+  assign reg2hw_r.budget_arvld_arrdy = reg2hw.budget_arvld_arrdy;
+  assign reg2hw_r.budget_arvld_rvld = reg2hw.budget_arvld_rvld;
+  assign reg2hw_r.budget_rvld_rrdy = reg2hw.budget_rvld_rrdy;
+  assign reg2hw_r.budget_rvld_rlast = reg2hw.budget_rvld_rlast;
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;

@@ -47,52 +47,53 @@ module monitor_wrap
   input  logic                  rst_ni,
   input  logic                  guard_ena_i,
   // AXI Master interface
-  output id_t                    mst_axi_ar_id_o,
-  output addr_t                  mst_axi_ar_addr_o,
-  output axi_pkg::len_t          mst_axi_ar_len_o,
-  output axi_pkg::size_t         mst_axi_ar_size_o,
-  output axi_pkg::burst_t        mst_axi_ar_burst_o,
-  output logic                   mst_axi_ar_lock_o,
-  output axi_pkg::cache_t        mst_axi_ar_cache_o,
-  output axi_pkg::prot_t         mst_axi_ar_prot_o,
-  output axi_pkg::qos_t          mst_axi_ar_qos_o,
-  output axi_pkg::region_t       mst_axi_ar_region_o,
-  output user_t                  mst_axi_ar_user_o,
-  output logic                   mst_axi_ar_valid_o,
-  input  logic                   mst_axi_ar_ready_i,
-  input  id_t                    mst_axi_r_id_i,
-  input  data_t                  mst_axi_r_data_i,
-  input  axi_pkg::resp_t         mst_axi_r_resp_i,
-  input  logic                   mst_axi_r_last_i,
-  input  user_t                  mst_axi_r_user_i,
-  input  logic                   mst_axi_r_valid_i,
-  output logic                   mst_axi_r_ready_o,
+  input id_t                    mst_axi_ar_id_i,
+  input addr_t                  mst_axi_ar_addr_i,
+  input axi_pkg::len_t          mst_axi_ar_len_i,
+  input axi_pkg::size_t         mst_axi_ar_size_i,
+  input axi_pkg::burst_t        mst_axi_ar_burst_i,
+  input logic                   mst_axi_ar_lock_i,
+  input axi_pkg::cache_t        mst_axi_ar_cache_i,
+  input axi_pkg::prot_t         mst_axi_ar_prot_i,
+  input axi_pkg::qos_t          mst_axi_ar_qos_i,
+  input axi_pkg::region_t       mst_axi_ar_region_i,
+  input user_t                  mst_axi_ar_user_i,
+  input logic                   mst_axi_ar_valid_i,
+
+  output logic                  mst_axi_ar_ready_o,
+  output id_t                   mst_axi_r_id_o,
+  output data_t                 mst_axi_r_data_o,
+  output axi_pkg::resp_t        mst_axi_r_resp_o,
+  output logic                  mst_axi_r_last_o,
+  output user_t                 mst_axi_r_user_o,
+  output logic                  mst_axi_r_valid_o,
+  input  logic                  mst_axi_r_ready_i,
   
-  output id_t                    mst_axi_aw_id_o,
-  output addr_t                  mst_axi_aw_addr_o,
-  output axi_pkg::len_t          mst_axi_aw_len_o,
-  output axi_pkg::size_t         mst_axi_aw_size_o,
-  output axi_pkg::burst_t        mst_axi_aw_burst_o,
-  output logic                   mst_axi_aw_lock_o,
-  output axi_pkg::cache_t        mst_axi_aw_cache_o,
-  output axi_pkg::prot_t         mst_axi_aw_prot_o,
-  output axi_pkg::qos_t          mst_axi_aw_qos_o,
-  output axi_pkg::region_t       mst_axi_aw_region_o,
-  output axi_pkg::atop_t         mst_axi_aw_atop_o,
-  output user_t                  mst_axi_aw_user_o,
-  output logic                   mst_axi_aw_valid_o,
-  input  logic                   mst_axi_aw_ready_i,
-  output data_t                  mst_axi_w_data_o,
-  output strb_t                  mst_axi_w_strb_o,
-  output logic                   mst_axi_w_last_o,
-  output user_t                  mst_axi_w_user_o,
-  output logic                   mst_axi_w_valid_o,
-  input  logic                   mst_axi_w_ready_i,
-  input  id_t                    mst_axi_b_id_i,
-  input  axi_pkg::resp_t         mst_axi_b_resp_i,
-  input  user_t                  mst_axi_b_user_i,
-  input  logic                   mst_axi_b_valid_i,
-  output logic                   mst_axi_b_ready_o, 
+  input  id_t                   mst_axi_aw_id_i,
+  input  addr_t                 mst_axi_aw_addr_i,
+  input  axi_pkg::len_t         mst_axi_aw_len_i,
+  input  axi_pkg::size_t        mst_axi_aw_size_i,
+  input  axi_pkg::burst_t       mst_axi_aw_burst_i,
+  input  logic                  mst_axi_aw_lock_i,
+  input  axi_pkg::cache_t       mst_axi_aw_cache_i,
+  input  axi_pkg::prot_t        mst_axi_aw_prot_i,
+  input  axi_pkg::qos_t         mst_axi_aw_qos_i,
+  input  axi_pkg::region_t      mst_axi_aw_region_i,
+  input  axi_pkg::atop_t        mst_axi_aw_atop_i,
+  input  user_t                 mst_axi_aw_user_i,
+  input  logic                  mst_axi_aw_valid_i,
+  output logic                  mst_axi_aw_ready_o,
+  input  data_t                 mst_axi_w_data_i,
+  input  strb_t                 mst_axi_w_strb_i,
+  input  logic                  mst_axi_w_last_i,
+  input  user_t                 mst_axi_w_user_i,
+  input  logic                  mst_axi_w_valid_i,
+  output logic                  mst_axi_w_ready_o,
+  output id_t                   mst_axi_b_id_o,
+  output axi_pkg::resp_t        mst_axi_b_resp_o,
+  output user_t                 mst_axi_b_user_o,
+  output logic                  mst_axi_b_valid_o,
+  input  logic                  mst_axi_b_ready_i, 
   // AXI Slave port
   output id_t                    slv_axi_ar_id_o,
   output addr_t                  slv_axi_ar_addr_o,
@@ -189,55 +190,55 @@ module monitor_wrap
   cfg_rsp_t cfg_rsp;
 
   // AXI4+ATOP Read Master
-  assign mst_axi_ar_id_o     = mst_req.ar.id;
-  assign mst_axi_ar_addr_o   = mst_req.ar.addr;
-  assign mst_axi_ar_len_o    = mst_req.ar.len;
-  assign mst_axi_ar_size_o   = mst_req.ar.size;
-  assign mst_axi_ar_burst_o  = mst_req.ar.burst;
-  assign mst_axi_ar_lock_o   = mst_req.ar.lock;
-  assign mst_axi_ar_cache_o  = mst_req.ar.cache;
-  assign mst_axi_ar_prot_o   = mst_req.ar.prot;
-  assign mst_axi_ar_qos_o    = mst_req.ar.qos;
-  assign mst_axi_ar_region_o = mst_req.ar.region;
-  assign mst_axi_ar_user_o   = mst_req.ar.user;
-  assign mst_axi_ar_valid_o  = mst_req.ar_valid;
-  assign mst_axi_r_ready_o   = mst_req.r_ready;
+  assign mst_req.ar.id       =  mst_axi_ar_id_i;
+  assign mst_req.ar.addr     =  mst_axi_ar_addr_i;
+  assign mst_req.ar.len      =  mst_axi_ar_len_i;
+  assign mst_req.ar.size     =  mst_axi_ar_size_i;
+  assign mst_req.ar.burst    =  mst_axi_ar_burst_i;
+  assign mst_req.ar.lock     =  mst_axi_ar_lock_i;
+  assign mst_req.ar.cache    =  mst_axi_ar_cache_i;
+  assign mst_req.ar.prot     =  mst_axi_ar_prot_i;
+  assign mst_req.ar.qos      =  mst_axi_ar_qos_i;
+  assign mst_req.ar.region   =  mst_axi_ar_region_i;
+  assign mst_req.ar.user     =  mst_axi_ar_user_i;
+  assign mst_req.ar_valid    =  mst_axi_ar_valid_i;
+  assign mst_req.r_ready     =  mst_axi_r_ready_i;
   
-  assign mst_rsp.ar_ready = mst_axi_ar_ready_i;
-  assign mst_rsp.r.id     = mst_axi_r_id_i;
-  assign mst_rsp.r.data   = mst_axi_r_data_i;
-  assign mst_rsp.r.resp   = mst_axi_r_resp_i;
-  assign mst_rsp.r.last   = mst_axi_r_last_i;
-  assign mst_rsp.r.user   = mst_axi_r_user_i;
-  assign mst_rsp.r_valid  = mst_axi_r_valid_i;
+  assign mst_axi_ar_ready_o  =  mst_rsp.ar_ready;
+  assign mst_axi_r_id_o      =  mst_rsp.r.id;
+  assign mst_axi_r_data_o    =  mst_rsp.r.data;
+  assign mst_axi_r_resp_o    =  mst_rsp.r.resp;
+  assign mst_axi_r_last_o    =  mst_rsp.r.last;
+  assign mst_axi_r_user_o    =  mst_rsp.r.user;
+  assign mst_axi_r_valid_o   =  mst_rsp.r_valid;
 
   // AXI4+ATOP Write Master
-  assign mst_axi_aw_id_o     = mst_req.aw.id;
-  assign mst_axi_aw_addr_o   = mst_req.aw.addr;
-  assign mst_axi_aw_len_o    = mst_req.aw.len;
-  assign mst_axi_aw_size_o   = mst_req.aw.size;
-  assign mst_axi_aw_burst_o  = mst_req.aw.burst;
-  assign mst_axi_aw_lock_o   = mst_req.aw.lock;
-  assign mst_axi_aw_cache_o  = mst_req.aw.cache;
-  assign mst_axi_aw_prot_o   = mst_req.aw.prot;
-  assign mst_axi_aw_qos_o    = mst_req.aw.qos;
-  assign mst_axi_aw_region_o = mst_req.aw.region;
-  assign mst_axi_aw_atop_o   = mst_req.aw.atop;
-  assign mst_axi_aw_user_o   = mst_req.aw.user;
-  assign mst_axi_aw_valid_o  = mst_req.aw_valid;
-  assign mst_axi_w_data_o    = mst_req.w.data;
-  assign mst_axi_w_strb_o    = mst_req.w.strb;
-  assign mst_axi_w_last_o    = mst_req.w.last;
-  assign mst_axi_w_user_o    = mst_req.w.user;
-  assign mst_axi_w_valid_o   = mst_req.w_valid;
-  assign mst_axi_b_ready_o   = mst_req.b_ready;
+  assign mst_req.aw.id       =  mst_axi_aw_id_i;
+  assign mst_req.aw.addr     =  mst_axi_aw_addr_i;
+  assign mst_req.aw.len      =  mst_axi_aw_len_i;
+  assign mst_req.aw.size     =  mst_axi_aw_size_i;
+  assign mst_req.aw.burst    =  mst_axi_aw_burst_i ;
+  assign mst_req.aw.lock     =  mst_axi_aw_lock_i;
+  assign mst_req.aw.cache    =  mst_axi_aw_cache_i ;
+  assign mst_req.aw.prot     =  mst_axi_aw_prot_i;
+  assign mst_req.aw.qos      =  mst_axi_aw_qos_i;
+  assign mst_req.aw.region   =  mst_axi_aw_region_i;
+  assign mst_req.aw.atop     =  mst_axi_aw_atop_i; 
+  assign mst_req.aw.user     =  mst_axi_aw_user_i;
+  assign mst_req.aw_valid    =  mst_axi_aw_valid_i;
+  assign mst_req.w.data      =  mst_axi_w_data_i;
+  assign mst_req.w.strb      =  mst_axi_w_strb_i;
+  assign mst_req.w.last      =  mst_axi_w_last_i;
+  assign mst_req.w.user      =  mst_axi_w_user_i;
+  assign mst_req.w_valid     =  mst_axi_w_valid_i;
+  assign mst_req.b_ready     =  mst_axi_b_ready_i;
   
-  assign mst_rsp.aw_ready = mst_axi_aw_ready_i;
-  assign mst_rsp.w_ready  = mst_axi_w_ready_i;
-  assign mst_rsp.b.id     = mst_axi_b_id_i;
-  assign mst_rsp.b.resp   = mst_axi_b_resp_i;
-  assign mst_rsp.b.user   = mst_axi_b_user_i;
-  assign mst_rsp.b_valid  = mst_axi_b_valid_i;
+  assign mst_axi_aw_ready_o  = mst_rsp.aw_ready;
+  assign mst_axi_w_ready_o   = mst_rsp.w_ready;
+  assign mst_axi_b_id_o      = mst_rsp.b.id;
+  assign mst_axi_b_resp_o    = mst_rsp.b.resp;
+  assign mst_axi_b_user_o    = mst_rsp.b.user;
+  assign mst_axi_b_valid_o   = mst_rsp.b_valid;
 
   // AXI4+ATOP Read Slave
   assign slv_axi_ar_id_o     = slv_req.ar.id;
@@ -323,7 +324,7 @@ module monitor_wrap
   ) i_slv_guard (
     .clk_i       (   clk_i        ),
     .rst_ni      (   rst_ni       ),
-    .guard_ena_i (   1'b1         ),
+    .guard_ena_i (   guard_ena_i  ),
     .req_i       (   mst_req      ), 
     .rsp_o       (   mst_rsp      ),
     .req_o       (   slv_req      ),
