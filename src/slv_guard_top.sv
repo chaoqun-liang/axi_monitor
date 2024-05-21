@@ -36,7 +36,6 @@ module slv_guard_top #(
   parameter type req_t                 = logic, 
   /// Subordinate response type
   parameter type rsp_t                 = logic, 
-  /// Subordinate request type op
   parameter type slv_req_t             = logic, 
   /// Subordinate response type op
   parameter type slv_rsp_t             = logic, 
@@ -153,18 +152,6 @@ module slv_guard_top #(
   // latency_t   budget_rvld_rrdy;
   // latency_t   budget_rvld_rlast;
 
-  assign  budget_awvld_awrdy      = reg2hw.budget_awvld_awrdy.q;
-  assign  budget_awvld_wvld       = reg2hw.budget_awvld_wfirst.q;
-  assign  budget_wvld_wrdy        = reg2hw.budget_wvld_wrdy.q;
-  assign  budget_wvld_wlast       = reg2hw.budget_wvld_wlast.q;
-  assign  budget_wlast_bvld       = reg2hw.budget_wlast_bvld.q;
-  assign  budget_wlast_brdy       = reg2hw.budget_wlast_brdy.q;
-
-  // assign  budget_arvld_arrdy      = reg2hw.budget_arvld_arrdy.q;
-  // assign  budget_arvld_rvld       = reg2hw.budget_arvld_rvld.q;
-  // assign  budget_rvld_rrdy        = reg2hw.budget_rvld_rrdy.q;
-  // assign  budget_rvld_rlast       = reg2hw.budget_rvld_rlast.q; 
-
   /// Remap wider ID to narrower ID
   axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
@@ -183,15 +170,29 @@ module slv_guard_top #(
     .mst_req_o  ( int_req  ),
     .mst_resp_i ( int_rsp  )
   );
-
-  assign int_req_wr.aw = int_req.aw;
-  assign int_req_wr.w  = int_req.w;
-  assign int_req_rd.ar = int_req.ar;
-
-  assign int_rsp.b    = int_rsp_wr.b;
-  assign int_rsp.r    = int_rsp_rd.r;
-
-
+  
+  /// Write AW channel 
+  assign int_req_wr.aw        =  int_req.aw;
+  assign int_req_wr.aw_valid  =  int_req.aw_valid;
+  assign int_rsp.aw_ready     =  int_rsp_wr.aw_ready;
+  /// Write W channel 
+  assign int_req_wr.w         =  int_req.w;
+  assign int_req_wr.w_valid   =  int_req.w_valid;
+  assign int_rsp.w_ready      =  int_rsp_wr.w_ready;
+  /// Write B channel 
+  assign int_rsp.b            =  int_rsp_wr.b;
+  assign int_rsp.b_valid      =  int_rsp_wr.b_valid;
+  assign int_req_wr.b_ready   =  int_req.b_ready;
+  /// Read AR channel 
+  assign int_req_rd.ar        =  int_req.ar;
+  assign int_req_rd.ar_valid  =  int_req.ar_valid;
+  assign int_rsp.ar_ready     =  int_rsp_rd.ar_ready;
+  /// Read R channel 
+  assign int_rsp.r            =  int_rsp_rd.r;
+  assign int_rsp.r_valid      =  int_rsp_rd.r_valid;
+  assign int_req_rd.r_ready   =  int_req.r_ready;
+  
+  assign inp_req_i  = int_req_wr.aw_valid & wr_rsp.aw_ready;
   write_guard #(
     .MaxUniqIds ( MaxWrUniqIds ),
     .MaxWrTxns  ( MaxWrTxns    ), // total writes
@@ -207,6 +208,7 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i  ),
+    .inp_req_i    ( inp_req_i    ),
     .mst_req_i    ( int_req_wr   ),  
     .mst_rsp_o    ( int_rsp_wr   ),
     .slv_rsp_i    ( wr_rsp       ),
@@ -221,8 +223,8 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxRdUniqIds ),
     .MaxRdTxns  ( MaxRdTxns    ), 
     .CntWidth   ( CntWidth     ),
-    .req_t      ( slv_req_t        ),
-    .rsp_t      ( slv_rsp_t        ),
+    .req_t      ( slv_req_t    ),
+    .rsp_t      ( slv_rsp_t    ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
     .aw_chan_t  ( aw_chan_t    ),
@@ -241,24 +243,26 @@ module slv_guard_top #(
     .reg2hw_i     ( reg2hw_r     ),
     .hw2reg_o     ( hw2reg_r     )
   );
-
+  
   assign req_oup.aw        =  wr_req.aw;
   assign req_oup.aw_valid  =  wr_req.aw_valid;
-  assign wr_rsp.aw_ready =  rsp_inp.aw_ready;
+  assign wr_rsp.aw_ready   =  rsp_inp.aw_ready;
 
   assign req_oup.w         =  wr_req.w;
   assign req_oup.w_valid   =  wr_req.w_valid;
-  assign wr_rsp.w_ready  =  rsp_inp.w_ready;
+  assign wr_rsp.w_ready    =  rsp_inp.w_ready;
 
   assign req_oup.ar        =  rd_req.ar;
   assign req_oup.ar_valid  =  rd_req.ar_valid;
-  assign rd_rsp.ar_ready =  rsp_inp.ar_ready;
+  assign rd_rsp.ar_ready   =  rsp_inp.ar_ready;
 
-  assign wr_rsp.b        =  rsp_inp.b;
-  assign wr_rsp.b_valid  =  rsp_inp.b_valid;
+  assign wr_rsp.b          =  rsp_inp.b;
+  assign wr_rsp.b_valid    =  rsp_inp.b_valid;
   assign req_oup.b_ready   =  wr_req.b_ready;
   
-  assign rd_rsp.r  =  rsp_inp.r;
+  assign rd_rsp.r          =  rsp_inp.r;
+  assign rd_rsp.r_valid    =  rsp_inp.r_valid;
+  assign req_oup.r_ready   =  rd_req.r_ready;
   
   assign rst_req_o = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;

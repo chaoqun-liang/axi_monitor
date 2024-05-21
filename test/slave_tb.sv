@@ -8,7 +8,7 @@ module tb_slv_guard #(
   /// Testbench timing
   parameter time CyclTime                = 10000ps,
   parameter time ApplTime                = 100ps,
-  parameter time TestTime                = 500ps,
+  parameter time TestTime                = 00ps,
   /// AXI configuration
   parameter int unsigned TbAxiIdWidth    = 32'd2,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
@@ -61,8 +61,6 @@ module tb_slv_guard #(
 
   cfg_req_t cfg_req;
   cfg_rsp_t cfg_rsp;
-
- 
 
   typedef reg_test::reg_driver #(
     .AW ( TbAxiAddrWidth ),
@@ -133,6 +131,7 @@ module tb_slv_guard #(
   axi_rsp_t   slave_rsp;
 
   `AXI_ASSIGN (master,           master_dv)
+
   `AXI_ASSIGN_TO_REQ(master_req, master)
   `AXI_ASSIGN_FROM_RESP(master,  master_rsp)
   
@@ -171,7 +170,7 @@ module tb_slv_guard #(
    axi_sim_mem #(
     .AddrWidth         ( TbAxiAddrWidth    ),
     .DataWidth         ( TbAxiDataWidth    ),
-    .IdWidth           ( TbAxiIdWidth        ),
+    .IdWidth           ( TbAxiIdWidth      ),
     .UserWidth         ( TbAxiUserWidth    ),
     .axi_req_t         ( axi_req_t    ),
     .axi_rsp_t         ( axi_rsp_t    ),
@@ -225,7 +224,7 @@ module tb_slv_guard #(
 ) i_slv_guard (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
-    .guard_ena_i (   1'b1            ),
+    .guard_ena_i (   guard_ena_i  ),
     .req_i       (   master_req   ), 
     .rsp_o       (   master_rsp   ),
     .req_o       (   slave_req    ),
@@ -342,18 +341,18 @@ module tb_slv_guard #(
     @(posedge clk);
 
     // slave unit enable 1 / disable 0
-    reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0000, 32'h0000_0100, 4'h1, reg_error);
 
     // budget from aw_valid to aw_ready
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0010, 8'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0300, 8'hf, reg_error); 
     // budget from aw_valid to w_valid of first word
-    reg_drv.send_write(32'h0000_0008, 32'h0000_00f0, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_0300, 8'hff, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_00a0, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_000c, 32'h0000_0300, 8'hff, reg_error); 
     // budget from w_valid to w_last
-    reg_drv.send_write(32'h0000_0010, 32'h0000_0010, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0010, 32'h0000_0300, 8'hff, reg_error);
     // budget from w_last to b_valid
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0010, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0014, 32'h0000_0300, 8'hff, reg_error); 
     // budget from w_last to b_ready
     reg_drv.send_write(32'h0000_0018, 32'h0000_0100, 8'hff, reg_error);
 
