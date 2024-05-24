@@ -10,8 +10,6 @@
 `include "common_cells/registers.svh"
 
 module slv_guard_top #(
-  /// Number of subordinates 
-  parameter int unsigned NumSub        = 1,
   parameter int unsigned AddrWidth     = 0,
   parameter int unsigned DataWidth     = 0,
   parameter int unsigned StrbWidth     = 0,
@@ -51,23 +49,23 @@ module slv_guard_top #(
   /// Guard enable
   input  logic               guard_ena_i,
   /// Request from manager
-  input  req_t [NumSub-1:0]  req_i,
+  input  req_t               req_i,
   /// Response to manager
-  output rsp_t [NumSub-1:0]  rsp_o,
+  output rsp_t               rsp_o,
   /// Request to subordinate
-  output slv_req_t [NumSub-1:0] req_o,
+  output slv_req_t           req_o,
   /// Response from subordinate
-  input  slv_rsp_t [NumSub-1:0] rsp_i,
+  input  slv_rsp_t           rsp_i,
   /// Register bus request
-  input  reg_req_t          reg_req_i,
+  input  reg_req_t           reg_req_i,
   /// Register bus response
-  output reg_rsp_t          reg_rsp_o,
+  output reg_rsp_t           reg_rsp_o,
   /// Interrupt line
-  output logic              irq_o,
+  output logic               irq_o,
   /// Reset request
-  output logic [NumSub-1:0] rst_req_o,
+  output logic               rst_req_o
   /// Reset status
-  input  logic [NumSub-1:0] rst_stat_i
+  //input  logic               rst_stat_i
   /// TBD: Reset configuration
 );
 
@@ -113,23 +111,9 @@ module slv_guard_top #(
   typedef logic [IntIdWidth-1:0] int_id_t;
   typedef logic [AxiUserWidth-1:0] user_t;
 
-  /// AXI types
-  //`AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
-  //`define AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)  
-  typedef struct packed {                                       
-    id_t              id;                                       
-    addr_t            addr;                                     
-    axi_pkg::len_t    len;                                      
-    axi_pkg::size_t   size;                                     
-    axi_pkg::burst_t  burst;                                    
-    logic             lock;                                     
-    axi_pkg::cache_t  cache;                                    
-    axi_pkg::prot_t   prot;                                     
-    axi_pkg::qos_t    qos;                                      
-    axi_pkg::region_t region;                                   
-    axi_pkg::atop_t   atop;                                     
-    user_t            user;                                     
-  } aw_chan_t;
+ 
+  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
+  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t) ;
 
   /// Intermediate AXI channel
   slv_req_t  int_req, int_req_wr, int_req_rd, wr_req, rd_req, req_oup;
@@ -170,6 +154,11 @@ module slv_guard_top #(
     .mst_req_o  ( int_req  ),
     .mst_resp_i ( int_rsp  )
   );
+
+  logic  wr_enqueue;
+  assign wr_enqueue = int_req.aw_valid;
+  logic  rd_enqueue;
+  assign rd_enqueue = int_req.ar_valid;
   
   /// Write AW channel 
   assign int_req_wr.aw        =  int_req.aw;
@@ -192,7 +181,7 @@ module slv_guard_top #(
   assign int_rsp.r_valid      =  int_rsp_rd.r_valid;
   assign int_req_rd.r_ready   =  int_req.r_ready;
   
-  assign inp_req_i  = int_req_wr.aw_valid & wr_rsp.aw_ready;
+
   write_guard #(
     .MaxUniqIds ( MaxWrUniqIds ),
     .MaxWrTxns  ( MaxWrTxns    ), // total writes
@@ -208,13 +197,17 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i  ),
-    .inp_req_i    ( inp_req_i    ),
+    .inp_req_i    ( wr_enqueue   ),
+
     .mst_req_i    ( int_req_wr   ),  
     .mst_rsp_o    ( int_rsp_wr   ),
+
     .slv_rsp_i    ( wr_rsp       ),
-    .slv_req_o    ( wr_req       ),                                                                                
+    .slv_req_o    ( wr_req       ),  
+
     .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
+
     .reg2hw_i     ( reg2hw_w     ),
     .hw2reg_o     ( hw2reg_w     )
   );
@@ -227,13 +220,14 @@ module slv_guard_top #(
     .rsp_t      ( slv_rsp_t    ),
     .cnt_t      ( latency_t    ),
     .id_t       ( id_t         ),
-    .aw_chan_t  ( aw_chan_t    ),
+    .ar_chan_t  ( ar_chan_t    ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_read_monitor_unit (
     .clk_i,
     .rst_ni,
     .guard_ena_i  ( guard_ena_i  ),
+    .inp_req_i    ( rd_enqueue   ),
     .mst_req_i    ( int_req_rd   ),  
     .mst_rsp_o    ( int_rsp_rd   ),
     .slv_rsp_i    ( rd_rsp       ),

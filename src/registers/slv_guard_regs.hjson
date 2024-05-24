@@ -137,43 +137,43 @@
           hwaccess: "hwo",
           fields: [
               { bits: "0", name: "w0",
-                desc: "timeout at w0 phase"
+                desc: "timeout at w0 phase AWVALID to AWREADY"
                 resval: "0"
               },
               { bits: "1", name: "w1",
-                desc: "timeout at w1 phase"
+                desc: "timeout at w1 phase AWVALID to WVALID"
                 resval: "0"
               },
               { bits: "2", name: "w2",
-                desc: "timeout at w2 phase"
+                desc: "timeout at w2 phase WVALID to WREADY "
                 resval: "0"
               },
               { bits: "3", name: "w3",
-                desc: "timeout at w3 phase"
+                desc: "timeout at w3 phase WVALID to WLAST"
                 resval: "0"
               },
               { bits: "4", name: "w4",
-                desc: "timeout at w4 phase"
+                desc: "timeout at w4 phase WLAST to BVALID"
                 resval: "0"
               },
               { bits: "5", name: "w5",
-                desc: "timeout at w5 phase"
+                desc: "timeout at w5 phase WLAST to BREADY"
                 resval: "0"
               },
               { bits: "6", name: "r0",
-                desc: "timeout at r0 phase"
+                desc: "timeout at r0 phase ARVALID to ARREADY"
                 resval: "0"
               },
               { bits: "7", name: "r1",
-                desc: "timeout at r1 phase"
+                desc: "timeout at r1 phase ARVALID to RVALID"
                 resval: "0"
               },
               { bits: "8", name: "r2",
-                desc: "timeout at r2 phase"
+                desc: "timeout at r2 phase RVALID to RREADY"
                 resval: "0"
               },
               { bits: "9", name: "r3",
-                desc: "timeout at r3 phase"
+                desc: "timeout at r3 phase RVALID to RLAST"
                 resval: "0"
               },
               { bits: "10", name: "mis_id_wr",
@@ -184,8 +184,8 @@
                 desc: " id mismatch "
                 resval: "0"
               },
-              { bits: "12", name: "requested_txn",
-                desc: "  if the txn is requested "
+              { bits: "12", name: "unwanted_txn",
+                desc: "  if the txn is unwanted "
                 resval: "0"
               },
               { bits: "24:13", name: "txn_id",
@@ -202,7 +202,107 @@
       { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
     ]
   },
+  
 
+  { name:     "latency_awvld_awrdy"
+    desc:     "letency from awvld to awrdy"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_awvld_awrdy", desc: "latency from awvld to awrdy" }
+    ]
+  },
+  
+  { name:     "latency_awvld_wfirst"
+    desc:     "latency from awvld to wfirst"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_awvld_wfirst", desc: "latency from awvld to wfirst" }
+    ]
+  },
+
+  { name:     "latency_wvld_wrdy"
+    desc:     "latency from wvld to wrdy"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_wvld_wrdy", desc: "latency from wvld to wrdy" }
+    ]
+  }
+
+  { name:     "latency_wvld_wlast"
+    desc:     "latency from wvld to wlast"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_wvld_wlast", desc: "latency from wvld to wlast" }
+    ]
+  },
+
+  { name:     "latency_wlast_bvld"
+    desc:     "latency from wlast to bvld"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_wlast_bvld", desc: "latency from wlast to bvld" }
+    ]
+  },
+
+  { name:     "latency_wlast_brdy"
+    desc:     "latency from wlast to brdy"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_wlast_brdy", desc: "latency from wlast to brdy" }
+    ]
+  },
+
+  { name:     "latency_arvld_arrdy"
+    desc:     "latency from arvld to arrdy"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_arvld_arrdy", desc: "latency from arvld to arrdy" }
+    ]
+  },
+  
+  { name:     "latency_arvld_rvld"
+    desc:     "latency from arvld to rvld"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_arvld_rvld", desc: "latency from arvld to rvld" }
+    ]
+  },
+
+  { name:     "latency_rvld_rrdy"
+    desc:     "latency from rvld to rrdy"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_rvld_rrdy", desc: "latency from rvld to rrdy" }
+    ]
+  },
+
+  { name:     "latency_rvld_rlast"
+    desc:     "latency from rvld to rlast"
+    swaccess: "ro"
+    hwaccess: "hwo"
+    resval:   "0"
+    fields: [
+      { bits: "9:0", name: "latency_rvld_rlast", desc: "latency from rvld to rlast" }
+    ]
+  },
   ]
 }
 

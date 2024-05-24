@@ -10,7 +10,7 @@
 module slv_guard_reg_top #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
-  parameter int AW = 6
+  parameter int AW = 7
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -127,13 +127,23 @@ module slv_guard_reg_top #(
   logic irq_mis_id_rd_qs;
   logic irq_mis_id_rd_wd;
   logic irq_mis_id_rd_we;
-  logic irq_requested_txn_qs;
-  logic irq_requested_txn_wd;
-  logic irq_requested_txn_we;
+  logic irq_unwanted_txn_qs;
+  logic irq_unwanted_txn_wd;
+  logic irq_unwanted_txn_we;
   logic [11:0] irq_txn_id_qs;
   logic [11:0] irq_txn_id_wd;
   logic irq_txn_id_we;
   logic [31:0] irq_addr_qs;
+  logic [9:0] latency_awvld_awrdy_qs;
+  logic [9:0] latency_awvld_wfirst_qs;
+  logic [9:0] latency_wvld_wrdy_qs;
+  logic [9:0] latency_wvld_wlast_qs;
+  logic [9:0] latency_wlast_bvld_qs;
+  logic [9:0] latency_wlast_brdy_qs;
+  logic [9:0] latency_arvld_arrdy_qs;
+  logic [9:0] latency_arvld_rvld_qs;
+  logic [9:0] latency_rvld_rrdy_qs;
+  logic [9:0] latency_rvld_rlast_qs;
 
   // Register instances
   // R[guard_enable]: V(False)
@@ -762,29 +772,29 @@ module slv_guard_reg_top #(
   );
 
 
-  //   F[requested_txn]: 12:12
+  //   F[unwanted_txn]: 12:12
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
     .RESVAL  (1'h0)
-  ) u_irq_requested_txn (
+  ) u_irq_unwanted_txn (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
     // from register interface
-    .we     (irq_requested_txn_we),
-    .wd     (irq_requested_txn_wd),
+    .we     (irq_unwanted_txn_we),
+    .wd     (irq_unwanted_txn_wd),
 
     // from internal hardware
-    .de     (hw2reg.irq.requested_txn.de),
-    .d      (hw2reg.irq.requested_txn.d ),
+    .de     (hw2reg.irq.unwanted_txn.de),
+    .d      (hw2reg.irq.unwanted_txn.d ),
 
     // to internal hardware
     .qe     (),
     .q      (),
 
     // to register interface (read)
-    .qs     (irq_requested_txn_qs)
+    .qs     (irq_unwanted_txn_qs)
   );
 
 
@@ -840,9 +850,269 @@ module slv_guard_reg_top #(
   );
 
 
+  // R[latency_awvld_awrdy]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_awvld_awrdy (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_awvld_awrdy.de),
+    .d      (hw2reg.latency_awvld_awrdy.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_awvld_awrdy_qs)
+  );
 
 
-  logic [13:0] addr_hit;
+  // R[latency_awvld_wfirst]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_awvld_wfirst (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_awvld_wfirst.de),
+    .d      (hw2reg.latency_awvld_wfirst.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_awvld_wfirst_qs)
+  );
+
+
+  // R[latency_wvld_wrdy]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_wvld_wrdy (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_wvld_wrdy.de),
+    .d      (hw2reg.latency_wvld_wrdy.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_wvld_wrdy_qs)
+  );
+
+
+  // R[latency_wvld_wlast]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_wvld_wlast (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_wvld_wlast.de),
+    .d      (hw2reg.latency_wvld_wlast.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_wvld_wlast_qs)
+  );
+
+
+  // R[latency_wlast_bvld]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_wlast_bvld (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_wlast_bvld.de),
+    .d      (hw2reg.latency_wlast_bvld.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_wlast_bvld_qs)
+  );
+
+
+  // R[latency_wlast_brdy]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_wlast_brdy (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_wlast_brdy.de),
+    .d      (hw2reg.latency_wlast_brdy.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_wlast_brdy_qs)
+  );
+
+
+  // R[latency_arvld_arrdy]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_arvld_arrdy (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_arvld_arrdy.de),
+    .d      (hw2reg.latency_arvld_arrdy.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_arvld_arrdy_qs)
+  );
+
+
+  // R[latency_arvld_rvld]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_arvld_rvld (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_arvld_rvld.de),
+    .d      (hw2reg.latency_arvld_rvld.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_arvld_rvld_qs)
+  );
+
+
+  // R[latency_rvld_rrdy]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_rvld_rrdy (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_rvld_rrdy.de),
+    .d      (hw2reg.latency_rvld_rrdy.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_rvld_rrdy_qs)
+  );
+
+
+  // R[latency_rvld_rlast]: V(False)
+
+  prim_subreg #(
+    .DW      (10),
+    .SWACCESS("RO"),
+    .RESVAL  (10'h0)
+  ) u_latency_rvld_rlast (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    .we     (1'b0),
+    .wd     ('0  ),
+
+    // from internal hardware
+    .de     (hw2reg.latency_rvld_rlast.de),
+    .d      (hw2reg.latency_rvld_rlast.d ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (latency_rvld_rlast_qs)
+  );
+
+
+
+
+  logic [23:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = (reg_addr == SLV_GUARD_GUARD_ENABLE_OFFSET);
@@ -859,6 +1129,16 @@ module slv_guard_reg_top #(
     addr_hit[11] = (reg_addr == SLV_GUARD_RESET_OFFSET);
     addr_hit[12] = (reg_addr == SLV_GUARD_IRQ_OFFSET);
     addr_hit[13] = (reg_addr == SLV_GUARD_IRQ_ADDR_OFFSET);
+    addr_hit[14] = (reg_addr == SLV_GUARD_LATENCY_AWVLD_AWRDY_OFFSET);
+    addr_hit[15] = (reg_addr == SLV_GUARD_LATENCY_AWVLD_WFIRST_OFFSET);
+    addr_hit[16] = (reg_addr == SLV_GUARD_LATENCY_WVLD_WRDY_OFFSET);
+    addr_hit[17] = (reg_addr == SLV_GUARD_LATENCY_WVLD_WLAST_OFFSET);
+    addr_hit[18] = (reg_addr == SLV_GUARD_LATENCY_WLAST_BVLD_OFFSET);
+    addr_hit[19] = (reg_addr == SLV_GUARD_LATENCY_WLAST_BRDY_OFFSET);
+    addr_hit[20] = (reg_addr == SLV_GUARD_LATENCY_ARVLD_ARRDY_OFFSET);
+    addr_hit[21] = (reg_addr == SLV_GUARD_LATENCY_ARVLD_RVLD_OFFSET);
+    addr_hit[22] = (reg_addr == SLV_GUARD_LATENCY_RVLD_RRDY_OFFSET);
+    addr_hit[23] = (reg_addr == SLV_GUARD_LATENCY_RVLD_RLAST_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -879,7 +1159,17 @@ module slv_guard_reg_top #(
                (addr_hit[10] & (|(SLV_GUARD_PERMIT[10] & ~reg_be))) |
                (addr_hit[11] & (|(SLV_GUARD_PERMIT[11] & ~reg_be))) |
                (addr_hit[12] & (|(SLV_GUARD_PERMIT[12] & ~reg_be))) |
-               (addr_hit[13] & (|(SLV_GUARD_PERMIT[13] & ~reg_be)))));
+               (addr_hit[13] & (|(SLV_GUARD_PERMIT[13] & ~reg_be))) |
+               (addr_hit[14] & (|(SLV_GUARD_PERMIT[14] & ~reg_be))) |
+               (addr_hit[15] & (|(SLV_GUARD_PERMIT[15] & ~reg_be))) |
+               (addr_hit[16] & (|(SLV_GUARD_PERMIT[16] & ~reg_be))) |
+               (addr_hit[17] & (|(SLV_GUARD_PERMIT[17] & ~reg_be))) |
+               (addr_hit[18] & (|(SLV_GUARD_PERMIT[18] & ~reg_be))) |
+               (addr_hit[19] & (|(SLV_GUARD_PERMIT[19] & ~reg_be))) |
+               (addr_hit[20] & (|(SLV_GUARD_PERMIT[20] & ~reg_be))) |
+               (addr_hit[21] & (|(SLV_GUARD_PERMIT[21] & ~reg_be))) |
+               (addr_hit[22] & (|(SLV_GUARD_PERMIT[22] & ~reg_be))) |
+               (addr_hit[23] & (|(SLV_GUARD_PERMIT[23] & ~reg_be)))));
   end
 
   assign guard_enable_we = addr_hit[0] & reg_we & !reg_error;
@@ -951,8 +1241,8 @@ module slv_guard_reg_top #(
   assign irq_mis_id_rd_we = addr_hit[12] & reg_we & !reg_error;
   assign irq_mis_id_rd_wd = reg_wdata[11];
 
-  assign irq_requested_txn_we = addr_hit[12] & reg_we & !reg_error;
-  assign irq_requested_txn_wd = reg_wdata[12];
+  assign irq_unwanted_txn_we = addr_hit[12] & reg_we & !reg_error;
+  assign irq_unwanted_txn_wd = reg_wdata[12];
 
   assign irq_txn_id_we = addr_hit[12] & reg_we & !reg_error;
   assign irq_txn_id_wd = reg_wdata[24:13];
@@ -1022,12 +1312,52 @@ module slv_guard_reg_top #(
         reg_rdata_next[9] = irq_r3_qs;
         reg_rdata_next[10] = irq_mis_id_wr_qs;
         reg_rdata_next[11] = irq_mis_id_rd_qs;
-        reg_rdata_next[12] = irq_requested_txn_qs;
+        reg_rdata_next[12] = irq_unwanted_txn_qs;
         reg_rdata_next[24:13] = irq_txn_id_qs;
       end
 
       addr_hit[13]: begin
         reg_rdata_next[31:0] = irq_addr_qs;
+      end
+
+      addr_hit[14]: begin
+        reg_rdata_next[9:0] = latency_awvld_awrdy_qs;
+      end
+
+      addr_hit[15]: begin
+        reg_rdata_next[9:0] = latency_awvld_wfirst_qs;
+      end
+
+      addr_hit[16]: begin
+        reg_rdata_next[9:0] = latency_wvld_wrdy_qs;
+      end
+
+      addr_hit[17]: begin
+        reg_rdata_next[9:0] = latency_wvld_wlast_qs;
+      end
+
+      addr_hit[18]: begin
+        reg_rdata_next[9:0] = latency_wlast_bvld_qs;
+      end
+
+      addr_hit[19]: begin
+        reg_rdata_next[9:0] = latency_wlast_brdy_qs;
+      end
+
+      addr_hit[20]: begin
+        reg_rdata_next[9:0] = latency_arvld_arrdy_qs;
+      end
+
+      addr_hit[21]: begin
+        reg_rdata_next[9:0] = latency_arvld_rvld_qs;
+      end
+
+      addr_hit[22]: begin
+        reg_rdata_next[9:0] = latency_rvld_rrdy_qs;
+      end
+
+      addr_hit[23]: begin
+        reg_rdata_next[9:0] = latency_rvld_rlast_qs;
       end
 
       default: begin
@@ -1052,7 +1382,7 @@ endmodule
 
 module slv_guard_reg_top_intf
 #(
-  parameter int AW = 6,
+  parameter int AW = 7,
   localparam int DW = 32
 ) (
   input logic clk_i,

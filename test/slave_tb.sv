@@ -8,7 +8,7 @@ module tb_slv_guard #(
   /// Testbench timing
   parameter time CyclTime                = 10000ps,
   parameter time ApplTime                = 100ps,
-  parameter time TestTime                = 00ps,
+  parameter time TestTime                = 500ps,
   /// AXI configuration
   parameter int unsigned TbAxiIdWidth    = 32'd2,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
@@ -23,7 +23,7 @@ module tb_slv_guard #(
   localparam int unsigned MaxTxnsPerId = 32'd4; 
   localparam int unsigned MaxWrUniqIds = 32'd4;
   localparam int unsigned MaxRdUniqIds = 32'd4;
-  localparam int unsigned MaxWrTxns = 32'd8;
+  localparam int unsigned MaxWrTxns = 32'd4;
   localparam int unsigned MaxRdTxns = 32'd4;
   localparam int unsigned CntWidth  = 32;
   localparam int unsigned IntIdWidth = 2;
@@ -39,7 +39,6 @@ module tb_slv_guard #(
 
   typedef logic [IntIdWidth-1:0] int_id_t;
  
-
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
   `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
@@ -214,7 +213,6 @@ module tb_slv_guard #(
     .MaxWrTxns    ( MaxWrTxns      ),
     .MaxRdTxns    ( MaxRdTxns      ),
     .CntWidth     ( CntWidth       ),
-    .IntIdWidth   ( IntIdWidth     ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
     .slv_req_t    ( slv_req_t      ),
@@ -224,7 +222,7 @@ module tb_slv_guard #(
 ) i_slv_guard (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
-    .guard_ena_i (   guard_ena_i  ),
+    .guard_ena_i (   1'b1         ),
     .req_i       (   master_req   ), 
     .rsp_o       (   master_rsp   ),
     .req_o       (   slave_req    ),
@@ -239,98 +237,18 @@ module tb_slv_guard #(
   // TB
   //-----------------------------------
 
-    initial begin : proc_axi_master
-      automatic axi_file_master_t axi_file_master = new(master_dv);
-      axi_file_master.reset();
-      axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_writes.txt"));
-    
-      // tb metrics
-      // total_num_reads [i] = axi_file_master.num_reads;
-      // total_num_writes[i] = axi_file_master.num_writes;
-      // num_writes      [i] = 1;
-      // num_reads       [i] = 1;
-      // end_of_sim [i] = 1'b0;
+  initial begin : proc_axi_master
+    automatic axi_file_master_t axi_file_master = new(master_dv);
+    axi_file_master.reset();
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_writes.txt"));
 
-      // wait for config
-      @(posedge rst_n);
-      @(posedge clk);
+    // wait for config
+    @(posedge rst_n);
+    @(posedge clk);
 
-      repeat (5) @(posedge clk);
-      // run
-      axi_file_master.run();
-  
-    end
-  
-  // initial begin
-  //   automatic axi_drv_t axi_master =  new(master_dv);
-  //   //automatic axi_drv_t axi_slave  =  new(slave_dv);
-
-  //   automatic axi_drv_t::ax_beat_t ax_beat= new;
-  //   automatic axi_drv_t::b_beat_t  b_beat = new;
-  //   automatic axi_drv_t::r_beat_t  r_beat = new;
-  //   automatic axi_drv_t::w_beat_t  w_beat = new;
-    
-  //   axi_master.reset_master();
-    
-    // ax_beat.ax_id = 10;
-    // ax_beat.ax_addr = 'h1000;
-    // ax_beat.ax_len = 4; // 5 beats
-    // ax_beat.ax_size = 2; // 0 means 1 bytes , 2 means 4 bytes
-    // ax_beat.ax_burst = 4;
-    // ax_beat.ax_lock = 0;
-    // ax_beat.ax_cache = 2;
-    // ax_beat.ax_prot = '0;
-    // ax_beat.ax_qos = '0;
-    // ax_beat.ax_region = '0;
-    // ax_beat.ax_atop = '0;
-    // ax_beat.ax_user = '0;
-    
-    // w_beat.w_data = 'h1138a5dd;
-    // w_beat.w_strb = 'h2c;
-    // w_beat.w_user = '0;
-    // w_beat.w_last = '0;
-
-    // w_beat.w_data = 'h2238a5dd;
-    // w_beat.w_strb = 'h2c;
-    // w_beat.w_user = '0;
-    // w_beat.w_last = '0;
-
-    // w_beat.w_data = 'h3338a5dd;
-    // w_beat.w_strb = 'h2c;
-    // w_beat.w_user = '0;
-    // w_beat.w_last = '0;
-
-    // w_beat.w_data = 'h4438a544;
-    // w_beat.w_strb = 'h2c;
-    // w_beat.w_user = '0;
-    // w_beat.w_last = '0;
-
-    // w_beat.w_data = 'h5538a555;
-    // w_beat.w_strb = 'h2c;
-    // w_beat.w_user = '0;
-    // w_beat.w_last = '1;
-
-
-  //   // wait for config
-  //   @(posedge rst_n);
-  //   @(posedge clk);
-  //   @(posedge guard_configured);
-  //   repeat (5) @(posedge clk);
-
-  //   axi_master.send_aw(ax_beat);
-  //   axi_master.send_w(w_beat);
-  //   axi_master.recv_b(b_beat);
-  // // 
-  // end
-
-  // initial begin
-  //   automatic axi_rand_slave_t axi_rand_slave = new(slave_dv);
-  //   axi_rand_slave.reset();
-  //   @(posedge rst_n);
-  //   axi_rand_slave.run();
-  // end
-
-
+    repeat (5) @(posedge clk);
+    axi_file_master.run();
+  end
   // configure slv units
   initial begin
     // register bus
