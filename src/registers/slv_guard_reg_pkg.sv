@@ -7,7 +7,7 @@
 package slv_guard_reg_pkg;
 
   // Address widths within the block
-  parameter int BlockAw = 6;
+  parameter int BlockAw = 5;
 
   ////////////////////////////
   // Typedefs for registers //
@@ -18,44 +18,12 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_guard_enable_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_awvld_awrdy_reg_t;
+    logic [19:0] q;
+  } slv_guard_reg2hw_budget_write_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_awvld_wfirst_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wvld_wrdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wvld_wlast_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wlast_bvld_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wlast_brdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_arvld_arrdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_arvld_rvld_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_rvld_rrdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_rvld_rlast_reg_t;
+    logic [19:0] q;
+  } slv_guard_reg2hw_budget_read_reg_t;
 
   typedef struct packed {
     logic        d;
@@ -66,43 +34,11 @@ package slv_guard_reg_pkg;
     struct packed {
       logic        d;
       logic        de;
-    } w0;
+    } write;
     struct packed {
       logic        d;
       logic        de;
-    } w1;
-    struct packed {
-      logic        d;
-      logic        de;
-    } w2;
-    struct packed {
-      logic        d;
-      logic        de;
-    } w3;
-    struct packed {
-      logic        d;
-      logic        de;
-    } w4;
-    struct packed {
-      logic        d;
-      logic        de;
-    } w5;
-    struct packed {
-      logic        d;
-      logic        de;
-    } r0;
-    struct packed {
-      logic        d;
-      logic        de;
-    } r1;
-    struct packed {
-      logic        d;
-      logic        de;
-    } r2;
-    struct packed {
-      logic        d;
-      logic        de;
-    } r3;
+    } read;
     struct packed {
       logic        d;
       logic        de;
@@ -114,7 +50,7 @@ package slv_guard_reg_pkg;
     struct packed {
       logic        d;
       logic        de;
-    } requested_txn;
+    } unwanted_txn;
     struct packed {
       logic [11:0] d;
       logic        de;
@@ -126,78 +62,64 @@ package slv_guard_reg_pkg;
     logic        de;
   } slv_guard_hw2reg_irq_addr_reg_t;
 
+  typedef struct packed {
+    logic [9:0] d;
+    logic        de;
+  } slv_guard_hw2reg_latency_write_reg_t;
+
+  typedef struct packed {
+    logic [9:0] d;
+    logic        de;
+  } slv_guard_hw2reg_latency_read_reg_t;
+
   // Register -> HW type
   typedef struct packed {
-    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [100:100]
-    slv_guard_reg2hw_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [99:90]
-    slv_guard_reg2hw_budget_awvld_wfirst_reg_t budget_awvld_wfirst; // [89:80]
-    slv_guard_reg2hw_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [79:70]
-    slv_guard_reg2hw_budget_wvld_wlast_reg_t budget_wvld_wlast; // [69:60]
-    slv_guard_reg2hw_budget_wlast_bvld_reg_t budget_wlast_bvld; // [59:50]
-    slv_guard_reg2hw_budget_wlast_brdy_reg_t budget_wlast_brdy; // [49:40]
-    slv_guard_reg2hw_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [39:30]
-    slv_guard_reg2hw_budget_arvld_rvld_reg_t budget_arvld_rvld; // [29:20]
-    slv_guard_reg2hw_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [19:10]
-    slv_guard_reg2hw_budget_rvld_rlast_reg_t budget_rvld_rlast; // [9:0]
+    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [40:40]
+    slv_guard_reg2hw_budget_write_reg_t budget_write; // [39:20]
+    slv_guard_reg2hw_budget_read_reg_t budget_read; // [19:0]
   } slv_guard_reg2hw_t;
 
   // HW -> register type
   typedef struct packed {
-    slv_guard_hw2reg_reset_reg_t reset; // [73:72]
-    slv_guard_hw2reg_irq_reg_t irq; // [71:33]
-    slv_guard_hw2reg_irq_addr_reg_t irq_addr; // [32:0]
+    slv_guard_hw2reg_reset_reg_t reset; // [79:78]
+    slv_guard_hw2reg_irq_reg_t irq; // [77:55]
+    slv_guard_hw2reg_irq_addr_reg_t irq_addr; // [54:22]
+    slv_guard_hw2reg_latency_write_reg_t latency_write; // [21:11]
+    slv_guard_hw2reg_latency_read_reg_t latency_read; // [10:0]
   } slv_guard_hw2reg_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] SLV_GUARD_GUARD_ENABLE_OFFSET = 6'h 0;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_AWVLD_AWRDY_OFFSET = 6'h 4;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_AWVLD_WFIRST_OFFSET = 6'h 8;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WVLD_WRDY_OFFSET = 6'h c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WVLD_WLAST_OFFSET = 6'h 10;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BVLD_OFFSET = 6'h 14;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BRDY_OFFSET = 6'h 18;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_ARRDY_OFFSET = 6'h 1c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_RVLD_OFFSET = 6'h 20;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RRDY_OFFSET = 6'h 24;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RLAST_OFFSET = 6'h 28;
-  parameter logic [BlockAw-1:0] SLV_GUARD_RESET_OFFSET = 6'h 2c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_OFFSET = 6'h 30;
-  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_ADDR_OFFSET = 6'h 34;
+  parameter logic [BlockAw-1:0] SLV_GUARD_GUARD_ENABLE_OFFSET = 5'h 0;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WRITE_OFFSET = 5'h 4;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_READ_OFFSET = 5'h 8;
+  parameter logic [BlockAw-1:0] SLV_GUARD_RESET_OFFSET = 5'h c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_OFFSET = 5'h 10;
+  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_ADDR_OFFSET = 5'h 14;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WRITE_OFFSET = 5'h 18;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_READ_OFFSET = 5'h 1c;
 
   // Register index
   typedef enum int {
     SLV_GUARD_GUARD_ENABLE,
-    SLV_GUARD_BUDGET_AWVLD_AWRDY,
-    SLV_GUARD_BUDGET_AWVLD_WFIRST,
-    SLV_GUARD_BUDGET_WVLD_WRDY,
-    SLV_GUARD_BUDGET_WVLD_WLAST,
-    SLV_GUARD_BUDGET_WLAST_BVLD,
-    SLV_GUARD_BUDGET_WLAST_BRDY,
-    SLV_GUARD_BUDGET_ARVLD_ARRDY,
-    SLV_GUARD_BUDGET_ARVLD_RVLD,
-    SLV_GUARD_BUDGET_RVLD_RRDY,
-    SLV_GUARD_BUDGET_RVLD_RLAST,
+    SLV_GUARD_BUDGET_WRITE,
+    SLV_GUARD_BUDGET_READ,
     SLV_GUARD_RESET,
     SLV_GUARD_IRQ,
-    SLV_GUARD_IRQ_ADDR
+    SLV_GUARD_IRQ_ADDR,
+    SLV_GUARD_LATENCY_WRITE,
+    SLV_GUARD_LATENCY_READ
   } slv_guard_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] SLV_GUARD_PERMIT [14] = '{
-    4'b 0001, // index[ 0] SLV_GUARD_GUARD_ENABLE
-    4'b 0011, // index[ 1] SLV_GUARD_BUDGET_AWVLD_AWRDY
-    4'b 0011, // index[ 2] SLV_GUARD_BUDGET_AWVLD_WFIRST
-    4'b 0011, // index[ 3] SLV_GUARD_BUDGET_WVLD_WRDY
-    4'b 0011, // index[ 4] SLV_GUARD_BUDGET_WVLD_WLAST
-    4'b 0011, // index[ 5] SLV_GUARD_BUDGET_WLAST_BVLD
-    4'b 0011, // index[ 6] SLV_GUARD_BUDGET_WLAST_BRDY
-    4'b 0011, // index[ 7] SLV_GUARD_BUDGET_ARVLD_ARRDY
-    4'b 0011, // index[ 8] SLV_GUARD_BUDGET_ARVLD_RVLD
-    4'b 0011, // index[ 9] SLV_GUARD_BUDGET_RVLD_RRDY
-    4'b 0011, // index[10] SLV_GUARD_BUDGET_RVLD_RLAST
-    4'b 0001, // index[11] SLV_GUARD_RESET
-    4'b 1111, // index[12] SLV_GUARD_IRQ
-    4'b 1111  // index[13] SLV_GUARD_IRQ_ADDR
+  parameter logic [3:0] SLV_GUARD_PERMIT [8] = '{
+    4'b 0001, // index[0] SLV_GUARD_GUARD_ENABLE
+    4'b 0111, // index[1] SLV_GUARD_BUDGET_WRITE
+    4'b 0111, // index[2] SLV_GUARD_BUDGET_READ
+    4'b 0001, // index[3] SLV_GUARD_RESET
+    4'b 0111, // index[4] SLV_GUARD_IRQ
+    4'b 1111, // index[5] SLV_GUARD_IRQ_ADDR
+    4'b 0011, // index[6] SLV_GUARD_LATENCY_WRITE
+    4'b 0011  // index[7] SLV_GUARD_LATENCY_READ
   };
 
 endpackage
