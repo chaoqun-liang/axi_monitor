@@ -380,6 +380,9 @@ module read_guard #(
     end
   end
 
+  assign   reset_req_o = reset_req;
+  assign   irq_o = irq;
+
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     always_ff @(posedge clk_i, negedge rst_ni) begin
