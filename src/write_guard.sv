@@ -203,7 +203,7 @@ module write_guard #(
     irq                 = 1'b0; 
     
     // Dequeue 
-    if (oup_req) begin : txn_dequeue
+    if (oup_req) begin : proc_txn_dequeue
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
       if (!no_out_id_match) begin
@@ -224,7 +224,7 @@ module write_guard #(
       oup_gnt = 1'b1;
     end
     // Enqueue
-    if (inp_req_i && inp_gnt ) begin : txn_enqueue
+    if (inp_req_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
       // If output data was popped for this ID, which lead the head_tail to be popped,
@@ -323,7 +323,6 @@ module write_guard #(
       end
     end
     // Transaction states handling
-    // Parameter definitions for clarity
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free ) begin 
         linked_data_d[i].timeout = (linked_data_q[i].counter >= budget_write) ? 1'b1 : 1'b0;
@@ -337,7 +336,8 @@ module write_guard #(
             end else begin 
               oup_req = 1; 
               oup_id = linked_data_q[i].metadata.id;
-              hw2reg_o.latency_write.d = linked_data_q[i].counter;
+              linked_data_d[i]               = '0;
+              linked_data_d[i].free          = 1'b1; 
             end
           end else begin 
             hw2reg_o.irq.unwanted_txn.d = 1'b1;
@@ -353,6 +353,8 @@ module write_guard #(
             irq = 1'b1;
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
+            linked_data_d[i]               = '0;
+            linked_data_d[i].free          = 1'b1; 
           end
         end
       end

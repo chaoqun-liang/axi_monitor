@@ -26,9 +26,9 @@ module tb_slv_guard #(
   localparam int unsigned MaxWrTxns = 32'd8;
   localparam int unsigned MaxRdTxns = 32'd4;
   localparam int unsigned CntWidth  = 20;
-  localparam int unsigned IntIdWidth = 2;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
+  localparam int unsigned IntIdWidth   = $clog2(MaxWrUniqIds);
 
   /// AXI4+ATOP typedefs
   typedef logic [TbAxiIdWidth-1    :0] id_t;
@@ -36,6 +36,7 @@ module tb_slv_guard #(
   typedef logic [TbAxiDataWidth-1  :0] data_t;
   typedef logic [AxiStrbWidth-1    :0] strb_t;
   typedef logic [TbAxiUserWidth-1  :0] user_t;
+  
 
   typedef logic [IntIdWidth-1:0] int_id_t;
  
@@ -214,7 +215,6 @@ module tb_slv_guard #(
     .MaxWrTxns    ( MaxWrTxns      ),
     .MaxRdTxns    ( MaxRdTxns      ),
     .CntWidth     ( CntWidth       ),
-    .IntIdWidth   ( IntIdWidth     ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
     .slv_req_t    ( slv_req_t      ),

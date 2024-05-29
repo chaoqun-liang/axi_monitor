@@ -28,8 +28,6 @@ module slv_guard_top #(
   parameter int unsigned MaxRdTxns     = 4,
   /// Counter width
   parameter int unsigned CntWidth      = 0,
-  /// Internal ID width
-  parameter int unsigned IntIdWidth    = 2, 
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -68,6 +66,9 @@ module slv_guard_top #(
   //input  logic               rst_stat_i
   /// TBD: Reset configuration
 );
+
+  /// Internal ID width
+  localparam int unsigned IntIdWidth    = $clog2(MaxUniqIds); 
 
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;

@@ -336,7 +336,9 @@ module read_guard #(
             end else begin 
               oup_req = 1; 
               oup_id = linked_data_q[i].metadata.id;
-              hw2reg_o.latency_write.d = linked_data_q[i].counter;
+              hw2reg_o.latency_read.d = linked_data_q[i].counter;
+              linked_data_d[i]               = '0;
+              linked_data_d[i].free          = 1'b1; 
             end
           end else begin 
             hw2reg_o.irq.unwanted_txn.d = 1'b1;
@@ -352,6 +354,8 @@ module read_guard #(
             irq = 1'b1;
             oup_req  = 1;
             oup_id = linked_data_q[i].metadata.id;
+            linked_data_d[i]               = '0;
+            linked_data_d[i].free          = 1'b1; 
           end
         end
       end
