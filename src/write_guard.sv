@@ -127,6 +127,7 @@ module write_guard #(
     logic           timeout;
     write_state_t   write_state;
     write_cnters_t  counters; 
+    logic           found_match;
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
@@ -136,6 +137,9 @@ module write_guard #(
     
   // Array of linked data
   linked_data_t [MaxWrTxns-1:0]    linked_data_d,  linked_data_q;
+  
+  logic                           reset_req_latch, 
+                                  irq_latch;
 
   logic                           inp_gnt,
                                   oup_gnt,
@@ -150,7 +154,7 @@ module write_guard #(
                                   idx_matches_out_id;
 
   logic [MaxWrTxns-1:0]           linked_data_free,
-                                  id_exists;
+                                  rsp_id_exists;
  
   id_t                            match_in_id, match_out_id, oup_id;
 
@@ -165,8 +169,8 @@ module write_guard #(
                                   oup_data_popped,
                                   oup_ht_popped;
   
-  logic                           found_match,
-                                  rsp_id_exists,
+  logic                          
+                                  id_exists,
                                   reset_req,
                                   irq,
                                   oup_req;
@@ -212,6 +216,11 @@ module write_guard #(
     assign linked_data_free[i] = linked_data_q[i].free;
   end
 
+  for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_id_exists
+    assign rsp_id_exists[i] = (linked_data_q[i].metadata.id == slv_rsp_i.b.id);
+  end
+  assign id_exists =  (|rsp_id_exists);
+
   lzc #(
     .WIDTH ( MaxWrTxns ),
     .MODE  ( 0        ) // Start at index 0.
@@ -231,7 +240,7 @@ module write_guard #(
   assign reset_req_o = reset_req;
   assign irq_o = irq;
 
-  always_comb begin : proc_id_queue
+  always_comb begin : proc_wr_queue
     match_in_id         = '0;
     match_out_id        = '0;
     match_in_id_valid   = 1'b0;
@@ -246,32 +255,9 @@ module write_guard #(
     oup_req             = 1'b0;
     reset_req           = 1'b0;
     irq                 = 1'b0; 
-    found_match         = 1'b0; 
     
-    if (guard_ena_i) begin
-      slv_req_o.aw_valid  =  mst_req_i.aw_valid & !reset_req;
-      mst_rsp_o.aw_ready  =  slv_rsp_i.aw_ready || reset_req;
-      slv_req_o.aw        =  mst_req_i.aw & !reset_req;
-      slv_req_o.w_valid   =  mst_req_i.w_valid && !reset_req;
-      mst_rsp_o.w_ready   =  slv_rsp_i.w_ready || reset_req;
-      slv_req_o.w         =  mst_req_i.w && !reset_req;
-      mst_rsp_o.b_valid   =  slv_rsp_i.b_valid && !reset_req;
-      slv_req_o.b_ready   =  mst_req_i.b_ready || reset_req;
-      mst_rsp_o.b         =  slv_rsp_i.b && !reset_req;
-    end else begin
-      slv_req_o.aw_valid  =  mst_req_i.aw_valid;
-      mst_rsp_o.aw_ready  =  slv_rsp_i.aw_ready;
-      slv_req_o.aw        =  mst_req_i.aw;
-      slv_req_o.w_valid   =  mst_req_i.w_valid;
-      mst_rsp_o.w_ready   =  slv_rsp_i.w_ready;
-      slv_req_o.w         =  mst_req_i.w;
-      mst_rsp_o.b_valid   =  slv_rsp_i.b_valid;
-      slv_req_o.b_ready   =  mst_req_i.b_ready;
-      mst_rsp_o.b         =  slv_rsp_i.b;
-    end
-
     // Dequeue 
-    if (oup_req) begin
+    if (oup_req) begin : proc_txn_dequeue
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
       if (!no_out_id_match) begin
@@ -293,16 +279,7 @@ module write_guard #(
       oup_gnt = 1'b1;
     end
 
-    /* Enqueue: three major cases*/
-    /* 1. same ID just got removed from HT table, else no same id popped including 2,3*/  
-    /* 2. no head tail entries correspond to input id */
-       /* a. there is one slot in ht just freed up, repopulate it */
-       /* b. no ht popped, but ld poped, repopulate it */
-       /* c. no entris popped, just append to free slot */
-    /* 3. there is head tail entry corresponds to input id */
-       /* a. if ld popped, reuse it, update ht tail */
-       /* b. no ld popped, add new entry, update ht tail*/
-    if (inp_req_i && inp_gnt ) begin
+    if (inp_req_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
       // If output data was popped for this ID, which lead the head_tail to be popped,
@@ -319,6 +296,7 @@ module write_guard #(
           timeout: 0,
           write_state: WRITE_ADDRESS,
           counters: 0,
+          found_match: 0,
           next: '0,
           free: 1'b0
         };
@@ -337,6 +315,7 @@ module write_guard #(
           timeout: 0,
           write_state: WRITE_ADDRESS,
           counters: 0,
+          found_match: 0,
           next: '0,
           free: 1'b0
           };
@@ -353,6 +332,7 @@ module write_guard #(
               timeout: 0,
               write_state: WRITE_ADDRESS,
               counters: 0,
+              found_match: 0,
               next: '0, 
               free: 1'b0
             };
@@ -368,6 +348,7 @@ module write_guard #(
               timeout: 0,
               write_state: WRITE_ADDRESS,
               counters: 0,
+              found_match: 0,
               next: '0,
               free: 1'b0
             };
@@ -383,6 +364,7 @@ module write_guard #(
             timeout: 0,
             write_state: WRITE_ADDRESS,
             counters: 0,
+            found_match: 0,
             next: '0,
             free: 1'b0
           };
@@ -394,6 +376,7 @@ module write_guard #(
             timeout: 0,
             write_state: WRITE_ADDRESS,
             counters: 0,
+            found_match: 0,
             next: '0,
             free: 1'b0
           };
@@ -401,12 +384,12 @@ module write_guard #(
       end
     end
     // Transaction states handling
-    for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_txn_states
+    for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
         case ( linked_data_q[i].write_state )
           IDLE: begin
-              linked_data_d[i]               = '0;
-              linked_data_d[i].free          = 1'b1;
+              linked_data_d[i]           = '0;
+              linked_data_d[i].free      = 1'b1;
           end
           WRITE_ADDRESS: begin
             if ( mst_req_i.w_valid && !linked_data_q[i].timeout ) begin
@@ -515,34 +498,33 @@ module write_guard #(
               linked_data_d[i].free          = 1'b1;
             end
             // handshake, id match and no timeout, successul completion
-            // here handshake indicates the end of B phase
-            if (!found_match) begin 
-              // Check if there is no timeout
-              if (!linked_data_q[i].timeout) begin
+            
                 // Check for the valid and readhy handshake
-                if ( mst_req_i.b_ready && slv_rsp_i.b_valid ) begin 
-                  if ( rsp_id_exists ) begin 
-                    // if IDs match, successful completion. dequeue request and mark the match as found
-                    if (linked_data_q[i].metadata.id == slv_rsp_i.b.id ) begin
-                      oup_req = 1;
-                      oup_id = linked_data_q[i].metadata.id;
-                      hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
-                      hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
-                      found_match = 1;
-                    end else begin
-                      found_match = 0;
-                    end 
-                  end else begin 
-                    hw2reg_o.irq.unwanted_txn.d = 1'b1;
-                    hw2reg_o.reset.d = 1'b1;
-                    mst_rsp_o.b.resp = 2'b10;
-                    reset_req = 1'b1;
-                    irq = 1'b1;
-                  end 
+            if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_d[i].timeout ) begin 
+              if ( id_exists ) begin 
+                // if IDs match, successful completion. dequeue request and mark the match as found
+                if ( !linked_data_q[i].found_match) begin
+                  linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.b.id) ? 1'b1 : 1'b0;
+                end else begin
+                  // successful 
+                  oup_req = 1; 
+                  oup_id = linked_data_q[i].metadata.id;
+                  linked_data_d[i]               = '0;
+                  linked_data_d[i].write_state   = IDLE;
+                  linked_data_d[i].free          = 1'b1;
+                  hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
+                  hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
                 end 
               end else begin 
+                hw2reg_o.irq.unwanted_txn.d = 1'b1;
+                hw2reg_o.reset.d = 1'b1;
+                mst_rsp_o.b.resp = 2'b10;
+                reset_req = 1'b1;
+                irq = 1'b1;
+              end 
+            end else begin 
+              if( linked_data_d[i].timeout ) begin
                 // If there's a timeout, still no match found
-                hw2reg_o.irq.mis_id_wr.d = 1'b1;
                 hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
                 hw2reg_o.reset.d = 1'b1;
                 mst_rsp_o.b.resp = 2'b10;
@@ -561,13 +543,33 @@ module write_guard #(
     end
   end
   
-  // Response ID Exists Lookup
-  always_comb begin : proc_resp_ID_lookup
+   always_comb begin: proc_output_txn
+    // pass through when there is no timeout
+    slv_req_o.aw_valid  = mst_req_i.aw_valid;
+    mst_rsp_o.aw_ready  = slv_rsp_i.aw_ready;
+    slv_req_o.aw        = mst_req_i.aw;
+    slv_req_o.w_valid   = mst_req_i.w_valid;
+    mst_rsp_o.w_ready   = slv_rsp_i.w_ready;
+    slv_req_o.w         = mst_req_i.w;
+    mst_rsp_o.b_valid   = slv_rsp_i.b_valid;
+    slv_req_o.b_ready   = mst_req_i.b_ready;
+    mst_rsp_o.b         = slv_rsp_i.b;
+
+    // Iterate over all transactions to apply transaction-specific discards
     for (int i = 0; i < MaxWrTxns; i++) begin
-      id_exists[i] = (linked_data_q[i].metadata.id == slv_rsp_i.b.id);
+      if (linked_data_q[i].timeout) begin
+        slv_req_o.aw_valid  = 1'b0;
+        mst_rsp_o.aw_ready  = 1'b0;
+        slv_req_o.aw        = 'b0;
+        slv_req_o.w_valid   = 1'b0;
+        mst_rsp_o.w_ready   = 1'b0;
+        slv_req_o.w         = 'b0;            
+        mst_rsp_o.b_valid   = 1'b0;
+        slv_req_o.b_ready   = 1'b0;
+        mst_rsp_o.b         = 'b0;
+      end
     end
   end
-  assign rsp_id_exists = (|id_exists);
 
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
@@ -580,7 +582,7 @@ module write_guard #(
     end
   end
 
-  for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_counter
+  for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_wr_counter
     /// state transitions and counter updates
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
@@ -641,9 +643,3 @@ module write_guard #(
 `endif
 endmodule
 
-// non-requested transactions: exists check in id queue ?
-// look up in id queue with response id
-// ht table is necessary to avoid looking up in the linked data table one by one
-// which is less efficient
- // hw2reg_o.irq.txn_id.d <= linked_data_q[i].metadata.id;
- // hw2reg_o.irq_addr.d <= linked_data_q[i].metadata.address;

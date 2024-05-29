@@ -28,8 +28,6 @@ module slv_guard_top #(
   parameter int unsigned MaxRdTxns     = 4,
   /// Counter width
   parameter int unsigned CntWidth      = 0,
-  /// Internal ID width
-  parameter int unsigned IntIdWidth    = 2, 
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -68,7 +66,9 @@ module slv_guard_top #(
   //input  logic               rst_stat_i
   /// TBD: Reset configuration
 );
-
+  /// Internal ID width
+  localparam int unsigned IntIdWidth    = $clog2(MaxUniqIds);
+  
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
   // register signals
@@ -123,19 +123,7 @@ module slv_guard_top #(
   assign rsp_inp = rsp_i;
   // counter typedef
   typedef logic [CntWidth-1:0] latency_t;
-
-  latency_t   budget_awvld_awrdy;
-  latency_t   budget_awvld_wvld;
-  latency_t   budget_wvld_wrdy;
-  latency_t   budget_wvld_wlast;
-  latency_t   budget_wlast_bvld;
-  latency_t   budget_wlast_brdy;
-
-  // latency_t   budget_arvld_arrdy;
-  // latency_t   budget_arvld_rvld;
-  // latency_t   budget_rvld_rrdy;
-  // latency_t   budget_rvld_rlast;
-
+  
   /// Remap wider ID to narrower ID
   axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),

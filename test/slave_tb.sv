@@ -240,7 +240,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/slv_guard/test/stimuli/axi_rt_writes.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/axi_monitor/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/axi_monitor/test/stimuli/axi_rt_writes.txt"));
 
     // wait for config
     @(posedge rst_n);
