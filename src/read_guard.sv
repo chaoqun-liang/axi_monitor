@@ -1,3 +1,7 @@
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
 
 module read_guard #(
   // Maximum number of unique IDs
@@ -10,29 +14,21 @@ module read_guard #(
   parameter type req_t = logic,
   // AXI response type
   parameter type rsp_t = logic,
-  // Budget type
-  parameter type cnt_t = logic,
   // ID type
   parameter type id_t  = logic,
-  // Read address channel type
-  parameter type ar_chan_t = logic,
+  // Addr type
+  parameter type addr_t = logic,
   parameter type reg2hw_t = logic,
   parameter type hw2reg_t = logic
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
-  // Read guard enable
-  input  logic       guard_ena_i,
   // Transaction enqueue request
-  input  logic       inp_req_i,
+  input  logic       rd_en_i,
   // Request from master
   input  req_t       mst_req_i,  
-  // Request to master
-  output rsp_t       mst_rsp_o,
   // Response from slave
   input  rsp_t       slv_rsp_i,
-  // Response to slave
-  output req_t       slv_req_o,
   // Slave request request
   output logic       reset_req_o,
   output logic       irq_o,
@@ -42,12 +38,13 @@ module read_guard #(
   output hw2reg_t    hw2reg_o
 );
 
-  assign hw2reg_o.irq.mis_id_rd.de = 1'b1;
   assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
   assign hw2reg_o.irq_addr.de = 1'b1;
   assign hw2reg_o.reset.de = 1'b1; 
   assign hw2reg_o.latency_read.de = 1'b1;
   
+  typedef logic [CntWidth-1:0] cnt_t;
+
   cnt_t  budget_read;
   assign budget_read = reg2hw_i.budget_read.q;
 
@@ -72,7 +69,9 @@ module read_guard #(
   
   // Type of an entry in the linked data table.
   typedef struct packed {
-    ar_chan_t       metadata;
+    id_t            txn_id;
+    addr_t          txn_addr;
+    axi_pkg::len_t  txn_len;
     logic           timeout;
     cnt_t           counter; 
     logic           found_match;
@@ -162,9 +161,10 @@ module read_guard #(
   for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_linked_data_free
     assign linked_data_free[i] = linked_data_q[i].free;
   end
-
-  for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_id_exists
-    assign rsp_id_exists[i] = (linked_data_q[i].metadata.id == slv_rsp_i.b.id);
+  
+  // more efficient to transverswe HT instead of LD
+  for (genvar i = 0; i < HtCapacity; i++) begin: gen_rsp_id_exists
+    assign rsp_id_exists[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
   end
   assign id_exists =  (|rsp_id_exists);
 
@@ -202,7 +202,7 @@ module read_guard #(
     irq                 = 1'b0;  
     
     // Dequeue 
-    if (oup_req) begin
+    if (oup_req) begin : proc_txn_dequeue
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
       if (!no_out_id_match) begin
@@ -211,7 +211,6 @@ module read_guard #(
         // Set free bit of linked data entry, all other bits are don't care.
         linked_data_d[head_tail_q[match_out_idx].head]          = '0;
         linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
-
         // If it is the last cell of this ID
         if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
           oup_ht_popped = 1'b1;
@@ -223,8 +222,9 @@ module read_guard #(
       // Always grant the output request.
       oup_gnt = 1'b1;
     end
+
     // Enqueue
-    if (inp_req_i && inp_gnt ) begin
+    if (rd_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
       // If output data was popped for this ID, which lead the head_tail to be popped,
@@ -237,7 +237,9 @@ module read_guard #(
           free: 1'b0
         };
         linked_data_d[oup_data_free_idx] = '{
-          metadata: mst_req_i.ar,
+          txn_id: mst_req_i.ar.id,
+          txn_addr: mst_req_i.ar.addr,
+          txn_len: mst_req_i.ar.len,
           timeout: 0,
           counter: 0,
           found_match: 0,
@@ -255,12 +257,14 @@ module read_guard #(
             free: 1'b0
           };
           linked_data_d[oup_data_free_idx] = '{
-          metadata: mst_req_i.ar,
-          timeout: 0,
-          counter: 0,
-          found_match: 0,
-          next: '0,
-          free: 1'b0
+            txn_id: mst_req_i.ar.id,
+            txn_addr: mst_req_i.ar.addr,
+            txn_len: mst_req_i.ar.len,
+            timeout: 0,
+            counter: 0,
+            found_match: 0,
+            next: '0,
+            free: 1'b0
           };
         end else begin
           if (oup_data_popped) begin
@@ -271,11 +275,13 @@ module read_guard #(
               free: 1'b0
             };
             linked_data_d[oup_data_free_idx] = '{
-              metadata: mst_req_i.ar,
+              txn_id: mst_req_i.ar.id,
+              txn_addr: mst_req_i.ar.addr,
+              txn_len: mst_req_i.ar.len,
               timeout: 0,
               counter: 0,
               found_match: 0,
-              next: '0, 
+              next: '0,
               free: 1'b0
             };
           end else begin
@@ -286,7 +292,9 @@ module read_guard #(
               free: 1'b0
             };
             linked_data_d[linked_data_free_idx] = '{
-              metadata: mst_req_i.ar,
+              txn_id: mst_req_i.ar.id,
+              txn_addr: mst_req_i.ar.addr,
+              txn_len: mst_req_i.ar.len,
               timeout: 0,
               counter: 0,
               found_match: 0,
@@ -301,7 +309,9 @@ module read_guard #(
           linked_data_d[head_tail_q[match_in_idx].tail].next = oup_data_free_idx;
           head_tail_d[match_in_idx].tail = oup_data_free_idx;
           linked_data_d[oup_data_free_idx] = '{
-            metadata: mst_req_i.ar,
+            txn_id: mst_req_i.ar.id,
+            txn_addr: mst_req_i.ar.addr,
+            txn_len: mst_req_i.ar.len,
             timeout: 0,
             counter: 0,
             found_match: 0,
@@ -312,7 +322,9 @@ module read_guard #(
           linked_data_d[head_tail_q[match_in_idx].tail].next = linked_data_free_idx;
           head_tail_d[match_in_idx].tail = linked_data_free_idx;
           linked_data_d[linked_data_free_idx] = '{
-            metadata: mst_req_i.ar,
+            txn_id: mst_req_i.ar.id,
+            txn_addr: mst_req_i.ar.addr,
+            txn_len: mst_req_i.ar.len,
             timeout: 0,
             counter: 0,
             found_match: 0,
@@ -332,10 +344,10 @@ module read_guard #(
           if( id_exists ) begin
             if ( !linked_data_q[i].found_match) begin
               // if no match yet, determine if there's a match and update status
-              linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
+              linked_data_d[i].found_match = (linked_data_q[i].txn_id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
             end else begin 
               oup_req = 1; 
-              oup_id = linked_data_q[i].metadata.id;
+              oup_id = linked_data_q[i].txn_id;
               hw2reg_o.latency_read.d = linked_data_q[i].counter;
               linked_data_d[i]               = '0;
               linked_data_d[i].free          = 1'b1; 
@@ -348,12 +360,12 @@ module read_guard #(
           end 
         end else begin 
           if( linked_data_d[i].timeout ) begin 
-            hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
+            hw2reg_o.irq_addr.d = linked_data_q[i].txn_addr;
             hw2reg_o.reset.d = 1'b1;
             reset_req = 1'b1;
             irq = 1'b1;
             oup_req  = 1;
-            oup_id = linked_data_q[i].metadata.id;
+            oup_id = linked_data_q[i].txn_id;
             linked_data_d[i]               = '0;
             linked_data_d[i].free          = 1'b1; 
           end
@@ -362,28 +374,6 @@ module read_guard #(
     end 
   end
   
-  always_comb begin: proc_output_txn
-    // pass through when there is no timeout
-    slv_req_o.ar_valid  = mst_req_i.ar_valid;
-    mst_rsp_o.ar_ready  = slv_rsp_i.ar_ready;
-    slv_req_o.ar        = mst_req_i.ar;
-    mst_rsp_o.r_valid   = slv_rsp_i.r_valid;
-    slv_req_o.r_ready   = mst_req_i.r_ready;
-    mst_rsp_o.r         = slv_rsp_i.r;
-
-    // Iterate over all transactions to apply transaction-specific discards
-    for (int i = 0; i < MaxRdTxns; i++) begin
-      if (linked_data_q[i].timeout) begin
-        slv_req_o.ar_valid  = 1'b0;
-        mst_rsp_o.ar_ready  = 1'b0;
-        slv_req_o.ar        = 'b0;           
-        mst_rsp_o.r_valid   = 1'b0;
-        slv_req_o.r_ready   = 1'b0;
-        mst_rsp_o.r         = 'b0;
-      end
-    end
-  end
-
   assign   reset_req_o = reset_req;
   assign   irq_o = irq;
 
@@ -407,7 +397,7 @@ module read_guard #(
         // reset_req_latch <= 1'b0;
         // irq_latch <= '0;
       end else begin
-        if (guard_ena_i) begin
+      
           linked_data_q[i]  <= linked_data_d[i];
            // Latch reset request
           // if (reset_req) begin
@@ -423,7 +413,7 @@ module read_guard #(
               linked_data_q[i].counter <= linked_data_q[i].counter + 1 ; // note: cannot do auto-increment
             end      
         end
-      end
+     
     end
    end
  end
@@ -431,11 +421,9 @@ module read_guard #(
 // Validate parameters.
 `ifndef SYNTHESIS
 `ifndef COMMON_CELLS_ASSERTS_OFF
-    initial begin: validate_params
-        // assert (ID_WIDTH >= 1)
-        //     else $fatal(1, "The ID must at least be one bit wide!");
-        assert (MaxRdTxns >= 1)
-            else $fatal(1, "The queue must have capacity of at least one entry!");
+  initial begin: validate_params
+    assert (MaxRdTxns >= 1)
+      else $fatal(1, "The queue must have capacity of at least one entry!");
     end
 `endif
 `endif

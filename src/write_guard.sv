@@ -1,3 +1,7 @@
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
 
 module write_guard #(
   // Maximum number of unique IDs
@@ -10,44 +14,39 @@ module write_guard #(
   parameter type req_t = logic,
   // AXI response type
   parameter type rsp_t = logic,
-  // Budget type
-  parameter type cnt_t = logic,
-  // ID type
+  // // ID type
   parameter type id_t  = logic,
-  // Write address channel type
+  // // Addr type
+  // parameter type addr_t = logic,
   parameter type aw_chan_t = logic,
   parameter type reg2hw_t = logic,
   parameter type hw2reg_t = logic
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
-  // Write guard enable
-  input  logic       guard_ena_i,
   // Transaction enqueue request
-  input  logic       inp_req_i,
+  input  logic       wr_en_i,
   // Request from master
   input  req_t       mst_req_i,
-  // Request to master  
-  output rsp_t       mst_rsp_o,
   // Response from slave
   input  rsp_t       slv_rsp_i, 
-  // Response to slave
-  output req_t       slv_req_o,
   // Slave request request 
   output logic       reset_req_o,
   output logic       irq_o,
   input  logic       reset_clear_i,
   // Register bus
   input  reg2hw_t    reg2hw_i,
-  output hw2reg_t    hw2reg_o
+  output hw2reg_t    hw2reg_o,
+  output logic oup_req_o
 );
 
-  assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
   assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
   assign hw2reg_o.irq_addr.de = 1'b1;
   assign hw2reg_o.reset.de = 1'b1; 
   assign hw2reg_o.latency_write.de = 1'b1;
   
+  typedef logic [CntWidth-1:0] cnt_t;
+
   // Budget time from aw_valid to aw_ready
   cnt_t  budget_write;
   assign budget_write = reg2hw_i.budget_write.q;
@@ -73,6 +72,9 @@ module write_guard #(
   
   // Type of an entry in the linked data table.
   typedef struct packed {
+    // id_t            txn_id;
+    // addr_t          txn_addr;
+    // axi_pkg::len_t  txn_len;
     aw_chan_t       metadata;
     logic           timeout;
     cnt_t           counter;
@@ -123,6 +125,8 @@ module write_guard #(
                                   oup_req,
                                   id_exists;
 
+   assign oup_req_o = oup_req;
+
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
     assign idx_matches_in_id[i] = match_in_id_valid && (head_tail_q[i].id == match_in_id) && !head_tail_q[i].free;
@@ -163,9 +167,11 @@ module write_guard #(
   for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_linked_data_free
     assign linked_data_free[i] = linked_data_q[i].free;
   end
- 
-  for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_id_exists
-    assign rsp_id_exists[i] = (linked_data_q[i].metadata.id == slv_rsp_i.b.id);
+  
+  // more efficient to transverswe HT instead of LD
+  // Find Response ID exists or not to identidy unwanted txn
+  for (genvar i = 0; i < HtCapacity; i++) begin: gen_rsp_id_exists
+    assign rsp_id_exists[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
   end
   assign id_exists =  (|rsp_id_exists);
 
@@ -177,13 +183,13 @@ module write_guard #(
         .cnt_o   ( linked_data_free_idx ),
         .empty_o (                      )
   );
-
+ 
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
   // Data potentially freed by the output.
   assign oup_data_free_idx = head_tail_q[match_out_idx].head;
   
-  // Data can be accepted if the linked list pool is not full, or some da  ta is simultaneously.
+  // Data can be accepted if the linked list pool is not full
   assign inp_gnt = ~full || oup_data_popped;
 
   always_comb begin : proc_wr_queue
@@ -202,29 +208,8 @@ module write_guard #(
     reset_req           = 1'b0;
     irq                 = 1'b0; 
     
-    // Dequeue 
-    if (oup_req) begin : proc_txn_dequeue
-      match_out_id = oup_id;
-      match_out_id_valid = 1'b1;
-      if (!no_out_id_match) begin
-        oup_data_valid = 1'b1;
-        oup_data_popped = 1;
-        // Set free bit of linked data entry, all other bits are don't care.
-        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
-        // If it is the last cell of this ID
-        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
-          oup_ht_popped = 1'b1;
-          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
-        end else begin
-          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
-        end
-      end 
-      // Always grant the output request.
-      oup_gnt = 1'b1;
-    end
     // Enqueue
-    if (inp_req_i && inp_gnt ) begin : proc_txn_enqueue
+    if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
       // If output data was popped for this ID, which lead the head_tail to be popped,
@@ -237,6 +222,9 @@ module write_guard #(
           free: 1'b0
         };
         linked_data_d[oup_data_free_idx] = '{
+          // txn_id: mst_req_i.aw.id,
+          // txn_addr: mst_req_i.aw.addr,
+          // txn_len: mst_req_i.aw.len,
           metadata: mst_req_i.aw,
           timeout: 0,
           counter: 0,
@@ -246,7 +234,7 @@ module write_guard #(
         };
       end else if (no_in_id_match) begin
         // Else, if no head_tail corresponds to the input id, and no same ID just popped.
-        // reuse any freed up entry
+        // 3 cases
         if (oup_ht_popped) begin
           head_tail_d[match_out_idx] = '{
             id: mst_req_i.aw.id,
@@ -255,12 +243,15 @@ module write_guard #(
             free: 1'b0
           };
           linked_data_d[oup_data_free_idx] = '{
-          metadata: mst_req_i.aw,
-          timeout: 0,
-          counter: 0,
-          found_match: 0,
-          next: '0,
-          free: 1'b0
+            // txn_id: mst_req_i.aw.id,
+            // txn_addr: mst_req_i.aw.addr,
+            // txn_len: mst_req_i.aw.len,
+            metadata: mst_req_i.aw,
+            timeout: 0,
+            counter: 0,
+            found_match: 0,
+            next: '0,
+            free: 1'b0
           };
         end else begin
           if (oup_data_popped) begin
@@ -271,11 +262,14 @@ module write_guard #(
               free: 1'b0
             };
             linked_data_d[oup_data_free_idx] = '{
+              // txn_id: mst_req_i.aw.id,
+              // txn_addr: mst_req_i.aw.addr,
+              // txn_len: mst_req_i.aw.len,
               metadata: mst_req_i.aw,
               timeout: 0,
               counter: 0,
               found_match: 0,
-              next: '0, 
+              next: '0,
               free: 1'b0
             };
           end else begin
@@ -286,6 +280,9 @@ module write_guard #(
               free: 1'b0
             };
             linked_data_d[linked_data_free_idx] = '{
+              // txn_id: mst_req_i.aw.id,
+              // txn_addr: mst_req_i.aw.addr,
+              // txn_len: mst_req_i.aw.len,
               metadata: mst_req_i.aw,
               timeout: 0,
               counter: 0,
@@ -301,6 +298,9 @@ module write_guard #(
           linked_data_d[head_tail_q[match_in_idx].tail].next = oup_data_free_idx;
           head_tail_d[match_in_idx].tail = oup_data_free_idx;
           linked_data_d[oup_data_free_idx] = '{
+            // txn_id: mst_req_i.aw.id,
+            // txn_addr: mst_req_i.aw.addr,
+            // txn_len: mst_req_i.aw.len,
             metadata: mst_req_i.aw,
             timeout: 0,
             counter: 0,
@@ -312,6 +312,9 @@ module write_guard #(
           linked_data_d[head_tail_q[match_in_idx].tail].next = linked_data_free_idx;
           head_tail_d[match_in_idx].tail = linked_data_free_idx;
           linked_data_d[linked_data_free_idx] = '{
+            // txn_id: mst_req_i.aw.id,
+            // txn_addr: mst_req_i.aw.addr,
+            // txn_len: mst_req_i.aw.len,
             metadata: mst_req_i.aw,
             timeout: 0,
             counter: 0,
@@ -322,12 +325,13 @@ module write_guard #(
         end
       end
     end
+
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free ) begin 
-        linked_data_d[i].timeout = (linked_data_q[i].counter >= budget_write) ? 1'b1 : 1'b0;
+        linked_data_d[i].timeout = (linked_data_q[i].counter >= budget_write * linked_data_q[i].metadata.len) ? 1'b1 : 1'b0;
   
-        if (slv_rsp_i.b_valid && mst_req_i.b_ready && !linked_data_d[i].timeout) begin
+        if (!linked_data_d[i].timeout && slv_rsp_i.b_valid && mst_req_i.b_ready ) begin
           // if no match, keep comparing
           if( id_exists ) begin
             if ( !linked_data_q[i].found_match) begin
@@ -358,39 +362,36 @@ module write_guard #(
           end
         end
       end
-    end 
-  end
-
-  always_comb begin: proc_output_txn
-    // pass through when there is no timeout
-    slv_req_o.aw_valid  = mst_req_i.aw_valid;
-    mst_rsp_o.aw_ready  = slv_rsp_i.aw_ready;
-    slv_req_o.aw        = mst_req_i.aw;
-    slv_req_o.w_valid   = mst_req_i.w_valid;
-    mst_rsp_o.w_ready   = slv_rsp_i.w_ready;
-    slv_req_o.w         = mst_req_i.w;
-    mst_rsp_o.b_valid   = slv_rsp_i.b_valid;
-    slv_req_o.b_ready   = mst_req_i.b_ready;
-    mst_rsp_o.b         = slv_rsp_i.b;
-
-    // Iterate over all transactions to apply transaction-specific discards
-    for (int i = 0; i < MaxWrTxns; i++) begin
-      if (linked_data_q[i].timeout) begin
-        slv_req_o.aw_valid  = 1'b0;
-        mst_rsp_o.aw_ready  = 1'b0;
-        slv_req_o.aw        = 'b0;
-        slv_req_o.w_valid   = 1'b0;
-        mst_rsp_o.w_ready   = 1'b0;
-        slv_req_o.w         = 'b0;            
-        mst_rsp_o.b_valid   = 1'b0;
-        slv_req_o.b_ready   = 1'b0;
-        mst_rsp_o.b         = 'b0;
-      end
     end
+
+    // Dequeue 
+    if (oup_req) begin : proc_txn_dequeue
+      match_out_id = oup_id;
+      match_out_id_valid = 1'b1;
+      // only if oup_id exists in ht table
+      if (!no_out_id_match) begin
+        oup_data_valid = 1'b1;
+        oup_data_popped = 1;
+        // Set free bit of linked data entry, all other bits are don't care.
+        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
+        // If it is the last cell of this ID
+        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
+          oup_ht_popped = 1'b1;
+          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
+        end else begin
+          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
+        end
+      end 
+      // Always grant the output request.otherwise, if no match, the default, invalid entry will be returned
+      oup_gnt = 1'b1;
+    end
+
   end
 
   assign   reset_req_o = reset_req;
   assign   irq_o = irq;
+
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     always_ff @(posedge clk_i, negedge rst_ni) begin
@@ -411,21 +412,19 @@ module write_guard #(
         // reset_req_latch <= 1'b0;
         // irq_latch <= '0;
       end else begin
-        if (guard_ena_i) begin
-          linked_data_q[i]  <= linked_data_d[i];
-           // Latch reset request
-          // if (reset_req) begin
-          //   reset_req_latch <= 1'b1;
-          //   irq_latch <= 1'b1;
-          // end else if (reset_clear_i) begin
-          //   reset_req_latch <= 1'b0;
-          //   irq_latch <= 1'b0;
-          // end
-          // only if this slot is in use, that is to say there is an outstanding transaction
-          if (!linked_data_q[i].free) begin 
-            if (!linked_data_q[i].found_match && !linked_data_q[i].timeout) begin
-              linked_data_q[i].counter <= linked_data_q[i].counter + 1 ; // note: cannot do auto-increment
-            end
+        linked_data_q[i]  <= linked_data_d[i];
+         // Latch reset request
+        // if (reset_req) begin
+        //   reset_req_latch <= 1'b1;
+        //   irq_latch <= 1'b1;
+        // end else if (reset_clear_i) begin
+        //   reset_req_latch <= 1'b0;
+        //   irq_latch <= 1'b0;
+        // end
+        // only if this slot is in use, that is to say there is an outstanding transaction
+        if (!linked_data_q[i].free) begin 
+          if (!linked_data_q[i].found_match && !linked_data_q[i].timeout) begin
+            linked_data_q[i].counter <= linked_data_q[i].counter + 1 ; // note: cannot do auto-increment
           end
         end
       end
