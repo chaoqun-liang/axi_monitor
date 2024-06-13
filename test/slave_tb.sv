@@ -3,12 +3,12 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-/// Testbench for the slave monitring unit
+/// Testbench for the slave monitring unit aaaaaaaa
 module tb_slv_guard #(
   /// Testbench timing
   parameter time CyclTime                = 10000ps,
-  parameter time ApplTime                = 2000ps,
-  parameter time TestTime                = 8000ps,
+  parameter time ApplTime                = 100ps,
+  parameter time TestTime                = 500ps,
   /// AXI configuration
   parameter int unsigned TbAxiIdWidth    = 32'd4,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
@@ -19,8 +19,6 @@ module tb_slv_guard #(
   /// Slave Monitoring unit parameters
   localparam int unsigned MaxTxnsPerId = 32'd4; 
   localparam int unsigned MaxUniqIds = 32'd4;
-  localparam int unsigned MaxTxns = 32'd8;
-  localparam int unsigned CntWidth  = 20;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
   localparam int unsigned IntIdWidth   = $clog2(MaxUniqIds);
@@ -31,10 +29,8 @@ module tb_slv_guard #(
   typedef logic [TbAxiDataWidth-1  :0] data_t;
   typedef logic [AxiStrbWidth-1    :0] strb_t;
   typedef logic [TbAxiUserWidth-1  :0] user_t;
-  
 
   typedef logic [IntIdWidth-1:0] int_id_t;
- 
 
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
@@ -57,7 +53,6 @@ module tb_slv_guard #(
 
   cfg_req_t cfg_req;
   cfg_rsp_t cfg_rsp;
-
 
   typedef reg_test::reg_driver #(
     .AW ( TbAxiAddrWidth ),
@@ -164,16 +159,16 @@ module tb_slv_guard #(
   // AXI Simulation Memory 
   //-----------------------------------
    axi_sim_mem #(
-    .AddrWidth         ( TbAxiAddrWidth    ),
-    .DataWidth         ( TbAxiDataWidth    ),
-    .IdWidth           ( TbAxiIdWidth        ),
-    .UserWidth         ( TbAxiUserWidth    ),
-    .axi_req_t         ( slv_req_t    ),
-    .axi_rsp_t         ( slv_rsp_t    ),
-    .WarnUninitialized ( 1'b0         ),
-    .ClearErrOnAccess  ( 1'b1         ),
-    .ApplDelay         ( ApplTime       ),
-    .AcqDelay          ( TestTime       )  
+    .AddrWidth         ( TbAxiAddrWidth  ),
+    .DataWidth         ( TbAxiDataWidth  ),
+    .IdWidth           ( TbAxiIdWidth    ),
+    .UserWidth         ( TbAxiUserWidth  ),
+    .axi_req_t         ( slv_req_t       ),
+    .axi_rsp_t         ( slv_rsp_t       ),
+    .WarnUninitialized ( 1'b0            ),
+    .ClearErrOnAccess  ( 1'b1            ),
+    .ApplDelay         ( ApplTime        ),
+    .AcqDelay          ( TestTime        )  
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
@@ -204,14 +199,12 @@ module tb_slv_guard #(
     .StrbWidth    ( AxiStrbWidth   ),
     .AxiIdWidth   ( TbAxiIdWidth   ),
     .AxiUserWidth ( TbAxiUserWidth ),
-    .MaxUniqIds    (MaxUniqIds ),
+    .MaxUniqIds   ( MaxUniqIds     ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
-    .MaxTxns       (MaxTxns ),
-    .CntWidth     ( CntWidth       ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
-    .int_req_t   (slv_req_t),
-    .int_rsp_t   (slv_rsp_t),
+    .int_req_t    ( slv_req_t      ),
+    .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
@@ -228,31 +221,31 @@ module tb_slv_guard #(
     .rst_req_o   (                )
 );
 
-  //-----------------------------------
-  // TB
-  //-----------------------------------
+//-----------------------------------
+// TB
+//-----------------------------------
 
-    initial begin : proc_axi_master
-      automatic axi_file_master_t axi_file_master = new(master_dv);
-      axi_file_master.reset();
-      axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_writes.txt"));
-    
-      // tb metrics
-      // total_num_reads [i] = axi_file_master.num_reads;
-      // total_num_writes[i] = axi_file_master.num_writes;
-      // num_writes      [i] = 1;
-      // num_reads       [i] = 1;
-      // end_of_sim [i] = 1'b0;
-
-      // wait for config
-      @(posedge rst_n);
-      @(posedge clk);
-
-      repeat (5) @(posedge clk);
-      // run
-      axi_file_master.run();
+  initial begin : proc_axi_master
+    automatic axi_file_master_t axi_file_master = new(master_dv);
+    axi_file_master.reset();
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_writes.txt"));
   
-    end
+    // tb metrics
+    // total_num_reads [i] = axi_file_master.num_reads;
+    // total_num_writes[i] = axi_file_master.num_writes;
+    // num_writes      [i] = 1;
+    // num_reads       [i] = 1;
+    // end_of_sim [i] = 1'b0;
+
+    // wait for config
+    @(posedge rst_n);
+    @(posedge clk);
+
+    repeat (5) @(posedge clk);
+    // run
+    axi_file_master.run();
+
+  end
  
   // configure slv units
   initial begin
@@ -267,7 +260,10 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
 
     // write_budget
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0020, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 4'hf, reg_error); 
+
+    // read_budget
+    reg_drv.send_write(32'h0000_0008, 32'h0000_0020, 4'hf, reg_error);
 
     repeat (5) @(posedge clk);
 

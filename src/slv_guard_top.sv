@@ -16,20 +16,19 @@ module slv_guard_top #(
   parameter int unsigned AxiUserWidth  = 0,
   
   parameter int unsigned MaxUniqIds    = 4,
-  parameter int unsigned MaxTxns       = 4,
   parameter int unsigned MaxTxnsPerId  = 4, 
-
   // DONT OVERRIDE min internal width
-
   parameter int unsigned IntIdWidth    = $clog2(MaxUniqIds),
+  // DONT OVERRIDE
+  parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 20,
+  parameter int unsigned CntWidth      = 16,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
   parameter type rsp_t                 = logic, 
   parameter type int_req_t             = logic,
-  parameter type int_rsp_t            = logic,
+  parameter type int_rsp_t             = logic,
   /// Configuration register bus request type
   parameter type reg_req_t             = logic,
   /// Configuration register bus response type
@@ -46,9 +45,9 @@ module slv_guard_top #(
   /// Response to manager
   output rsp_t               rsp_o,
   /// Request to slave
-  output int_req_t              req_o,
+  output int_req_t           req_o,
   /// Response from slave
-  input  int_rsp_t               rsp_i,
+  input  int_rsp_t           rsp_i,
   /// Register bus request
   input  reg_req_t           reg_req_i,
   /// Register bus response
@@ -56,9 +55,9 @@ module slv_guard_top #(
   /// Interrupt line
   output logic               irq_o,
   /// Reset request
-  output logic               rst_req_o
+  output logic               rst_req_o,
   /// Reset status
-  //input  logic             rst_stat_i
+  input  logic               rst_stat_i
   /// TBD: Reset configuration
 );
 
@@ -78,10 +77,10 @@ module slv_guard_top #(
     .hw2reg    ( hw2reg       ),  
     .devmode_i ( 1'b1         )
   );
-  
+
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
-  logic reset_req;
+  logic rst_req;
 
   assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
   assign hw2reg.irq_addr = hw2reg_w.irq_addr | hw2reg_r.irq_addr;
@@ -89,8 +88,6 @@ module slv_guard_top #(
   
   assign reg2hw_w.budget_write = reg2hw.budget_write;
   assign reg2hw_r.budget_read = reg2hw.budget_read;
-  
-  assign reset_req_o = reset_req;
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
@@ -111,7 +108,7 @@ module slv_guard_top #(
   /// Intermediate AXI channel
   int_req_t  int_req, int_req_wr, int_req_rd;
   int_rsp_t  int_rsp, rd_rsp, wr_rsp;
-
+  
   /// Remap wider ID to narrower ID
   id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
@@ -159,16 +156,16 @@ module slv_guard_top #(
 
   assign rst_req = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;
+  assign rst_req_o = rst_req;
   
   write_guard #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxWrTxns  ( MaxTxns    ), // total writes
-    .CntWidth   ( CntWidth     ),
-    .req_t      ( int_req_t    ),
-    .rsp_t      ( int_rsp_t    ),
-    .id_t       ( int_id_t         ),
-   // .addr_t     ( addr_t),
-    .aw_chan_t (int_aw_t),
+    .CntWidth   ( CntWidth   ),
+    .req_t      ( int_req_t  ),
+    .rsp_t      ( int_rsp_t  ),
+    .id_t       ( int_id_t   ),
+    .aw_chan_t  ( int_aw_t   ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
@@ -179,6 +176,7 @@ module slv_guard_top #(
     .slv_rsp_i    ( wr_rsp       ),
     .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
+    .reset_clear_i( rst_stat_i   ),
     .reg2hw_i     ( reg2hw_w     ),
     .hw2reg_o     ( hw2reg_w     )
   );
@@ -186,11 +184,11 @@ module slv_guard_top #(
   read_guard #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxRdTxns  ( MaxTxns    ), 
-    .CntWidth   ( CntWidth     ),
-    .req_t      ( int_req_t    ),
-    .rsp_t      ( int_rsp_t    ),
-    .id_t       ( int_id_t         ),
-    .addr_t     ( addr_t       ),
+    .CntWidth   ( CntWidth   ),
+    .req_t      ( int_req_t  ),
+    .rsp_t      ( int_rsp_t  ),
+    .id_t       ( int_id_t   ),
+    .ar_chan_t  ( int_ar_t   ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_read_monitor_unit (
@@ -211,7 +209,7 @@ module slv_guard_top #(
     int_rsp = rsp_i;
     if (rst_req) begin
       req_o = 1'b0;
-      //int_rsp = 'b0;
+      int_rsp = 'b0;
     end
   end
 
