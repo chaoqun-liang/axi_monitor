@@ -10,25 +10,17 @@ module tb_slv_guard #(
   parameter time ApplTime                = 100ps,
   parameter time TestTime                = 500ps,
   /// AXI configuration
-  parameter int unsigned TbAxiIdWidth    = 32'd2,
+  parameter int unsigned TbAxiIdWidth    = 32'd4,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
   parameter int unsigned TbAxiDataWidth  = 32'd32,
   parameter int unsigned TbAxiUserWidth  = 32'd1 
 );
-  
-  /// Sim print config, how many transactions
-  localparam int unsigned TbPrintTnx = 32'd100;
-
   /// Slave Monitoring unit parameters
   localparam int unsigned MaxTxnsPerId = 32'd4; 
-  localparam int unsigned MaxWrUniqIds = 32'd4;
-  localparam int unsigned MaxRdUniqIds = 32'd4;
-  localparam int unsigned MaxWrTxns = 32'd4;
-  localparam int unsigned MaxRdTxns = 32'd4;
-  localparam int unsigned CntWidth  = 32;
-  localparam int unsigned IntIdWidth = 2;
+  localparam int unsigned MaxUniqIds = 32'd4;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
+  localparam int unsigned IntIdWidth   = $clog2(MaxUniqIds);
 
   /// AXI4+ATOP typedefs
   typedef logic [TbAxiIdWidth-1    :0] id_t;
@@ -126,8 +118,8 @@ module tb_slv_guard #(
   axi_req_t   master_req;
   axi_rsp_t   master_rsp;
 
-  axi_req_t   slave_req;
-  axi_rsp_t   slave_rsp;
+  slv_req_t   slave_req;
+  slv_rsp_t   slave_rsp;
 
   `AXI_ASSIGN (master,           master_dv)
 
@@ -171,8 +163,8 @@ module tb_slv_guard #(
     .DataWidth         ( TbAxiDataWidth    ),
     .IdWidth           ( TbAxiIdWidth      ),
     .UserWidth         ( TbAxiUserWidth    ),
-    .axi_req_t         ( axi_req_t    ),
-    .axi_rsp_t         ( axi_rsp_t    ),
+    .axi_req_t         ( slv_req_t    ),
+    .axi_rsp_t         ( slv_rsp_t    ),
     .WarnUninitialized ( 1'b0         ),
     .ClearErrOnAccess  ( 1'b1         ),
     .ApplDelay         ( ApplTime       ),
@@ -208,15 +200,11 @@ module tb_slv_guard #(
     .AxiIdWidth   ( TbAxiIdWidth   ),
     .AxiUserWidth ( TbAxiUserWidth ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
-    .MaxWrUniqIds ( MaxWrUniqIds   ),
-    .MaxRdUniqIds ( MaxRdUniqIds   ),
-    .MaxWrTxns    ( MaxWrTxns      ),
-    .MaxRdTxns    ( MaxRdTxns      ),
-    .CntWidth     ( CntWidth       ),
+    .MaxUniqIds   ( MaxUniqIds     ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
-    .slv_req_t    ( slv_req_t      ),
-    .slv_rsp_t    ( slv_rsp_t      ),
+    .int_req_t    ( slv_req_t      ),
+    .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (

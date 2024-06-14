@@ -11,15 +11,9 @@ module monitor_wrap
   import axi_pkg::*;
 #(
   // Monitor parameters
-  parameter int unsigned NumSub        = 1,
   parameter int unsigned MaxUniqIds    = 4,
   parameter int unsigned MaxTxnsPerId  = 4, 
-  parameter int unsigned MaxTxns       = 4,
-  parameter int unsigned MaxWrUniqIds  = 4,
-  parameter int unsigned MaxRdUniqIds  = 4,
-  parameter int unsigned MaxWrTxns     = 4,
-  parameter int unsigned MaxRdTxns     = 4,
-  parameter int unsigned CntWidth      = 32,
+  parameter int unsigned CntWidth      = 16,
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 64,
   parameter int unsigned AxiDataWidth  = 64,
@@ -309,16 +303,12 @@ module monitor_wrap
     .AxiIdWidth   ( AxiIdWidth     ),
     .AxiUserWidth ( AxiUserWidth   ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
-    .MaxWrUniqIds ( MaxUniqIds     ),
-    .MaxRdUniqIds ( MaxUniqIds     ),
-    .MaxWrTxns    ( MaxTxns        ),
-    .MaxRdTxns    ( MaxTxns        ),
+    .MaxUniqIds   ( MaxUniqIds     ),
     .CntWidth     ( CntWidth       ),
-    .IntIdWidth   ( AxiIntIdWidth  ),
     .req_t        ( mst_req_t      ), 
     .rsp_t        ( mst_rsp_t      ),
-    .slv_req_t    ( slv_req_t      ),
-    .slv_rsp_t    ( slv_rsp_t      ),
+    .int_req_t    ( slv_req_t      ),
+    .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
   ) i_slv_guard (

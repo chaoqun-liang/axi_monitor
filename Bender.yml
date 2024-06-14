@@ -26,6 +26,7 @@ sources:
       - src/registers/slv_guard_reg_top.sv
       - src/write_guard.sv
       - src/read_guard.sv
+      - src/id_remap.sv
       - src/slv_guard_top.sv
   
   - target: monitor_synth

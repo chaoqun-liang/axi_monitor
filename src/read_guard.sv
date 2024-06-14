@@ -10,8 +10,6 @@ module read_guard #(
   parameter type req_t = logic,
   // AXI response type
   parameter type rsp_t = logic,
-  // Budget type
-  parameter type cnt_t = logic,
   // ID type
   parameter type id_t  = logic,
   // Read address channel type
@@ -21,21 +19,16 @@ module read_guard #(
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
-  // Read guard enable
-  input  logic       guard_ena_i,
-  // Transaction enqueue request
-  input  logic       inp_req_i,
+  // Read enqueue
+  input  logic       rd_en_i,
   // Request from master
   input  req_t       mst_req_i,  
-  // Request to master
-  output rsp_t       mst_rsp_o,
   // Response from slave
   input  rsp_t       slv_rsp_i,
-  // Response to slave
-  output req_t       slv_req_o,
   // Slave request request
   output logic       reset_req_o,
   output logic       irq_o,
+  input  logic       reset_clear_i,
   // register configs
   input  reg2hw_t    reg2hw_i,
   output hw2reg_t    hw2reg_o
@@ -54,6 +47,7 @@ module read_guard #(
   assign hw2reg_o.latency_rvld_rrdy.de = 1'b1; 
   assign hw2reg_o.latency_rvld_rlast.de = 1'b1;
   
+  typedef logic [CntWidth-1:0] cnt_t;
   // Budget time from ar_valid to ar_ready
   cnt_t  budget_arvld_arrdy;
   // Budget time from ar_valid to r_valid
@@ -201,8 +195,10 @@ module read_guard #(
     assign linked_data_free[i] = linked_data_q[i].free;
   end
 
-  for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_id_exists
-    assign rsp_id_exists[i] = (linked_data_q[i].metadata.id == slv_rsp_i.b.id);
+  // more efficient to transverswe HT instead of LD
+  // Find Response ID exists or not to identidy unwanted txn
+  for (genvar i = 0; i < HtCapacity; i++) begin: gen_rsp_id_exists
+    assign rsp_id_exists[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
   end
   assign id_exists =  (|rsp_id_exists);
 
@@ -272,7 +268,7 @@ module read_guard #(
     /* 3. there is head tail entry corresponds to input id */
        /* a. if ld popped, reuse it, update ht tail */
        /* b. no ld popped, add new entry, update ht tail*/
-    if (inp_req_i && inp_gnt ) begin : proc_enqueue
+    if (rd_en_i && inp_gnt ) begin : proc_enqueue
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
       // If output data was popped for this ID, which lead the head_tail to be popped,
@@ -396,7 +392,7 @@ module read_guard #(
               hw2reg_o.irq.r0.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1; 
-              mst_rsp_o.b.resp = 2'b10;
+              // mst_rsp_o.b.resp = 2'b10; move to top
               // general reset, irq 
               reset_req = 1'b1;
               irq = 1'b1;
@@ -427,7 +423,7 @@ module read_guard #(
               hw2reg_o.irq.r2.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
-              mst_rsp_o.r.resp = 2'b10;
+              //mst_rsp_o.r.resp = 2'b10;
               reset_req = 1'b1;
               irq = 1'b1;
               oup_req  = 1;
@@ -490,31 +486,6 @@ module read_guard #(
     end
   end
   
-  always_comb begin: proc_output_txn
-    // pass through when there is no timeout
-    slv_req_o.ar_valid  = mst_req_i.ar_valid;
-    mst_rsp_o.ar_ready  = slv_rsp_i.ar_ready;
-    slv_req_o.ar        = mst_req_i.ar;
-    mst_rsp_o.r_valid   = slv_rsp_i.r_valid;
-    slv_req_o.r_ready   = mst_req_i.r_ready;
-    mst_rsp_o.r         = slv_rsp_i.r;
-
-    // Iterate over all transactions to apply transaction-specific discards
-    for (int i = 0; i < MaxRdTxns; i++) begin
-      if (linked_data_q[i].timeout) begin
-        slv_req_o.ar_valid  = 1'b0;
-        mst_rsp_o.ar_ready  = 1'b0;
-        slv_req_o.ar        = 'b0;           
-        mst_rsp_o.r_valid   = 1'b0;
-        slv_req_o.r_ready   = 1'b0;
-        mst_rsp_o.r         = 'b0;
-      end
-    end
-  end
-  
-  // assign   reset_req_o = reset_req;
-  // assign   irq_o = irq;
-
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     always_ff @(posedge clk_i, negedge rst_ni) begin
@@ -535,7 +506,7 @@ module read_guard #(
         linked_data_q[i].read_state <= IDLE;
         linked_data_q[i][0] <= 1'b1;
       end else begin
-        if (guard_ena_i) begin
+        if (rd_en_i) begin
           linked_data_q[i]  <= linked_data_d[i];
           // only if this slot is in use, that is to say there is an outstanding transaction
           if (!linked_data_q[i].free) begin 
