@@ -582,15 +582,15 @@ module write_guard #(
             end
 
             if (linked_data_d[i].found_match) begin
-                  // successful 
-                  oup_req = 1; 
-                  oup_id = linked_data_q[i].metadata.id;
-                  linked_data_d[i]               = '0;
-                  linked_data_d[i].write_state   = IDLE;
-                  linked_data_d[i].free          = 1'b1;
-                  hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
-                  hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
-                end 
+              // successful 
+              oup_req = 1; 
+              oup_id = linked_data_q[i].metadata.id;
+              linked_data_d[i]               = '0;
+              linked_data_d[i].write_state   = IDLE;
+              linked_data_d[i].free          = 1'b1;
+              hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
+              hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
+            end 
           end
         endcase 
       end
