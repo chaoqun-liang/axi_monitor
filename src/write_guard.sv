@@ -128,7 +128,13 @@ module write_guard #(
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
-  
+
+  // w fifo
+  localparam int unsigned PtrWidth = $clog2(MaxWrTxns);
+  logic [LdIdxWidth-1:0] w_fifo [MaxWrTxns]; // FIFO storage for transaction indices
+  logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;  // Write and read pointers
+  logic fifo_full_d, fifo_full_q, fifo_empty_d, fifo_empty_q; // Status signals
+ 
   // Head tail table entry 
   head_tail_t [HtCapacity-1:0]    head_tail_d,    head_tail_q;
     
@@ -159,7 +165,8 @@ module write_guard #(
                                   rsp_idx;
 
   ld_idx_t                        linked_data_free_idx,
-                                  oup_data_free_idx;
+                                  oup_data_free_idx,
+                                  active_idx, test_active_idx;
 
   logic                           oup_data_valid,                           
                                   oup_data_popped,
@@ -270,8 +277,12 @@ module write_guard #(
     oup_ht_popped       = 1'b0;
     oup_id              = 1'b0;
     oup_req             = 1'b0;
-    reset_req           = 1'b0;
-    irq                 = 1'b0; 
+    reset_req           = reset_req_q;
+    irq                 = irq_q; 
+    wr_ptr_d            = wr_ptr_q;
+    rd_ptr_d            = rd_ptr_q;
+    fifo_full_d         = fifo_full_q;
+    fifo_empty_d        = fifo_empty_q;
     
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
@@ -392,6 +403,36 @@ module write_guard #(
         end
       end
     end
+    
+    // When an AW request is accepted, index it into the FIFO. 
+    // This index refers to the slot in the linked data table where the transaction details are stored.
+    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin
+      w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
+      wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
+      fifo_empty_d = 0;
+      fifo_full_d = (rd_ptr_q == (wr_ptr_q + 1) % MaxWrTxns);
+    end 
+ 
+    if (mst_req_i.w_valid && !fifo_empty_q) begin : proc_w_fifo_dequeue
+      active_idx = w_fifo[rd_ptr_q]; // get the ld index from the fifo
+      $display("checkpoint1");
+      if (linked_data_d[active_idx].write_state == WRITE_ADDRESS) begin 
+        linked_data_d[active_idx].write_state = WRITE_DATA;  // Transition state to handle W data
+      end
+
+      if (linked_data_q[active_idx].write_state == WRITE_DATA) begin
+        $display("checkpoint2");
+        if (mst_req_i.w.last) begin
+          //$display("checkpoint3");
+          linked_data_d[active_idx].write_state = WRITE_RESPONSE;  // Transition to response state
+          rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
+          //$display("checkpoint4");
+          fifo_empty_d = (rd_ptr_q == wr_ptr_q);  // Check if FIFO is empty
+        end 
+      end
+    end
+    
+    assign test_active_idx = active_idx;
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
@@ -404,7 +445,8 @@ module write_guard #(
             if ( mst_req_i.w_valid && !linked_data_q[i].timeout ) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
-              linked_data_d[i].write_state = WRITE_DATA;
+              // false w state, more of group state
+              //linked_data_d[i].write_state = WRITE_DATA;
             end
             if (linked_data_q[i].counters.cnt_awvalid_awready >= budget_awvld_awrdy) begin
               linked_data_d[i].timeout = 1'b1;
@@ -441,7 +483,7 @@ module write_guard #(
             if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
               hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
-              linked_data_d[i].write_state = WRITE_RESPONSE;
+              //linked_data_d[i].write_state = WRITE_RESPONSE;
             end
             if (linked_data_q[i].counters.cnt_wvalid_wready_first >= budget_wvld_wrdy) begin
               linked_data_d[i].timeout = 1'b1;
@@ -506,22 +548,15 @@ module write_guard #(
               linked_data_d[i].write_state   = IDLE;
               linked_data_d[i].free          = 1'b1;
             end
+
             // handshake, id match and no timeout, successul completion
             // Check for the valid and readhy handshake
-            if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_d[i].timeout ) begin 
+            if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout ) begin 
               if ( id_exists ) begin 
                 // if IDs match, successful completion. dequeue request and mark the match as found
-                if ( !linked_data_q[i].found_match) begin
+                if ( !linked_data_d[i].found_match) begin
+                  // if current txn is the head one of all txns of same id
                   linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
-                end else begin
-                  // successful 
-                  oup_req = 1; 
-                  oup_id = linked_data_q[i].metadata.id;
-                  linked_data_d[i]               = '0;
-                  linked_data_d[i].write_state   = IDLE;
-                  linked_data_d[i].free          = 1'b1;
-                  hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
-                  hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
                 end 
               end else begin 
                 hw2reg_o.irq.unwanted_txn.d = 1'b1;
@@ -531,7 +566,7 @@ module write_guard #(
                 irq = 1'b1;
               end 
             end else begin 
-              if( linked_data_d[i].timeout ) begin
+              if( linked_data_q[i].timeout ) begin
                 // If there's a timeout, still no match found
                 hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
                 hw2reg_o.reset.d = 1'b1;
@@ -545,6 +580,17 @@ module write_guard #(
                 linked_data_d[i].free          = 1'b1;
               end
             end
+
+            if (linked_data_d[i].found_match) begin
+                  // successful 
+                  oup_req = 1; 
+                  oup_id = linked_data_q[i].metadata.id;
+                  linked_data_d[i]               = '0;
+                  linked_data_d[i].write_state   = IDLE;
+                  linked_data_d[i].free          = 1'b1;
+                  hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
+                  hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
+                end 
           end
         endcase 
       end
@@ -593,41 +639,40 @@ module write_guard #(
         // mark all slots as free
         linked_data_q[i][0] <= 1'b1;
       end else begin
-        if (wr_en_i) begin
-          linked_data_q[i]  <= linked_data_d[i];
-          // only if this slot is in use, that is to say there is an outstanding transaction
-          if (!linked_data_q[i].free) begin 
-            case (linked_data_q[i].write_state) 
-              WRITE_ADDRESS: begin
-                // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
-                if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready) begin
-                  linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do auto-increment
-                end
-                // Counter 1: AW Phase - AW_VALID to W_VALID (first data) 
-                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
+        linked_data_q[i]  <= linked_data_d[i];
+        // only if this slot is in use, that is to say there is an outstanding transaction
+        if (!linked_data_q[i].free) begin 
+          case (linked_data_q[i].write_state) 
+            WRITE_ADDRESS: begin
+              // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
+              if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready) begin
+                linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do auto-increment
               end
-          
-              WRITE_DATA: begin
-                // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
-                if (mst_req_i.w_valid && !slv_rsp_i.w_ready) begin
-                  linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
-                end
-                // Counter 3: W Phase - W_VALID to W_LAST 
-                linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
-                // Timeout check W state
+              // Counter 1: AW Phase - AW_VALID to W_VALID (first data) 
+              linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
+            end
+        
+            WRITE_DATA: begin
+              // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
+              if (mst_req_i.w_valid && !slv_rsp_i.w_ready) begin
+                linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
               end
+              // Counter 3: W Phase - W_VALID to W_LAST 
+              linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
+              // Timeout check W state
+            end
 
-              WRITE_RESPONSE: begin
-                // Counter 4: B Phase - W_LAST to B_VALID, handshake is checked, stop counting upon handshake
-                if(mst_req_i.b_ready && !slv_rsp_i.b_valid) begin
-                  linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
-                end
-                //  Counter 5: B Phase - B_VALID to B_READY
-                linked_data_q[i].counters.cnt_wlast_bready <= linked_data_q[i].counters.cnt_wlast_bready +1;
-                // Timeout check B state 
-              end 
-            endcase
-          end
+            WRITE_RESPONSE: begin
+              // Counter 4: B Phase - W_LAST to B_VALID, handshake is checked, stop counting upon handshake
+              if(mst_req_i.b_ready && !slv_rsp_i.b_valid && !linked_data_q[i].found_match) begin
+              linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
+              end
+              //  Counter 5: B Phase - B_VALID to B_READY
+              if(! mst_req_i.b_ready && !linked_data_q[i].found_match)
+              linked_data_q[i].counters.cnt_wlast_bready <= linked_data_q[i].counters.cnt_wlast_bready +1;
+              // Timeout check B state 
+            end 
+          endcase
         end
       end
     end
@@ -637,10 +682,17 @@ module write_guard #(
     if (!rst_ni) begin
       reset_req_q <= 1'b0;
       irq_q <= '0;
+      wr_ptr_q <= '0;
+      rd_ptr_q <= '0;
+      fifo_full_q <= '0;
+      fifo_empty_q <= '0;
     end else begin
-      // Latch reset request
+      wr_ptr_q <= wr_ptr_d;
+      rd_ptr_q <= rd_ptr_d;
+      fifo_empty_q <= fifo_empty_d;
+      fifo_full_q <= fifo_full_d;
       if (reset_req) begin
-        reset_req_q <= 1'b1;
+        reset_req_q <= reset_req;
         irq_q <= 1'b1;
       end else if (reset_clear_i) begin
         reset_req_q <= 1'b0;

@@ -126,9 +126,9 @@ module tb_slv_guard #(
   `AXI_ASSIGN_TO_REQ(master_req, master)
   `AXI_ASSIGN_FROM_RESP(master,  master_rsp)
   
-  `AXI_ASSIGN (slave_dv,         slave)
-  `AXI_ASSIGN_FROM_REQ(slave,    slave_req)
-  `AXI_ASSIGN_TO_RESP(slave_rsp, slave)
+  // `AXI_ASSIGN (slave_dv,         slave)
+  `AXI_ASSIGN_FROM_REQ(slave,  slave_req)
+  `AXI_ASSIGN_FROM_RESP(slave, slave_rsp)
 
   REG_BUS #(
     .ADDR_WIDTH ( TbAxiAddrWidth ),
@@ -275,7 +275,7 @@ module tb_slv_guard #(
 
     // config is done
     guard_configured = 1;
-    $stop();
+    //$stop();
   end
 
 endmodule

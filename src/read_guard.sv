@@ -447,7 +447,7 @@ module read_guard #(
             end
             // handshake, id match and no timeout, successful completion
             // here handshake indicates the end of B phase
-            if (slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_d[i].timeout) begin
+            if (slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout) begin
               // if no match, keep comparing
               if( id_exists ) begin
                 if ( !linked_data_q[i].found_match) begin
@@ -469,7 +469,7 @@ module read_guard #(
                 irq = 1'b1;
               end 
             end else begin 
-              if( linked_data_d[i].timeout ) begin 
+              if( linked_data_q[i].timeout ) begin 
                 hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
                 hw2reg_o.reset.d = 1'b1;
                 reset_req = 1'b1;
@@ -498,47 +498,45 @@ module read_guard #(
   end
 
   for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_rd_counter
-   /// state transitions and counter updates
-   always_ff @(posedge clk_i or negedge rst_ni) begin
+    /// state transitions and counter updates
+    always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
         linked_data_q[i] <= '0;
         // mark all slots as free
         linked_data_q[i].read_state <= IDLE;
         linked_data_q[i][0] <= 1'b1;
       end else begin
-        if (rd_en_i) begin
-          linked_data_q[i]  <= linked_data_d[i];
-          // only if this slot is in use, that is to say there is an outstanding transaction
-          if (!linked_data_q[i].free) begin 
-            case (linked_data_q[i].read_state) 
-              IDLE: begin
-                  linked_data_q[i] <= '0;
-                  linked_data_q[i].read_state <= IDLE;
-                  linked_data_q[i][0] <= 1'b1;
+        linked_data_q[i]  <= linked_data_d[i];
+        // only if this slot is in use, that is to say there is an outstanding transaction
+        if (!linked_data_q[i].free) begin 
+          case (linked_data_q[i].read_state) 
+            IDLE: begin
+                linked_data_q[i] <= '0;
+                linked_data_q[i].read_state <= IDLE;
+                linked_data_q[i][0] <= 1'b1;
+            end
+            READ_ADDRESS: begin
+              // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
+              if (mst_req_i.ar_valid && !slv_rsp_i.ar_ready) begin
+                linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
               end
-              READ_ADDRESS: begin
-                // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
-                if (mst_req_i.ar_valid && !slv_rsp_i.ar_ready) begin
-                  linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
-                end
-                // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
-                linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
+              // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
+              linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
+            end
+        
+            READ_DATA: begin
+              // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
+              if (slv_rsp_i.r_valid && !mst_req_i.r_ready) begin
+                linked_data_q[i].counters.cnt_rvalid_rready_first  <= linked_data_q[i].counters.cnt_rvalid_rready_first + 1;
               end
-          
-              READ_DATA: begin
-                // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
-                if (slv_rsp_i.r_valid && !mst_req_i.r_ready) begin
-                  linked_data_q[i].counters.cnt_rvalid_rready_first  <= linked_data_q[i].counters.cnt_rvalid_rready_first + 1;
-                end
-                // Counter 3: R Phase - R_VALID to R_LAST
-                linked_data_q[i].counters.cnt_rfirst_rlast  <= linked_data_q[i].counters.cnt_rfirst_rlast + 1;
-              end
-            endcase
+              // Counter 3: R Phase - R_VALID to R_LAST
+              linked_data_q[i].counters.cnt_rfirst_rlast  <= linked_data_q[i].counters.cnt_rfirst_rlast + 1;
+            end
+          endcase
         end
       end
     end
-   end
- end
+  end
 
 // Validate parameters.
 `ifndef SYNTHESIS
