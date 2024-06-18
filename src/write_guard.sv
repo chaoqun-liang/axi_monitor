@@ -288,7 +288,7 @@ module write_guard #(
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
       //awvld_wfirst_budget = budget_awvld_wvld * accum_burst_length; // to-do: if not the first one
-      awvld_wfirst_budget = budget_awvld_wvld ; // need to change
+      awvld_wfirst_budget = 8; // need to change
       wfirst_wlast_budget = budget_wvld_wlast * mst_req_i.aw.len;
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.

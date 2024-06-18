@@ -247,27 +247,27 @@ module tb_slv_guard #(
     @(posedge clk);
 
     // slave unit enable 1 / disable 0
-    reg_drv.send_write(32'h0000_0000, 32'h0000_0100, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0000, 32'h0000_0100, 4'hf, reg_error);
 
     // budget from aw_valid to aw_ready
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0300, 8'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0010, 4'hf, reg_error); 
     // budget from aw_valid to w_valid of first word
-    reg_drv.send_write(32'h0000_0008, 32'h0000_0300, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_0300, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_000c, 32'h0000_0010, 4'hf, reg_error); 
     // budget from w_valid to w_last
-    reg_drv.send_write(32'h0000_0010, 32'h0000_0300, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0010, 32'h0000_0001, 4'hf, reg_error);
     // budget from w_last to b_valid
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0300, 8'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0014, 32'h0000_0010, 4'hf, reg_error); 
     // budget from w_last to b_ready
-    reg_drv.send_write(32'h0000_0018, 32'h0000_0100, 8'hff, reg_error);
+    reg_drv.send_write(32'h0000_0018, 32'h0000_0010, 4'hf, reg_error);
 
     // budget from ar_valid to ar_ready
     reg_drv.send_write(32'h0000_001c, 32'h0000_0001, 4'hf, reg_error); 
     // budget from ar_valid to r_valid of first word
-    reg_drv.send_write(32'h0000_0020, 32'h0000_0001, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0020, 32'h0000_0001, 4'hf, reg_error);
     // budget from r_valid to r_ready
-    reg_drv.send_write(32'h0000_0024, 32'h0000_0001, 4'h1, reg_error); 
+    reg_drv.send_write(32'h0000_0024, 32'h0000_0001, 4'hf, reg_error); 
     // budget from r_valid to r_last
     reg_drv.send_write(32'h0000_0028, 32'h0000_0001, 4'h1, reg_error);
 

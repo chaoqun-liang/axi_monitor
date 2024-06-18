@@ -458,7 +458,6 @@ module read_guard #(
                   oup_id = linked_data_q[i].metadata.id;
                   hw2reg_o.latency_rvld_rrdy.d = linked_data_q[i].counters.cnt_rvalid_rready_first;
                   hw2reg_o.latency_rvld_rlast.d = linked_data_q[i].counters.cnt_rvalid_rready_first;
-
                   linked_data_d[i]               = '0;
                   linked_data_d[i].free          = 1'b1; 
                 end

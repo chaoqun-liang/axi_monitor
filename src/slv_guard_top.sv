@@ -213,14 +213,15 @@ module slv_guard_top #(
   assign rst_req = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;
   assign rst_req_o = rst_req;
-  
+
   always_comb begin: proc_output_txn
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
     if (rst_req) begin
       req_o = 'b0;
-      int_rsp = 'b0;
+      int_rsp.b.resp = 2'b10;
+      int_rsp.b_valid = 'b0;
     end
   end
 
