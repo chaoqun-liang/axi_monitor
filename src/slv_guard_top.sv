@@ -220,8 +220,7 @@ module slv_guard_top #(
     int_rsp = rsp_i;
     if (rst_req) begin
       req_o = 'b0;
-      int_rsp.b.resp = 2'b10;
-      int_rsp.b_valid = 'b0;
+      int_rsp = 'b0;
     end
   end
 

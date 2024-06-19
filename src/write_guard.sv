@@ -166,7 +166,7 @@ module write_guard #(
 
   ld_idx_t                        linked_data_free_idx,
                                   oup_data_free_idx,
-                                  active_idx, test_active_idx;
+                                  active_idx;
 
   logic                           oup_data_valid,                           
                                   oup_data_popped,
@@ -287,8 +287,7 @@ module write_guard #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
-      //awvld_wfirst_budget = budget_awvld_wvld * accum_burst_length; // to-do: if not the first one
-      awvld_wfirst_budget = 8; // need to change
+      awvld_wfirst_budget = budget_awvld_wvld * accum_burst_length; // to-do: if not the first one
       wfirst_wlast_budget = budget_wvld_wlast * mst_req_i.aw.len;
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
@@ -406,7 +405,7 @@ module write_guard #(
     
     // When an AW request is accepted, index it into the FIFO. 
     // This index refers to the slot in the linked data table where the transaction details are stored.
-    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin
+    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo_enqueue
       w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
       wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
       fifo_empty_d = 0;
@@ -415,13 +414,10 @@ module write_guard #(
  
     if (mst_req_i.w_valid && !fifo_empty_q) begin : proc_w_fifo_dequeue
       active_idx = w_fifo[rd_ptr_q]; // get the ld index from the fifo
-      $display("checkpoint1");
       if (linked_data_d[active_idx].write_state == WRITE_ADDRESS) begin 
         linked_data_d[active_idx].write_state = WRITE_DATA;  // Transition state to handle W data
       end
-
       if (linked_data_q[active_idx].write_state == WRITE_DATA) begin
-        $display("checkpoint2");
         if (mst_req_i.w.last) begin
           //$display("checkpoint3");
           linked_data_d[active_idx].write_state = WRITE_RESPONSE;  // Transition to response state
@@ -431,8 +427,6 @@ module write_guard #(
         end 
       end
     end
-    
-    assign test_active_idx = active_idx;
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
