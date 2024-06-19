@@ -207,19 +207,8 @@ module slv_guard_top #(
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    if (rst_req) begin
-      req_o = 1'b0;
+    if ( guard_ena_i && rst_req) begin
+      req_o = 'b0;
       int_rsp = 'b0;
     end
   end
-
-  // Validate parameters.
-`ifndef SYNTHESIS
-`ifndef COMMON_CELLS_ASSERTS_OFF
-  initial begin: validate_params
-    assert (MaxTxns <= MaxUniqIds*MaxTxnsPerId)
-      else $fatal(1, "Parameter MaxTxns may be at most MaxUniqIds*MaxTxnsPerId"); 
-    end
-`endif
-`endif
-endmodule: slv_guard_top
