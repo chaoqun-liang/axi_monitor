@@ -18,12 +18,10 @@ module slv_guard_top #(
 
   parameter int unsigned MaxUniqIds    = 4,
   parameter int unsigned MaxTxnsPerId  = 4,
-  // DONT OVERRIDE min internal width
-  parameter int unsigned IntIdWidth    = $clog2(MaxUniqIds),
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 16,
+  parameter int unsigned CntWidth      = 10,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -100,6 +98,9 @@ module slv_guard_top #(
   assign reg2hw_r.budget_arvld_rvld = reg2hw.budget_arvld_rvld;
   assign reg2hw_r.budget_rvld_rrdy = reg2hw.budget_rvld_rrdy;
   assign reg2hw_r.budget_rvld_rlast = reg2hw.budget_rvld_rlast;
+  
+  // DONT OVERRIDE min internal width
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
 
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;

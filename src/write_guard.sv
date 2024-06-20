@@ -427,6 +427,7 @@ module write_guard #(
         end 
       end
     end
+    
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
