@@ -87,15 +87,15 @@ module slv_guard_top #(
   assign reg2hw_w.budget_write = reg2hw.budget_write;
   assign reg2hw_r.budget_read = reg2hw.budget_read;
 
+  // min internal width
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
+
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
   typedef logic [StrbWidth-1:0] strb_t;
   typedef logic [AxiIdWidth-1:0] id_t;
   typedef logic [IntIdWidth-1:0] int_id_t;
   typedef logic [AxiUserWidth-1:0] user_t;
-  
-  // min internal width
-  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
 
   /// Intermediate AXI types
   `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
