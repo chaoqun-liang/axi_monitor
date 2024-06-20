@@ -225,6 +225,7 @@ module tb_slv_guard #(
   // TB
   //-----------------------------------
 
+
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
@@ -233,10 +234,13 @@ module tb_slv_guard #(
     // wait for config
     @(posedge rst_n);
     @(posedge clk);
-
+    
+    // wait for configuration to complete
+    wait (guard_configured ==1);
     repeat (5) @(posedge clk);
     axi_file_master.run();
   end
+  
   // configure slv units
   initial begin
     // register bus
@@ -263,13 +267,13 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0018, 32'h0000_0010, 4'hf, reg_error);
 
     // budget from ar_valid to ar_ready
-    reg_drv.send_write(32'h0000_001c, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_001c, 32'h0000_000f, 4'hf, reg_error); 
     // budget from ar_valid to r_valid of first word
-    reg_drv.send_write(32'h0000_0020, 32'h0000_0001, 4'hf, reg_error);
+    reg_drv.send_write(32'h0000_0020, 32'h0000_000f, 4'hf, reg_error);
     // budget from r_valid to r_ready
-    reg_drv.send_write(32'h0000_0024, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0024, 32'h0000_000f, 4'hf, reg_error); 
     // budget from r_valid to r_last
-    reg_drv.send_write(32'h0000_0028, 32'h0000_0001, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0028, 32'h0000_000f, 4'h1, reg_error);
 
     repeat (5) @(posedge clk);
 

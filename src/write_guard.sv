@@ -283,6 +283,8 @@ module write_guard #(
     rd_ptr_d            = rd_ptr_q;
     fifo_full_d         = fifo_full_q;
     fifo_empty_d        = fifo_empty_q;
+    // hw2reg_o.latency_awvld_awrdy.d = hw2reg_o.latency_awvld_awrdy.q;
+
     
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
@@ -309,7 +311,7 @@ module write_guard #(
           next: '0,
           free: 1'b0
         };
-      end else if (no_in_id_match) begin
+      end  else if (no_in_id_match) begin
         // Else, if no head_tail corresponds to the input id, and no same ID just popped.
         // reuse any freed up entry
         if (oup_ht_popped) begin
@@ -405,27 +407,27 @@ module write_guard #(
     
     // When an AW request is accepted, index it into the FIFO. 
     // This index refers to the slot in the linked data table where the transaction details are stored.
-    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo_enqueue
+    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo
       w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
       wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
       fifo_empty_d = 0;
       fifo_full_d = (rd_ptr_q == (wr_ptr_q + 1) % MaxWrTxns);
-    end 
- 
-    if (mst_req_i.w_valid && !fifo_empty_q) begin : proc_w_fifo_dequeue
+    end
+
+    if (mst_req_i.w_valid && !fifo_empty_q) begin 
       active_idx = w_fifo[rd_ptr_q]; // get the ld index from the fifo
-      if (linked_data_d[active_idx].write_state == WRITE_ADDRESS) begin 
-        linked_data_d[active_idx].write_state = WRITE_DATA;  // Transition state to handle W data
-      end
-      if (linked_data_q[active_idx].write_state == WRITE_DATA) begin
-        if (mst_req_i.w.last) begin
-          //$display("checkpoint3");
-          linked_data_d[active_idx].write_state = WRITE_RESPONSE;  // Transition to response state
-          rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
-          //$display("checkpoint4");
-          fifo_empty_d = (rd_ptr_q == wr_ptr_q);  // Check if FIFO is empty
-        end 
-      end
+      case ( linked_data_d[active_idx].write_state )
+        WRITE_ADDRESS: begin 
+          linked_data_d[active_idx].write_state = WRITE_DATA;  // Transition state to handle W data
+        end
+        WRITE_DATA: begin
+          if (mst_req_i.w.last) begin
+            linked_data_d[active_idx].write_state = WRITE_RESPONSE;  // Transition to response state
+            rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
+            fifo_empty_d = (rd_ptr_q == wr_ptr_q);  // Check if FIFO is empty
+          end 
+        end
+      endcase 
     end
     
     // Transaction states handling
@@ -451,14 +453,11 @@ module write_guard #(
               hw2reg_o.reset.d = 1'b1; 
               // mst_rsp_o.b.resp = 2'b10; move to top
               // general reset, irq 
-              reset_req = 1'b1;
+              reset_req = 1'b1; 
               irq = 1'b1;
               // dequeue 
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end 
             if(linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst <= 0 ) begin
               linked_data_d[i].timeout = 1'b1;
@@ -469,9 +468,6 @@ module write_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id; 
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
           end
           WRITE_DATA: begin
@@ -490,9 +486,6 @@ module write_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1; 
             end 
             if (linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast <= 0) begin
               linked_data_d[i].timeout = 1'b1;
@@ -502,10 +495,7 @@ module write_guard #(
               reset_req = 1'b1;
               irq = 1'b1;
               oup_req  = 1;
-              oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;  
+              oup_id = linked_data_q[i].metadata.id; 
             end
           end
           // Timeout check, also handle txn dequeue in both faulty and fault-free case, plus id check
@@ -517,7 +507,7 @@ module write_guard #(
           // first check if it is in ht, if yes, keep checking til there is a match as long as no timeout. if not in ht, report unwanted txn.
           WRITE_RESPONSE: begin
             if ( linked_data_q[i].counters.cnt_wlast_bvalid >= budget_wlast_bvld ) begin
-              linked_data_d[i].timeout = 1'b1;
+              // linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.w4.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
@@ -526,9 +516,6 @@ module write_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;  
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
             if ( linked_data_q[i].counters.cnt_wlast_bready >= budget_wlast_brdy) begin
               linked_data_d[i].timeout = 1'b1;
@@ -539,9 +526,6 @@ module write_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
 
             // handshake, id match and no timeout, successul completion
@@ -570,9 +554,6 @@ module write_guard #(
                 irq = 1'b1;
                 oup_req  = 1;
                 oup_id = linked_data_q[i].metadata.id;
-                linked_data_d[i]               = '0;
-                linked_data_d[i].write_state   = IDLE;
-                linked_data_d[i].free          = 1'b1;
               end
             end
 
@@ -580,9 +561,6 @@ module write_guard #(
               // successful 
               oup_req = 1; 
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].write_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
               hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
               hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
             end 

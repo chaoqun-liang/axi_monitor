@@ -117,9 +117,6 @@ module read_guard #(
     
   // Array of linked data
   linked_data_t [MaxRdTxns-1:0]    linked_data_d,  linked_data_q;
- 
-  logic                           reset_req_latch, 
-                                  irq_latch;
 
   logic                           inp_gnt,
                                   oup_gnt,                           
@@ -151,8 +148,8 @@ module read_guard #(
   
   logic                           id_exists,
                                   oup_req,
-                                  reset_req,
-                                  irq;
+                                  reset_req, reset_req_q,
+                                  irq, irq_q;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
@@ -218,10 +215,8 @@ module read_guard #(
 
   // Data can be accepted if the linked list pool is not full, or some data is simultaneously.
   assign inp_gnt = ~full || oup_data_popped;
-  assign reset_req_o = reset_req;
-  assign irq_o = irq;
 
-  always_comb begin
+  always_comb begin : proc_rd_queue
     match_in_id         = '0;
     match_out_id        = '0;
     match_in_id_valid   = 1'b0;
@@ -234,8 +229,8 @@ module read_guard #(
     oup_ht_popped       = 1'b0;
     oup_id              = 1'b0;
     oup_req             = 1'b0;
-    reset_req           = 1'b0;
-    irq                 = 1'b0;  
+    reset_req           = reset_req_q;
+    irq                 = irq_q; 
   
     if (oup_req) begin : proc_dequeue
       match_out_id = oup_id;
@@ -399,9 +394,6 @@ module read_guard #(
               // dequeue 
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].read_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
             if (linked_data_d[i].counters.cnt_arvalid_rfirst  >= budget_arvld_rvld) begin
               linked_data_d[i].timeout = 1'b1;
@@ -412,9 +404,6 @@ module read_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id; 
-              linked_data_d[i]               = '0;
-              linked_data_d[i].read_state   = IDLE;
-              linked_data_d[i].free          = 1'b1; 
             end
           end
           READ_DATA: begin
@@ -428,9 +417,6 @@ module read_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;  
-              linked_data_d[i]               = '0;
-              linked_data_d[i].read_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
             if ( linked_data_q[i].counters.cnt_rfirst_rlast >= linked_data_q[i].metadata.len * budget_rvld_rlast) begin
               linked_data_d[i].timeout = 1'b1;
@@ -441,9 +427,6 @@ module read_guard #(
               irq = 1'b1;
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;
-              linked_data_d[i]               = '0;
-              linked_data_d[i].read_state   = IDLE;
-              linked_data_d[i].free          = 1'b1;
             end
             // handshake, id match and no timeout, successful completion
             // here handshake indicates the end of B phase
@@ -458,8 +441,6 @@ module read_guard #(
                   oup_id = linked_data_q[i].metadata.id;
                   hw2reg_o.latency_rvld_rrdy.d = linked_data_q[i].counters.cnt_rvalid_rready_first;
                   hw2reg_o.latency_rvld_rlast.d = linked_data_q[i].counters.cnt_rvalid_rready_first;
-                  linked_data_d[i]               = '0;
-                  linked_data_d[i].free          = 1'b1; 
                 end
               end else begin 
                 hw2reg_o.irq.unwanted_txn.d = 1'b1;
@@ -475,8 +456,6 @@ module read_guard #(
                 irq = 1'b1;
                 oup_req  = 1;
                 oup_id = linked_data_q[i].metadata.id;
-                linked_data_d[i]               = '0;
-                linked_data_d[i].free          = 1'b1; 
               end
             end
           end
@@ -509,11 +488,6 @@ module read_guard #(
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
           case (linked_data_q[i].read_state) 
-            IDLE: begin
-                linked_data_q[i] <= '0;
-                linked_data_q[i].read_state <= IDLE;
-                linked_data_q[i][0] <= 1'b1;
-            end
             READ_ADDRESS: begin
               // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
               if (mst_req_i.ar_valid && !slv_rsp_i.ar_ready) begin
@@ -536,6 +510,24 @@ module read_guard #(
       end
     end
   end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      reset_req_q <= 1'b0;
+      irq_q <= '0;   
+    end else begin
+      if (reset_req) begin
+        reset_req_q <= reset_req;
+        irq_q <= 1'b1;
+      end else if (reset_clear_i) begin
+        reset_req_q <= 1'b0;
+        irq_q <= 1'b0;
+      end
+    end
+  end
+
+  assign   reset_req_o = reset_req_q;
+  assign   irq_o = irq_q;
 
 // Validate parameters.
 `ifndef SYNTHESIS

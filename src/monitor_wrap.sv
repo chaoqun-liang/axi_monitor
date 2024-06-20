@@ -12,7 +12,7 @@ module monitor_wrap
 #(
   // Monitor parameters
   parameter int unsigned MaxUniqIds    = 1,
-  parameter int unsigned MaxTxnsPerId  = 2, 
+  parameter int unsigned MaxTxnsPerId  = 1, 
   parameter int unsigned CntWidth      = 10,
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 64,
