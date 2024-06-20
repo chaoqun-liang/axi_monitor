@@ -304,7 +304,6 @@ module monitor_wrap
     .MaxTxnsPerId ( MaxTxnsPerId   ),
     .MaxUniqIds   ( MaxUniqIds     ),
     .CntWidth     ( CntWidth       ),
-    .IntIdWidth   ( AxiIntIdWidth  ),
     .req_t        ( mst_req_t      ), 
     .rsp_t        ( mst_rsp_t      ),
     .int_req_t    ( slv_req_t      ),
