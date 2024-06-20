@@ -11,14 +11,14 @@ module monitor_wrap
   import axi_pkg::*;
 #(
   // Monitor parameters
-  parameter int unsigned MaxUniqIds    = 4,
-  parameter int unsigned MaxTxnsPerId  = 4, 
-  parameter int unsigned CntWidth      = 16,
+  parameter int unsigned MaxUniqIds    = 1,
+  parameter int unsigned MaxTxnsPerId  = 2, 
+  parameter int unsigned CntWidth      = 10,
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 64,
   parameter int unsigned AxiDataWidth  = 64,
   parameter int unsigned AxiIdWidth    = 2,
-  parameter int unsigned AxiIntIdWidth = 2,
+  parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1,
   parameter int unsigned AxiUserWidth  = 1,
   parameter int unsigned AxiLogDepth   = 1,
   // Regbus parameters

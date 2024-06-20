@@ -17,12 +17,10 @@ module slv_guard_top #(
   
   parameter int unsigned MaxUniqIds    = 4,
   parameter int unsigned MaxTxnsPerId  = 4, 
-  // DONT OVERRIDE min internal width
-  parameter int unsigned IntIdWidth    = $clog2(MaxUniqIds),
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 16,
+  parameter int unsigned CntWidth      = 10,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -96,6 +94,9 @@ module slv_guard_top #(
   typedef logic [IntIdWidth-1:0] int_id_t;
   typedef logic [AxiUserWidth-1:0] user_t;
   
+  // min internal width
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
+
   /// Intermediate AXI types
   `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
@@ -212,3 +213,5 @@ module slv_guard_top #(
       int_rsp = 'b0;
     end
   end
+
+endmodule

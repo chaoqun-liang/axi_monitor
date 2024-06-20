@@ -22,6 +22,7 @@ module write_guard #(
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
+  
   // Transaction enqueue request
   input  logic       wr_en_i,
   // Request from master
