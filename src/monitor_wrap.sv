@@ -20,7 +20,7 @@ module monitor_wrap
   parameter int unsigned AxiIdWidth    = 2,
   parameter int unsigned AxiUserWidth  = 1,
   parameter int unsigned AxiLogDepth   = 1,
-  parameter int unsigned AxiIntIdWidth = $clog2(MaxUniqIds),
+  parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1,
   // Regbus parameters
   parameter int unsigned  RegAddrWidth = 32,
   parameter int unsigned  RegDataWidth = 32,

@@ -99,7 +99,7 @@ module slv_guard_top #(
   assign reg2hw_r.budget_rvld_rrdy = reg2hw.budget_rvld_rrdy;
   assign reg2hw_r.budget_rvld_rlast = reg2hw.budget_rvld_rlast;
   
-  // DONT OVERRIDE min internal width
+  // min internal width
   localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
 
   typedef logic [AddrWidth-1:0] addr_t;
