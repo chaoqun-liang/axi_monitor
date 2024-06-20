@@ -429,6 +429,29 @@ module write_guard #(
         end
       endcase 
     end
+
+    // Dequeue 
+    if (oup_req) begin : proc_txn_dequeue
+      match_out_id = oup_id;
+      match_out_id_valid = 1'b1;
+      if (!no_out_id_match) begin
+        oup_data_valid = 1'b1;
+        oup_data_popped = 1;
+        // Set free bit of linked data entry, all other bits are don't care.
+        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
+        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
+        // If it is the last cell of this ID
+        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
+          oup_ht_popped = 1'b1;
+          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
+        end else begin
+          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
+        end
+      end 
+      // Always grant the output request.
+      oup_gnt = 1'b1;
+    end
     
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
@@ -569,28 +592,7 @@ module write_guard #(
       end
     end
 
-    // Dequeue 
-    if (oup_req) begin : proc_txn_dequeue
-      match_out_id = oup_id;
-      match_out_id_valid = 1'b1;
-      if (!no_out_id_match) begin
-        oup_data_valid = 1'b1;
-        oup_data_popped = 1;
-        // Set free bit of linked data entry, all other bits are don't care.
-        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
-        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
-        // If it is the last cell of this ID
-        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
-          oup_ht_popped = 1'b1;
-          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
-        end else begin
-          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
-        end
-      end 
-      // Always grant the output request.
-      oup_gnt = 1'b1;
-    end
+    
   end
 
   // HT table registers
