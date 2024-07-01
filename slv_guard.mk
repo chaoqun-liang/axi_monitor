@@ -28,6 +28,10 @@ else
 	RUN_AND_EXIT := run -all; exit
 endif
 
+ifeq ($(netlist_sim),1)
+	NETLIST := -t netlist_sim
+endif
+
 # Download bender
 bender:
 	curl --proto '=https'  \
@@ -47,7 +51,7 @@ synth-ips:
 
 # Questasim
 $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl: Bender.yml
-	$(BENDER) script vsim -t rtl -t test -t sim \
+	$(BENDER) script vsim -t rtl -t test -t sim $(NETLIST) \
 	--vlog-arg="-svinputport=compat" \
 	--vlog-arg="-override_timescale 1ns/1ps" \
 	--vlog-arg="-suppress 2583" > $@
