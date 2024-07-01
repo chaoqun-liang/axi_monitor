@@ -30,27 +30,26 @@ package slv_pkg;
   parameter type reg_data_t   = logic [RegDataWidth-1:0];
   parameter type reg_strb_t   = logic [RegDataWidth/8-1:0];
 
-  // `AXI_TYPEDEF_ALL(mst, addr_t, id_t, data_t, strb_t, user_t);
-  // `AXI_TYPEDEF_ALL(slv, addr_t, intid_t, data_t, strb_t, user_t);
-  // `REG_BUS_TYPEDEF_ALL(reg, reg_addr_t, reg_data_t, reg_strb_t);
-
-
-  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
-  `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(mst_req_t, aw_chan_t, w_chan_t, ar_chan_t);
-  `AXI_TYPEDEF_RESP_T(mst_rsp_t, b_chan_t, r_chan_t );
-  
-  /// Intermediate AXI types
-  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, intid_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(int_b_t, intid_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, intid_t, user_t);
-  `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, intid_t, user_t);
-  `AXI_TYPEDEF_REQ_T(slv_req_t, int_aw_t, w_t, int_ar_t);
-  `AXI_TYPEDEF_RESP_T(slv_rsp_t, int_b_t, int_r_t );
-
+  `AXI_TYPEDEF_ALL(mst, addr_t, id_t, data_t, strb_t, user_t);
+  `AXI_TYPEDEF_ALL(slv, addr_t, intid_t, data_t, strb_t, user_t);
   `REG_BUS_TYPEDEF_ALL(reg, reg_addr_t, reg_data_t, reg_strb_t);
+
+
+  // `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
+  // `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
+  // `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
+  // `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
+  // `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
+  // `AXI_TYPEDEF_REQ_T(mst_req_t, aw_chan_t, w_chan_t, ar_chan_t);
+  // `AXI_TYPEDEF_RESP_T(mst_rsp_t, b_chan_t, r_chan_t );
+  
+  // /// Intermediate AXI types
+  // `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, intid_t, user_t);
+  // `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
+  // `AXI_TYPEDEF_B_CHAN_T(int_b_t, intid_t, user_t);
+  // `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, intid_t, user_t);
+  // `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, intid_t, user_t);
+  // `AXI_TYPEDEF_REQ_T(slv_req_t, int_aw_t, w_t, int_ar_t);
+  // `AXI_TYPEDEF_RESP_T(slv_rsp_t, int_b_t, int_r_t );
+
 endpackage

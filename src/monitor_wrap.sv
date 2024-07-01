@@ -20,11 +20,11 @@ module monitor_wrap
   /// Request from manager
   input  mst_req_t           req_i,
   /// Response to manager
-  output mst_rsp_t           rsp_o,
+  output mst_resp_t          rsp_o,
   /// Request to slave
   output slv_req_t           req_o,
   /// Response from slave
-  input  slv_rsp_t           rsp_i,
+  input  slv_resp_t          rsp_i,
   /// Register bus request
   input  reg_req_t           reg_req_i,
   /// Register bus response
@@ -48,9 +48,9 @@ slv_guard_top #(
   .MaxUniqIds   ( MaxUniqIds     ),
   .CntWidth     ( CntWidth       ),
   .req_t        ( mst_req_t      ), 
-  .rsp_t        ( mst_rsp_t      ),
+  .rsp_t        ( mst_resp_t     ),
   .int_req_t    ( slv_req_t      ),
-  .int_rsp_t    ( slv_rsp_t      ),
+  .int_rsp_t    ( slv_resp_t     ),
   .reg_req_t    ( reg_req_t      ), 
   .reg_rsp_t    ( reg_rsp_t      )
 ) i_slv_guard (
