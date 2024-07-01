@@ -34,7 +34,6 @@ module write_guard #(
   output hw2reg_t    hw2reg_o
 );
 
-  assign hw2reg_o.irq.mis_id_wr.de = 1'b1;
   assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
   assign hw2reg_o.irq.w0.de = 1'b1;
   assign hw2reg_o.irq.w1.de = 1'b1;
@@ -142,10 +141,10 @@ module write_guard #(
   linked_data_t [MaxWrTxns-1:0]   linked_data_d,  linked_data_q;
 
   logic                           inp_gnt,
-                                  oup_gnt,
                                   full,
                                   match_in_id_valid,
                                   match_out_id_valid,
+                                  match_rsp_id_valid,
                                   no_in_id_match,
                                   no_out_id_match;
 
@@ -154,10 +153,10 @@ module write_guard #(
                                   idx_matches_out_id,
                                   idx_rsp_id;
 
-  logic [MaxWrTxns-1:0]           linked_data_free,
-                                  rsp_id_exists;
+  logic [MaxWrTxns-1:0]           linked_data_free;
+                                 // rsp_id_exists;
  
-  id_t                            match_in_id, match_out_id, oup_id;
+  id_t                            match_in_id, match_out_id, oup_id, rsp_id, match_rsp_id;
 
   ht_idx_t                        head_tail_free_idx,
                                   match_in_idx,
@@ -173,7 +172,7 @@ module write_guard #(
                                   oup_ht_popped;
   
   logic                           reset_req, reset_req_q,
-                                  irq, irq_q,                        
+                                  irq,                        
                                   id_exists,
                                   oup_req;
 
@@ -184,11 +183,13 @@ module write_guard #(
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
     assign idx_matches_in_id[i] = match_in_id_valid && (head_tail_q[i].id == match_in_id) && !head_tail_q[i].free;
     assign idx_matches_out_id[i] = match_out_id_valid && (head_tail_q[i].id == match_out_id) && !head_tail_q[i].free;
-    assign idx_rsp_id[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
+    assign idx_rsp_id[i] =  (head_tail_q[i].id == match_rsp_id) && !head_tail_q[i].free;
+   // assign rsp_id_exists[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
   end
     
   assign no_in_id_match = !(|idx_matches_in_id);
   assign no_out_id_match = !(|idx_matches_out_id);
+  assign id_exists =  (|idx_rsp_id);
 
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
@@ -228,13 +229,6 @@ module write_guard #(
     assign linked_data_free[i] = linked_data_q[i].free;
   end
 
-  // more efficient to transverswe HT instead of LD
-  // Find Response ID exists or not to identidy unwanted txn
-  for (genvar i = 0; i < HtCapacity; i++) begin: gen_rsp_id_exists
-    assign rsp_id_exists[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
-  end
-  assign id_exists =  (|rsp_id_exists);
-
   lzc #(
     .WIDTH ( MaxWrTxns ),
     .MODE  ( 0        ) // Start at index 0.
@@ -251,6 +245,8 @@ module write_guard #(
   
   // Data can be accepted if the linked list pool is not full, or some da  ta is simultaneously.
   assign inp_gnt = ~full || oup_data_popped;
+  assign active_idx = w_fifo[rd_ptr_q];
+  assign rsp_id = slv_rsp_i.b.id;
 
   // To calculate the total burst lengths.
   logic [CntWidth-1:0] accum_burst_length;
@@ -263,36 +259,59 @@ module write_guard #(
       end
     end
   end
-
+  
   always_comb begin : proc_wr_queue
     match_in_id         = '0;
     match_out_id        = '0;
+    match_rsp_id        = '0;
+    //rsp_id              = '0;
     match_in_id_valid   = 1'b0;
     match_out_id_valid  = 1'b0;
+    //rsp_id_valid        = 1'b0;
     head_tail_d         = head_tail_q;
     linked_data_d       = linked_data_q;
-    oup_gnt             = 1'b0;
     oup_data_valid      = 1'b0;
     oup_data_popped     = 1'b0;
     oup_ht_popped       = 1'b0;
-    oup_id              = 1'b0;
+    oup_id              = '0;
     oup_req             = 1'b0;
     reset_req           = reset_req_q;
-    irq                 = irq_q; 
+    irq                 = '0; 
     wr_ptr_d            = wr_ptr_q;
     rd_ptr_d            = rd_ptr_q;
     fifo_full_d         = fifo_full_q;
     fifo_empty_d        = fifo_empty_q;
-    // hw2reg_o.latency_awvld_awrdy.d = hw2reg_o.latency_awvld_awrdy.q;
+    hw2reg_o.latency_awvld_awrdy.d = reg2hw_i.latency_awvld_awrdy.q;
+    hw2reg_o.latency_awvld_wfirst.d = reg2hw_i.latency_awvld_wfirst.q;
+    hw2reg_o.latency_wlast_bvld.d = reg2hw_i.latency_wlast_bvld.q;
+    hw2reg_o.latency_wlast_brdy.d = reg2hw_i.latency_wlast_brdy.q;
+    hw2reg_o.latency_awvld_awrdy.d = reg2hw_i.latency_awvld_awrdy.q;
+    hw2reg_o.latency_awvld_wfirst.d = reg2hw_i.latency_awvld_wfirst.q;
+    hw2reg_o.irq.w0.d = reg2hw_i.irq.w0.q;
+    hw2reg_o.irq.w1.d = reg2hw_i.irq.w1.q;
+    hw2reg_o.irq.w2.d = reg2hw_i.irq.w2.q;
+    hw2reg_o.irq.w3.d = reg2hw_i.irq.w3.q;
+    hw2reg_o.irq.w4.d = reg2hw_i.irq.w4.q;
+    hw2reg_o.irq.w5.d = reg2hw_i.irq.w5.q;
+    hw2reg_o.irq_addr.d = reg2hw_i.irq_addr.q;
+    hw2reg_o.reset.d = reg2hw_i.reset.q; 
+    hw2reg_o.irq.unwanted_txn.d = reg2hw_i.irq.unwanted_txn.q;
 
-    
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
-      awvld_wfirst_budget = budget_awvld_wvld * accum_burst_length; // to-do: if not the first one
+      awvld_wfirst_budget = budget_awvld_wvld * (accum_burst_length + mst_req_i.aw.len ); // to-do: if not the first one
       wfirst_wlast_budget = budget_wvld_wlast * mst_req_i.aw.len;
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
+              // When an AW request is accepted, index it into the FIFO. 
+    // This index refers to the slot in the linked data table where the transaction details are stored.
+      if ( slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo
+        w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
+        wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
+        fifo_empty_d = 0;
+        fifo_full_d = (rd_ptr_q == (wr_ptr_q + 1) % MaxWrTxns);
+      end
       if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
         head_tail_d[match_out_idx] = '{
           id: mst_req_i.aw.id,
@@ -405,120 +424,67 @@ module write_guard #(
       end
     end
     
-    // When an AW request is accepted, index it into the FIFO. 
-    // This index refers to the slot in the linked data table where the transaction details are stored.
-    if ( mst_req_i.aw_valid && slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo
-      w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
-      wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
-      fifo_empty_d = 0;
-      fifo_full_d = (rd_ptr_q == (wr_ptr_q + 1) % MaxWrTxns);
-    end
-
-    if (mst_req_i.w_valid && !fifo_empty_q) begin 
-      active_idx = w_fifo[rd_ptr_q]; // get the ld index from the fifo
-      case ( linked_data_d[active_idx].write_state )
-        WRITE_ADDRESS: begin 
-          linked_data_d[active_idx].write_state = WRITE_DATA;  // Transition state to handle W data
-        end
-        WRITE_DATA: begin
-          if (mst_req_i.w.last) begin
-            linked_data_d[active_idx].write_state = WRITE_RESPONSE;  // Transition to response state
-            rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
-            fifo_empty_d = (rd_ptr_q == wr_ptr_q);  // Check if FIFO is empty
-          end 
-        end
-      endcase 
-    end
-
-    // Dequeue 
-    if (oup_req) begin : proc_txn_dequeue
-      match_out_id = oup_id;
-      match_out_id_valid = 1'b1;
-      if (!no_out_id_match) begin
-        oup_data_valid = 1'b1;
-        oup_data_popped = 1;
-        // Set free bit of linked data entry, all other bits are don't care.
-        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
-        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
-        // If it is the last cell of this ID
-        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
-          oup_ht_popped = 1'b1;
-          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
-        end else begin
-          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
-        end
-      end 
-      // Always grant the output request.
-      oup_gnt = 1'b1;
-    end
-    
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
         case ( linked_data_q[i].write_state )
-          IDLE: begin
-              linked_data_d[i]           = '0;
-              linked_data_d[i].free      = 1'b1;
-          end
           WRITE_ADDRESS: begin
-            if ( mst_req_i.w_valid && !linked_data_q[i].timeout ) begin
-              hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
-              hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
-              // false w state, more of group state
-              //linked_data_d[i].write_state = WRITE_DATA;
-            end
-            if (linked_data_q[i].counters.cnt_awvalid_awready >= budget_awvld_awrdy) begin
+            if (linked_data_q[i].counters.cnt_awvalid_awready > budget_awvld_awrdy) begin
               linked_data_d[i].timeout = 1'b1;
+              oup_req  = 1;
+              oup_id = linked_data_q[i].metadata.id;
               // log timeout info into regs
               hw2reg_o.irq.w0.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1; 
-              // mst_rsp_o.b.resp = 2'b10; move to top
-              // general reset, irq 
               reset_req = 1'b1; 
               irq = 1'b1;
-              // dequeue 
-              oup_req  = 1;
-              oup_id = linked_data_q[i].metadata.id;
             end 
-            if(linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst <= 0 ) begin
+            if(linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst < 0 ) begin
               linked_data_d[i].timeout = 1'b1;
+              oup_req  = 1;
+              oup_id = linked_data_q[i].metadata.id; 
               hw2reg_o.irq.w1.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
               reset_req = 1'b1;
               irq = 1'b1;
-              oup_req  = 1;
-              oup_id = linked_data_q[i].metadata.id; 
+            end
+            if ( mst_req_i.w_valid && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+              hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
+              hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
+              // false w state, more of group state
+              linked_data_d[i].write_state = WRITE_DATA;
             end
           end
           WRITE_DATA: begin
-            if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
-              hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
-              hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
-              //linked_data_d[i].write_state = WRITE_RESPONSE;
-            end
-            if (linked_data_q[i].counters.cnt_wvalid_wready_first >= budget_wvld_wrdy) begin
+            if (linked_data_q[i].counters.cnt_wvalid_wready_first > budget_wvld_wrdy) begin
               linked_data_d[i].timeout = 1'b1;
+              oup_req  = 1;
+              oup_id = linked_data_q[i].metadata.id;
               hw2reg_o.irq.w2.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
               //mst_rsp_o.b.resp = 2'b10; move to top
               reset_req = 1'b1;
               irq = 1'b1;
-              oup_req  = 1;
-              oup_id = linked_data_q[i].metadata.id;
             end 
-            if (linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast <= 0) begin
+            if (linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast < 0) begin
               linked_data_d[i].timeout = 1'b1;
+              oup_req  = 1;
+              oup_id = linked_data_q[i].metadata.id; 
               hw2reg_o.irq.w3.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
               reset_req = 1'b1;
               irq = 1'b1;
-              oup_req  = 1;
-              oup_id = linked_data_q[i].metadata.id; 
+            end
+            if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
+              hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
+              hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
+              linked_data_d[i].write_state = WRITE_RESPONSE;
+              rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q); 
             end
           end
           // Timeout check, also handle txn dequeue in both faulty and fault-free case, plus id check
@@ -529,8 +495,8 @@ module write_guard #(
           // but in case of mismatch, we cannot dequeue it immediately,
           // first check if it is in ht, if yes, keep checking til there is a match as long as no timeout. if not in ht, report unwanted txn.
           WRITE_RESPONSE: begin
-            if ( linked_data_q[i].counters.cnt_wlast_bvalid >= budget_wlast_bvld ) begin
-              // linked_data_d[i].timeout = 1'b1;
+            if ( linked_data_q[i].counters.cnt_wlast_bvalid > budget_wlast_bvld ) begin
+              linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.w4.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
               hw2reg_o.reset.d = 1'b1;
@@ -540,7 +506,7 @@ module write_guard #(
               oup_req  = 1;
               oup_id = linked_data_q[i].metadata.id;  
             end
-            if ( linked_data_q[i].counters.cnt_wlast_bready >= budget_wlast_brdy) begin
+            if ( linked_data_q[i].counters.cnt_wlast_bready > budget_wlast_brdy) begin
               linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.w5.d = 1'b1;
               hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
@@ -553,15 +519,14 @@ module write_guard #(
 
             // handshake, id match and no timeout, successul completion
             // Check for the valid and readhy handshake
+
             if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout ) begin 
               if ( id_exists ) begin 
                 // if IDs match, successful completion. dequeue request and mark the match as found
-                if ( !linked_data_d[i].found_match) begin
-                  // if current txn is the head one of all txns of same id
-                  linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
-                end 
+                linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
+               
               end else begin 
-                hw2reg_o.irq.unwanted_txn.d = 1'b1;
+                hw2reg_o.irq.unwanted_txn.d = 'b1;
                 hw2reg_o.reset.d = 1'b1;
                 //mst_rsp_o.b.resp = 2'b10;
                 reset_req = 1'b1;
@@ -580,19 +545,47 @@ module write_guard #(
               end
             end
 
-            if (linked_data_d[i].found_match) begin
-              // successful 
-              oup_req = 1; 
-              oup_id = linked_data_q[i].metadata.id;
-              hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
-              hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
-            end 
+            if ( linked_data_q[i].found_match) begin
+                  oup_req = 1; 
+                  oup_id = linked_data_q[i].metadata.id;
+                  //$display("found match! oup_req = %0d, oup_id = %0d", oup_req, oup_id);
+                  hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
+                  hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
+        //           linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        // linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
+        // linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
+  
+            end
           end
+          default: begin
+            linked_data_d[i].write_state = WRITE_ADDRESS;
+          end
+
         endcase 
       end
     end
+      // Dequeue 
+    if (oup_req) begin : proc_txn_dequeue
+      match_out_id = oup_id;
+      match_out_id_valid = 1'b1;
+      if (!no_out_id_match) begin
+        oup_data_valid = 1'b1;
+        oup_data_popped = 1;
+        // Set free bit of linked data entry, all other bits are don't care.
+        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
+        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
+        $display("found match 3 valuel %d",linked_data_d[head_tail_q[match_out_idx].head].found_match );
+        // If it is the last cell of this ID
+        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
+          oup_ht_popped = 1'b1;
+          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
+        end else begin
+          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
+        end
+      end 
+    end
 
-    
   end
 
   // HT table registers
@@ -633,14 +626,19 @@ module write_guard #(
                 linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
               end
               // Counter 3: W Phase - W_VALID to W_LAST 
-              linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
+              if (!mst_req_i.w.last) begin
+                linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
               // Timeout check W state
+              end
             end
 
             WRITE_RESPONSE: begin
               // Counter 4: B Phase - W_LAST to B_VALID, handshake is checked, stop counting upon handshake
-              if(mst_req_i.b_ready && !slv_rsp_i.b_valid && !linked_data_q[i].found_match) begin
-              linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
+              if(mst_req_i.b_ready && !linked_data_q[i].found_match) begin
+                linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
+              end else if (mst_req_i.b_ready && slv_rsp_i.b_valid) begin
+              // Stop counting when handshake occurs
+                linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid;
               end
               //  Counter 5: B Phase - B_VALID to B_READY
               if(! mst_req_i.b_ready && !linked_data_q[i].found_match)
@@ -656,7 +654,6 @@ module write_guard #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       reset_req_q <= 1'b0;
-      irq_q <= '0;
       wr_ptr_q <= '0;
       rd_ptr_q <= '0;
       fifo_full_q <= '0;
@@ -668,16 +665,13 @@ module write_guard #(
       fifo_full_q <= fifo_full_d;
       if (reset_req) begin
         reset_req_q <= reset_req;
-        irq_q <= 1'b1;
       end else if (reset_clear_i) begin
         reset_req_q <= 1'b0;
-        irq_q <= 1'b0;
       end
     end
   end
 
   assign   reset_req_o = reset_req_q;
-  assign   irq_o = irq_q;
 
 // Validate parameters.
 `ifndef SYNTHESIS

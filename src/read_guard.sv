@@ -494,7 +494,9 @@ module read_guard #(
                 linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
               end
               // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
-              linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
+              if (linked_data_q[i].read_state == READ_ADDRESS) begin
+                linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
+              end
             end
         
             READ_DATA: begin

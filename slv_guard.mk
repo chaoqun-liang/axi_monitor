@@ -14,7 +14,10 @@ DUT      ?= slv_guard_top
 
 # Design and simulation variables
 SLV_ROOT      ?= $(shell $(BENDER) path slv_guard)
+REG_DIR       := $(shell $(BENDER) path register_interface)
 SLV_VSIM_DIR  := $(SLV_ROOT)/target/sim/vsim
+
+
 
 compile_script_synth ?= $(SLV_ROOT)/target/sim/vsim/synth_compile.tcl
 
@@ -73,5 +76,31 @@ slv-sim:
 #################################
 # Phonies (KEEP AT END OF FILE) #
 #################################
+
+## @section register generation
+.PHONY: regen_regs
+
+# Define SLV_ROOT if not already defined
+SLV_ROOT := /scratch/chaol/slave_unit/axi_monitor
+
+# Define the path to regtool.py
+REGTOOL ?= $(REG_DIR)/vendor/lowrisc_opentitan/util/regtool.py
+
+# Register generation targets
+REGEN_TARGETS := $(SLV_ROOT)/src/registers/slv_guard_reg_pkg.sv \
+                 $(SLV_ROOT)/src/registers/slv_guard_reg_top.sv \
+                 $(SLV_ROOT)/sw/include/regs/slv_guard_reg.h
+
+# Rule to generate .sv files
+$(SLV_ROOT)/src/registers/slv_guard_reg_pkg.sv $(SLV_ROOT)/src/registers/slv_guard_reg_top.sv: $(SLV_ROOT)/src/registers/slv_guard_regs.hjson
+	$(REGTOOL) -r -t $(SLV_ROOT)/src/registers $<
+
+# Rule to generate .h file
+$(SLV_ROOT)/sw/include/regs/slv_guard_reg.h: $(SLV_ROOT)/src/registers/slv_guard_regs.hjson
+	$(REGTOOL) -D -o $@ $<
+
+# Main target
+regen_regs: $(REGEN_TARGETS)
+
 
 .PHONY: slv-all slv-sim-init slv-build slv-sim 

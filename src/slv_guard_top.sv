@@ -140,9 +140,9 @@ module slv_guard_top #(
   );
 
   logic  wr_enqueue;
-  assign wr_enqueue = int_req.aw_valid;
+  assign wr_enqueue = rst_req ? 0 : int_req.aw_valid;
   logic  rd_enqueue;
-  assign rd_enqueue = int_req.ar_valid;
+  assign rd_enqueue = rst_req ? 0 : int_req.ar_valid;
   
   // Write
   assign int_req_wr.aw        =  int_req.aw;
@@ -211,15 +211,17 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  assign rst_req = rst_req_wr | rst_req_rd;
-  assign irq_o   =  read_irq  | write_irq;
+ // assign rst_req = rst_req_wr | rst_req_rd;
+ // assign irq_o   =  read_irq  | write_irq;
+  assign rst_req = rst_req_wr;
+  assign irq_o   =  read_irq;
   assign rst_req_o = rst_req;
 
   always_comb begin: proc_output_txn
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    if (rst_req) begin
+    if (guard_ena_i && rst_req) begin
       req_o = 'b0;
       int_rsp = 'b0;
     end

@@ -14,8 +14,8 @@
   registers: [
   { name:     "guard_enable"
     desc:     "Enable slave guard feature"
-    swaccess: "wo"
-    hwaccess: "hro"
+    swaccess: "rw"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "0:0", name: "enable", desc: "Enable slave guard feature" }
@@ -25,7 +25,7 @@
   { name:     "budget_awvld_awrdy"
     desc:     "time budget from awvld to awrdy"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_awvld_awrdy", desc: "time budget from awvld to awrdy" }
@@ -35,7 +35,7 @@
   { name:     "budget_awvld_wfirst"
     desc:     "time budget from awvld to wfirst"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_awvld_wfirst", desc: "time budget from awvld to wfirst" }
@@ -45,7 +45,7 @@
   { name:     "budget_wvld_wrdy"
     desc:     "time budget from wvld to wrdy"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_wvld_wrdy", desc: "time budget from wvld to wrdy" }
@@ -55,7 +55,7 @@
   { name:     "budget_wvld_wlast"
     desc:     "time budget from wvld to wlast"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_wvld_wlast", desc: "time budget from wvld to wlast" }
@@ -65,7 +65,7 @@
   { name:     "budget_wlast_bvld"
     desc:     "time budget from wlast to bvld"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_wlast_bvld", desc: "time budget from wlast to bvld" }
@@ -75,7 +75,7 @@
   { name:     "budget_wlast_brdy"
     desc:     "time budget from wlast to brdy"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_wlast_brdy", desc: "time budget from wlast to brdy" }
@@ -85,7 +85,7 @@
   { name:     "budget_arvld_arrdy"
     desc:     "time budget from arvld to arrdy"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_arvld_arrdy", desc: "time budget from arvld to arrdy" }
@@ -95,7 +95,7 @@
   { name:     "budget_arvld_rvld"
     desc:     "time budget from arvld to rvld"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_arvld_rvld", desc: "time budget from arvld to rvld" }
@@ -105,7 +105,7 @@
   { name:     "budget_rvld_rrdy"
     desc:     "time budget from rvld to rrdy"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "budget_rvld_rrdy", desc: "time budget from rvld to rrdy" }
@@ -115,26 +115,31 @@
   { name:     "budget_rvld_rlast"
     desc:     "time budget from rvld to rlast"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "9:0", name: "budget_rvld_rlast", desc: "time budget from rvld to rlast" }
+      { bits: "9:0", name: "budget_rvld_rlast", 
+        desc: "time budget from rvld to rlast" 
+      }
     ]
   },
    
   { name:     "reset"
     desc:     "Is the interface requested to be reset?"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
+    resval:   "0"
     fields: [
-      { bits: "0:0", name: "reset", desc: "Is the interface requested to be reset?" }
+      { bits: "0:0", name: "reset", 
+        desc: "Is the interface requested to be reset?"  
+      }
     ]
   },
 
   { name: "irq",
           desc: "interrpt cause and clear",
           swaccess: "rw",
-          hwaccess: "hwo",
+          hwaccess: "hrw",
           fields: [
               { bits: "0", name: "w0",
                 desc: "timeout at w0 phase AWVALID to AWREADY"
@@ -190,6 +195,7 @@
               },
               { bits: "24:13", name: "txn_id",
                 desc: "id of the transaction going wrong"
+                resval: "0"
               }
           ]
   },
@@ -197,7 +203,8 @@
   { name:     "irq_addr"
     desc:     "address of the transaction going wrong"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
+    resval:   "0"
     fields: [
       { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
     ]
@@ -207,7 +214,7 @@
   { name:     "latency_awvld_awrdy"
     desc:     "letency from awvld to awrdy"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_awvld_awrdy", desc: "latency from awvld to awrdy" }
@@ -217,7 +224,7 @@
   { name:     "latency_awvld_wfirst"
     desc:     "latency from awvld to wfirst"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_awvld_wfirst", desc: "latency from awvld to wfirst" }
@@ -227,7 +234,7 @@
   { name:     "latency_wvld_wrdy"
     desc:     "latency from wvld to wrdy"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_wvld_wrdy", desc: "latency from wvld to wrdy" }
@@ -237,7 +244,7 @@
   { name:     "latency_wvld_wlast"
     desc:     "latency from wvld to wlast"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_wvld_wlast", desc: "latency from wvld to wlast" }
@@ -247,7 +254,7 @@
   { name:     "latency_wlast_bvld"
     desc:     "latency from wlast to bvld"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_wlast_bvld", desc: "latency from wlast to bvld" }
@@ -257,7 +264,7 @@
   { name:     "latency_wlast_brdy"
     desc:     "latency from wlast to brdy"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_wlast_brdy", desc: "latency from wlast to brdy" }
@@ -267,7 +274,7 @@
   { name:     "latency_arvld_arrdy"
     desc:     "latency from arvld to arrdy"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_arvld_arrdy", desc: "latency from arvld to arrdy" }
@@ -277,7 +284,7 @@
   { name:     "latency_arvld_rvld"
     desc:     "latency from arvld to rvld"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_arvld_rvld", desc: "latency from arvld to rvld" }
@@ -287,7 +294,7 @@
   { name:     "latency_rvld_rrdy"
     desc:     "latency from rvld to rrdy"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_rvld_rrdy", desc: "latency from rvld to rrdy" }
@@ -297,7 +304,7 @@
   { name:     "latency_rvld_rlast"
     desc:     "latency from rvld to rlast"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_rvld_rlast", desc: "latency from rvld to rlast" }

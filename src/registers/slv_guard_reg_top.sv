@@ -68,6 +68,7 @@ module slv_guard_reg_top #(
   // Define SW related signals
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
+  logic guard_enable_qs;
   logic guard_enable_wd;
   logic guard_enable_we;
   logic [9:0] budget_awvld_awrdy_wd;
@@ -150,7 +151,7 @@ module slv_guard_reg_top #(
 
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("WO"),
+    .SWACCESS("RW"),
     .RESVAL  (1'h0)
   ) u_guard_enable (
     .clk_i   (clk_i    ),
@@ -161,14 +162,15 @@ module slv_guard_reg_top #(
     .wd     (guard_enable_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.guard_enable.de),
+    .d      (hw2reg.guard_enable.d ),
 
     // to internal hardware
     .qe     (),
     .q      (reg2hw.guard_enable.q ),
 
-    .qs     ()
+    // to register interface (read)
+    .qs     (guard_enable_qs)
   );
 
 
@@ -187,8 +189,8 @@ module slv_guard_reg_top #(
     .wd     (budget_awvld_awrdy_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_awvld_awrdy.de),
+    .d      (hw2reg.budget_awvld_awrdy.d ),
 
     // to internal hardware
     .qe     (),
@@ -213,8 +215,8 @@ module slv_guard_reg_top #(
     .wd     (budget_awvld_wfirst_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_awvld_wfirst.de),
+    .d      (hw2reg.budget_awvld_wfirst.d ),
 
     // to internal hardware
     .qe     (),
@@ -239,8 +241,8 @@ module slv_guard_reg_top #(
     .wd     (budget_wvld_wrdy_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_wvld_wrdy.de),
+    .d      (hw2reg.budget_wvld_wrdy.d ),
 
     // to internal hardware
     .qe     (),
@@ -265,8 +267,8 @@ module slv_guard_reg_top #(
     .wd     (budget_wvld_wlast_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_wvld_wlast.de),
+    .d      (hw2reg.budget_wvld_wlast.d ),
 
     // to internal hardware
     .qe     (),
@@ -291,8 +293,8 @@ module slv_guard_reg_top #(
     .wd     (budget_wlast_bvld_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_wlast_bvld.de),
+    .d      (hw2reg.budget_wlast_bvld.d ),
 
     // to internal hardware
     .qe     (),
@@ -317,8 +319,8 @@ module slv_guard_reg_top #(
     .wd     (budget_wlast_brdy_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_wlast_brdy.de),
+    .d      (hw2reg.budget_wlast_brdy.d ),
 
     // to internal hardware
     .qe     (),
@@ -343,8 +345,8 @@ module slv_guard_reg_top #(
     .wd     (budget_arvld_arrdy_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_arvld_arrdy.de),
+    .d      (hw2reg.budget_arvld_arrdy.d ),
 
     // to internal hardware
     .qe     (),
@@ -369,8 +371,8 @@ module slv_guard_reg_top #(
     .wd     (budget_arvld_rvld_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_arvld_rvld.de),
+    .d      (hw2reg.budget_arvld_rvld.d ),
 
     // to internal hardware
     .qe     (),
@@ -395,8 +397,8 @@ module slv_guard_reg_top #(
     .wd     (budget_rvld_rrdy_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_rvld_rrdy.de),
+    .d      (hw2reg.budget_rvld_rrdy.d ),
 
     // to internal hardware
     .qe     (),
@@ -421,8 +423,8 @@ module slv_guard_reg_top #(
     .wd     (budget_rvld_rlast_wd),
 
     // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
+    .de     (hw2reg.budget_rvld_rlast.de),
+    .d      (hw2reg.budget_rvld_rlast.d ),
 
     // to internal hardware
     .qe     (),
@@ -451,7 +453,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.reset.q ),
 
     // to register interface (read)
     .qs     (reset_qs)
@@ -479,7 +481,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w0.q ),
 
     // to register interface (read)
     .qs     (irq_w0_qs)
@@ -505,7 +507,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w1.q ),
 
     // to register interface (read)
     .qs     (irq_w1_qs)
@@ -531,7 +533,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w2.q ),
 
     // to register interface (read)
     .qs     (irq_w2_qs)
@@ -557,7 +559,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w3.q ),
 
     // to register interface (read)
     .qs     (irq_w3_qs)
@@ -583,7 +585,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w4.q ),
 
     // to register interface (read)
     .qs     (irq_w4_qs)
@@ -609,7 +611,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.w5.q ),
 
     // to register interface (read)
     .qs     (irq_w5_qs)
@@ -635,7 +637,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.r0.q ),
 
     // to register interface (read)
     .qs     (irq_r0_qs)
@@ -661,7 +663,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.r1.q ),
 
     // to register interface (read)
     .qs     (irq_r1_qs)
@@ -687,7 +689,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.r2.q ),
 
     // to register interface (read)
     .qs     (irq_r2_qs)
@@ -713,7 +715,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.r3.q ),
 
     // to register interface (read)
     .qs     (irq_r3_qs)
@@ -739,7 +741,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.mis_id_wr.q ),
 
     // to register interface (read)
     .qs     (irq_mis_id_wr_qs)
@@ -765,7 +767,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.mis_id_rd.q ),
 
     // to register interface (read)
     .qs     (irq_mis_id_rd_qs)
@@ -791,7 +793,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.unwanted_txn.q ),
 
     // to register interface (read)
     .qs     (irq_unwanted_txn_qs)
@@ -817,7 +819,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq.txn_id.q ),
 
     // to register interface (read)
     .qs     (irq_txn_id_qs)
@@ -843,7 +845,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.irq_addr.q ),
 
     // to register interface (read)
     .qs     (irq_addr_qs)
@@ -869,7 +871,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_awvld_awrdy.q ),
 
     // to register interface (read)
     .qs     (latency_awvld_awrdy_qs)
@@ -895,7 +897,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_awvld_wfirst.q ),
 
     // to register interface (read)
     .qs     (latency_awvld_wfirst_qs)
@@ -921,7 +923,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_wvld_wrdy.q ),
 
     // to register interface (read)
     .qs     (latency_wvld_wrdy_qs)
@@ -947,7 +949,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_wvld_wlast.q ),
 
     // to register interface (read)
     .qs     (latency_wvld_wlast_qs)
@@ -973,7 +975,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_wlast_bvld.q ),
 
     // to register interface (read)
     .qs     (latency_wlast_bvld_qs)
@@ -999,7 +1001,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_wlast_brdy.q ),
 
     // to register interface (read)
     .qs     (latency_wlast_brdy_qs)
@@ -1025,7 +1027,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_arvld_arrdy.q ),
 
     // to register interface (read)
     .qs     (latency_arvld_arrdy_qs)
@@ -1051,7 +1053,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_arvld_rvld.q ),
 
     // to register interface (read)
     .qs     (latency_arvld_rvld_qs)
@@ -1077,7 +1079,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_rvld_rrdy.q ),
 
     // to register interface (read)
     .qs     (latency_rvld_rrdy_qs)
@@ -1103,7 +1105,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (),
+    .q      (reg2hw.latency_rvld_rlast.q ),
 
     // to register interface (read)
     .qs     (latency_rvld_rlast_qs)
@@ -1252,7 +1254,7 @@ module slv_guard_reg_top #(
     reg_rdata_next = '0;
     unique case (1'b1)
       addr_hit[0]: begin
-        reg_rdata_next[0] = '0;
+        reg_rdata_next[0] = guard_enable_qs;
       end
 
       addr_hit[1]: begin
