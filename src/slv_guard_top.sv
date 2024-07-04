@@ -82,11 +82,12 @@ module slv_guard_top #(
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
   logic rst_req;
+  logic wr_enqueue, rd_enqueue;
 
   assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
   assign hw2reg.irq_addr = hw2reg_w.irq_addr | hw2reg_r.irq_addr;
   assign hw2reg.irq      = hw2reg_w.irq | hw2reg_r.irq;
-  
+
   assign reg2hw_w.budget_awvld_awrdy = reg2hw.budget_awvld_awrdy;
   assign reg2hw_w.budget_awvld_wfirst = reg2hw.budget_awvld_wfirst;
   assign reg2hw_w.budget_wvld_wrdy = reg2hw.budget_wvld_wrdy;
@@ -139,31 +140,32 @@ module slv_guard_top #(
     .mst_resp_i ( int_rsp  )
   );
 
-  logic  wr_enqueue;
-  assign wr_enqueue = rst_req ? 0 : int_req.aw_valid;
-  logic  rd_enqueue;
-  assign rd_enqueue = rst_req ? 0 : int_req.ar_valid;
-  
   // Write
-  assign int_req_wr.aw        =  int_req.aw;
-  assign int_req_wr.aw_valid  =  int_req.aw_valid;
-  assign int_req_wr.w         =  int_req.w;
-  assign int_req_wr.w_valid   =  int_req.w_valid;
-  assign int_req_wr.b_ready   =  int_req.b_ready;
-  // Read
-  assign int_req_rd.ar        =  int_req.ar;
-  assign int_req_rd.ar_valid  =  int_req.ar_valid;
-  assign int_req_rd.r_ready   =  int_req.r_ready;
+  always_comb begin
+    int_req_wr          = int_req;
+    int_req_wr.ar       = 0;
+    int_req_wr.ar_valid = 0;
+    int_req_wr.r_ready  = 0;
+    wr_rsp              = rsp_i;
+    wr_rsp.ar_ready     = 0;
+    wr_rsp.r            = 0;
+    wr_rsp.r_valid      = 0;
+  end
 
-  // Write
-  assign wr_rsp.aw_ready   =  rsp_i.aw_ready;
-  assign wr_rsp.w_ready    =  rsp_i.w_ready;
-  assign wr_rsp.b          =  rsp_i.b;
-  assign wr_rsp.b_valid    =  rsp_i.b_valid;
   // Read
-  assign rd_rsp.ar_ready   =  rsp_i.ar_ready;
-  assign rd_rsp.r          =  rsp_i.r;
-  assign rd_rsp.r_valid    =  rsp_i.r_valid;
+  always_comb begin
+    int_req_rd          = int_req;
+    int_req_rd.aw       = 0;
+    int_req_rd.aw_valid = 0;
+    int_req_rd.w        = 0;
+    int_req_rd.w_valid  = 0;
+    int_req_rd.b_ready  = 0;
+    rd_rsp              = rsp_i;
+    rd_rsp.aw_ready     = 0;
+    rd_rsp.w_ready      = 0;
+    rd_rsp.b            = 0;
+    rd_rsp.b_valid      = 0;
+  end
 
   write_guard #(
     .MaxUniqIds ( MaxUniqIds   ),
@@ -211,19 +213,23 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
- // assign rst_req = rst_req_wr | rst_req_rd;
- // assign irq_o   =  read_irq  | write_irq;
-  assign rst_req = rst_req_wr;
-  assign irq_o   =  read_irq;
+  assign rst_req = rst_req_wr | rst_req_rd;
+  assign irq_o   =  read_irq  | write_irq;
+  // assign rst_req = rst_req_wr;
+  // assign irq_o   =  write_irq;
   assign rst_req_o = rst_req;
 
   always_comb begin: proc_output_txn
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
+    wr_enqueue = int_req.aw_valid;
+    rd_enqueue = int_req.ar_valid;
     if (guard_ena_i && rst_req) begin
       req_o = 'b0;
       int_rsp = 'b0;
+      wr_enqueue = 'b0;
+      rd_enqueue = 'b0;
     end
   end
 

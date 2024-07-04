@@ -207,7 +207,7 @@ module tb_slv_guard #(
     .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
-) i_slv_guard (
+) i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
     .guard_ena_i (   1'b1         ),
@@ -273,7 +273,7 @@ module tb_slv_guard #(
     // budget from r_valid to r_ready
     reg_drv.send_write(32'h0000_0024, 32'h0000_000f, 4'hf, reg_error); 
     // budget from r_valid to r_last
-    reg_drv.send_write(32'h0000_0028, 32'h0000_000f, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0028, 32'h0000_0020, 4'hf, reg_error);
 
     repeat (5) @(posedge clk);
 
