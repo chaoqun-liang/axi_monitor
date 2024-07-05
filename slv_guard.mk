@@ -2,6 +2,8 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+# Authors:
+# - Chaoqun Liang <chaoqun.liang@unibo.it>
 
 BENDER   ?= bender
 PYTHON3  ?= python3
@@ -12,24 +14,23 @@ DUT      ?= slv_guard_top
 
 # Design and simulation variables
 SLV_ROOT      ?= $(shell $(BENDER) path slv_guard)
+REG_DIR       := $(shell $(BENDER) path register_interface)
 SLV_VSIM_DIR  := $(SLV_ROOT)/target/sim/vsim
+
+
 
 compile_script_synth ?= $(SLV_ROOT)/target/sim/vsim/synth_compile.tcl
 
 QUESTA_FLAGS := -permissive -suppress 3009 -suppress 8386 -error 7 +UVM_NO_RELNOTES
 #QUESTA_FLAGS :=
 ifdef DEBUG
-	VOPT_FLAGS := $(QUESTA_FLAGS) -voptargs=+acc
-	VSIM_FLAGS := $(QUESTA_FLAGS) -voptargs=+acc
+	VOPT_FLAGS := $(QUESTA_FLAGS) +acc
+	VSIM_FLAGS := $(QUESTA_FLAGS) +acc
 	RUN_AND_EXIT := log -r /*; run -all
 else
-	VOPT_FLAGS := $(QUESTA_FLAGS) +acc=p+$(TBENCH). +acc=np+$(DUT).
+	VOPT_FLAGS := $(QUESTA_FLAGS) +acc
 	VSIM_FLAGS := $(QUESTA_FLAGS) -c
 	RUN_AND_EXIT := run -all; exit
-endif
-
-ifeq ($(netlist_sim),1)
-	NETLIST := -t netlist_sim
 endif
 
 # Download bender
@@ -51,7 +52,7 @@ synth-ips:
 
 # Questasim
 $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl: Bender.yml
-	$(BENDER) script vsim -t rtl -t test -t sim $(NETLIST) \
+	$(BENDER) script vsim -t rtl -t test -t sim \
 	--vlog-arg="-svinputport=compat" \
 	--vlog-arg="-override_timescale 1ns/1ps" \
 	--vlog-arg="-suppress 2583" > $@
@@ -62,6 +63,9 @@ slv-sim-init: $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl
 slv-build: slv-sim-init
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl]"
 
+slv-build-ps: slv-sim-init
+	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl; source $(SLV_ROOT)/target/sim/vsim/test.tcl]"
+
 slv-sim:
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim $(VSIM_FLAGS) -do \
 		"set TESTBENCH $(TBENCH); \
@@ -70,7 +74,30 @@ slv-sim:
 		 $(RUN_AND_EXIT)"
 
 #################################
-# Phonies #
+# Phonies (KEEP AT END OF FILE) #
 #################################
+
+## @section register generation
+.PHONY: regen_regs
+
+# Define the path to regtool.py
+REGTOOL ?= $(REG_DIR)/vendor/lowrisc_opentitan/util/regtool.py
+
+# Register generation targets
+REGEN_TARGETS := $(SLV_ROOT)/src/registers/slv_guard_reg_pkg.sv \
+                 $(SLV_ROOT)/src/registers/slv_guard_reg_top.sv \
+                 $(SLV_ROOT)/sw/include/regs/slv_guard_reg.h
+
+# Rule to generate .sv files
+$(SLV_ROOT)/src/registers/slv_guard_reg_pkg.sv $(SLV_ROOT)/src/registers/slv_guard_reg_top.sv: $(SLV_ROOT)/src/registers/slv_guard_regs.hjson
+	$(REGTOOL) -r -t $(SLV_ROOT)/src/registers $<
+
+# Rule to generate .h file
+$(SLV_ROOT)/sw/include/regs/slv_guard_reg.h: $(SLV_ROOT)/src/registers/slv_guard_regs.hjson
+	$(REGTOOL) -D -o $@ $<
+
+# Main target
+regen_regs: $(REGEN_TARGETS)
+
 
 .PHONY: slv-all slv-sim-init slv-build slv-sim 
