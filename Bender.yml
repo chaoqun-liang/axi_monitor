@@ -27,12 +27,16 @@ sources:
       - src/write_guard.sv
       - src/read_guard.sv
       - src/id_remap.sv
-      - src/slv_guard_top.sv
+      - src/slv_guard_top.sv   
   
-  - target: monitor_synth
+  - target: any(monitor_synth, netlist_sim)
     files:
       - src/slv_pkg.sv
-      - src/monitor_wrap.sv    
+      - src/monitor_wrap.sv
+
+  - target: netlist_sim
+    files:
+      - /usr/pack/gf-12-kgf/arm/gf/12lpplus/sc7p5mcpp84_base_lvt_c14/r5p0/verilog/sc7p5mcpp84_12lpplus_base_lvt_c14.v
   
   - target: test
     files:
