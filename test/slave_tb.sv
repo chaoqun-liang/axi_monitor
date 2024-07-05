@@ -193,22 +193,21 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  //slv_guard_top #(
-  monitor_wrap #(
+  slv_guard_top #(
     .AddrWidth    ( TbAxiAddrWidth ),
     .DataWidth    ( TbAxiDataWidth ),
     .StrbWidth    ( AxiStrbWidth   ),
     .AxiIdWidth   ( TbAxiIdWidth   ),
     .AxiUserWidth ( TbAxiUserWidth ),
-    .MaxUniqIds   ( MaxUniqIds     ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
+    .MaxUniqIds   ( MaxUniqIds     ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
     .int_req_t    ( slv_req_t      ),
     .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
-) i_slv_guard (
+) i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
     .guard_ena_i (   1'b1         ),

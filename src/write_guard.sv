@@ -216,7 +216,7 @@ module write_guard #(
     oup_req             = 1'b0;
     irq                 = 1'b0; 
     reset_req           = reset_req_q;
-    hw2reg_o.irq.unwanted_txn.d = reg2hw_i.irq.unwanted_tx.q;
+    hw2reg_o.irq.unwanted_txn.d = reg2hw_i.irq.unwanted_txn.q;
     hw2reg_o.irq.txn_id.d       = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq_addr.d         = reg2hw_i.irq_addr.q;
     hw2reg_o.reset.d            = reg2hw_i.reset.q;
@@ -326,7 +326,7 @@ module write_guard #(
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free ) begin 
-        if (linked_data_q[i].counter > linked_data_q[i].txn_budget ) begin 
+        if (linked_data_q[i].counter < 0 ) begin 
           linked_data_d[i].timeout = 1'b1;
           reset_req = 1'b1;
           hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
@@ -407,7 +407,7 @@ module write_guard #(
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
           if (!linked_data_q[i].found_match && !linked_data_q[i].timeout) begin
-            linked_data_q[i].counter <= linked_data_q[i].counter + 1 ; // note: cannot do self-decrement due to buggy tool
+            linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do self-decrement due to buggy tool
           end
         end
       end
