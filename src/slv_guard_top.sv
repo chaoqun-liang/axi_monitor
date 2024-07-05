@@ -88,17 +88,17 @@ module slv_guard_top #(
   assign hw2reg.irq_addr = hw2reg_w.irq_addr | hw2reg_r.irq_addr;
   assign hw2reg.irq      = hw2reg_w.irq | hw2reg_r.irq;
 
-  assign reg2hw_w.budget_awvld_awrdy = reg2hw.budget_awvld_awrdy;
+  assign reg2hw_w.budget_awvld_awrdy  = reg2hw.budget_awvld_awrdy;
   assign reg2hw_w.budget_awvld_wfirst = reg2hw.budget_awvld_wfirst;
-  assign reg2hw_w.budget_wvld_wrdy = reg2hw.budget_wvld_wrdy;
-  assign reg2hw_w.budget_wvld_wlast = reg2hw.budget_wvld_wlast;
-  assign reg2hw_w.budget_wlast_bvld = reg2hw.budget_wlast_bvld;
-  assign reg2hw_w.budget_wlast_brdy = reg2hw.budget_wlast_brdy;
+  assign reg2hw_w.budget_wvld_wrdy    = reg2hw.budget_wvld_wrdy;
+  assign reg2hw_w.budget_wvld_wlast   = reg2hw.budget_wvld_wlast;
+  assign reg2hw_w.budget_wlast_bvld   = reg2hw.budget_wlast_bvld;
+  assign reg2hw_w.budget_wlast_brdy   = reg2hw.budget_wlast_brdy;
 
-  assign reg2hw_r.budget_arvld_arrdy = reg2hw.budget_arvld_arrdy;
-  assign reg2hw_r.budget_arvld_rvld = reg2hw.budget_arvld_rvld;
-  assign reg2hw_r.budget_rvld_rrdy = reg2hw.budget_rvld_rrdy;
-  assign reg2hw_r.budget_rvld_rlast = reg2hw.budget_rvld_rlast;
+  assign reg2hw_r.budget_arvld_arrdy  = reg2hw.budget_arvld_arrdy;
+  assign reg2hw_r.budget_arvld_rvld   = reg2hw.budget_arvld_rvld;
+  assign reg2hw_r.budget_rvld_rrdy    = reg2hw.budget_rvld_rrdy;
+  assign reg2hw_r.budget_rvld_rlast   = reg2hw.budget_rvld_rlast;
   
   // min internal width
   localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
@@ -215,8 +215,6 @@ module slv_guard_top #(
   
   assign rst_req = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;
-  // assign rst_req = rst_req_wr;
-  // assign irq_o   =  write_irq;
   assign rst_req_o = rst_req;
 
   always_comb begin: proc_output_txn

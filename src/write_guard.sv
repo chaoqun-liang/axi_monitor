@@ -508,6 +508,7 @@ module write_guard #(
             if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout ) begin 
               if ( id_exists ) begin 
                 // if IDs match, successful completion. dequeue request and mark the match as found
+                // also make sure it is the first txn of the same id
                 linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
               end else begin 
                 hw2reg_o.irq.unwanted_txn.d = 'b1;
@@ -600,7 +601,7 @@ module write_guard #(
             WRITE_ADDRESS: begin
               // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
               if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready) begin
-                linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do auto-increment
+                linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do self-increment
               end
               // Counter 1: AW Phase - AW_VALID to W_VALID (first data) 
               linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;

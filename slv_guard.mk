@@ -80,9 +80,6 @@ slv-sim:
 ## @section register generation
 .PHONY: regen_regs
 
-# Define SLV_ROOT if not already defined
-SLV_ROOT := /scratch/chaol/slave_unit/axi_monitor
-
 # Define the path to regtool.py
 REGTOOL ?= $(REG_DIR)/vendor/lowrisc_opentitan/util/regtool.py
 
