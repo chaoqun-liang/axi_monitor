@@ -193,7 +193,8 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  slv_guard_top #(
+  //slv_guard_top #(
+  monitor_wrap #(
     .AddrWidth    ( TbAxiAddrWidth ),
     .DataWidth    ( TbAxiDataWidth ),
     .StrbWidth    ( AxiStrbWidth   ),
