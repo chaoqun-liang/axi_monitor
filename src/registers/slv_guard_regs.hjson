@@ -15,7 +15,7 @@
   { name:     "guard_enable"
     desc:     "Enable slave guard feature"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "0:0", name: "enable", desc: "Enable slave guard feature" }
@@ -25,7 +25,7 @@
   { name:     "budget_write"
     desc:     "time budget for one write transaction"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "19:0", name: "budget_write", desc: "time budget for one write transaction" }
@@ -35,7 +35,7 @@
   { name:     "budget_read"
     desc:     "time budget for one read transaction"
     swaccess: "wo"
-    hwaccess: "hro"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "19:0", name: "budget_read", desc: "time budget for one read transaction" }
@@ -45,7 +45,7 @@
   { name:     "reset"
     desc:     "Is the interface requested to be reset?"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     fields: [
       { bits: "0:0", name: "reset", desc: "Is the interface requested to be reset?" }
     ]
@@ -54,7 +54,7 @@
   { name: "irq",
           desc: "interrpt cause and clear",
           swaccess: "rw",
-          hwaccess: "hwo",
+          hwaccess: "hrw",
           fields: [
               { bits: "0", name: "write",
                 desc: "write timeout"
@@ -85,7 +85,7 @@
   { name:     "irq_addr"
     desc:     "address of the transaction going wrong"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     fields: [
       { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
     ]
@@ -95,7 +95,7 @@
   { name:     "latency_write"
     desc:     "letency of one write txn"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_write", desc: "latency of one write" }
@@ -105,7 +105,7 @@
   { name:     "latency_read"
     desc:     "latency of one read txn"
     swaccess: "ro"
-    hwaccess: "hwo"
+    hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "9:0", name: "latency_awvld_wfirst", desc: "latency of one read" }

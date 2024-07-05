@@ -12,11 +12,11 @@ module id_remap #(
   parameter int unsigned AxiMaxTxnsPerId = 32'd0,
   parameter int unsigned AxiMstPortIdWidth = 32'd0,
   /// Request struct type of the AXI4+ATOP slave port.
-  parameter type slv_req_t = logic,
+  parameter type slv_req_t  = logic,
   /// Response struct type of the AXI4+ATOP slave port.
   parameter type slv_resp_t = logic,
   /// Request struct type of the AXI4+ATOP master port
-  parameter type mst_req_t = logic,
+  parameter type mst_req_t  = logic,
   /// Response struct type of the AXI4+ATOP master port
   parameter type mst_resp_t = logic
 ) (
