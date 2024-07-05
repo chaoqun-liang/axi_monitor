@@ -21,12 +21,14 @@ module slv_guard_top #(
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
   parameter int unsigned CntWidth      = 10,
-  /// Subordinate request type
+  /// Master request type
   parameter type req_t                 = logic, 
+  /// Master response type
+  parameter type rsp_t                 = logic,
+  /// Subordinate request type 
+  parameter type int_req_t             = logic, 
   /// Subordinate response type
-  parameter type rsp_t                 = logic, 
-  parameter type int_req_t             = logic,
-  parameter type int_rsp_t             = logic,
+  parameter type int_rsp_t             = logic, 
   /// Configuration register bus request type
   parameter type reg_req_t             = logic,
   /// Configuration register bus response type
@@ -79,6 +81,7 @@ module slv_guard_top #(
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
   logic rst_req;
+  logic wr_enqueue, rd_enqueue;
 
   assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
   assign hw2reg.irq_addr = hw2reg_w.irq_addr | hw2reg_r.irq_addr;
@@ -103,8 +106,6 @@ module slv_guard_top #(
   `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
   `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
   `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
-  // `AXI_TYPEDEF_REQ_T(int_req_t, int_aw_t, w_t, int_ar_t);
-  // `AXI_TYPEDEF_RESP_T(int_rsp_t, int_b_t, int_r_t );
 
   /// Intermediate AXI channel
   int_req_t  int_req, int_req_wr, int_req_rd;
@@ -129,36 +130,33 @@ module slv_guard_top #(
     .mst_resp_i ( int_rsp  )
   );
 
-  logic  wr_enqueue;
-  assign wr_enqueue = int_req.aw_valid;
-  logic  rd_enqueue;
-  assign rd_enqueue = int_req.ar_valid;
-  
   // Write
-  assign int_req_wr.aw        =  int_req.aw;
-  assign int_req_wr.aw_valid  =  int_req.aw_valid;
-  assign int_req_wr.w         =  int_req.w;
-  assign int_req_wr.w_valid   =  int_req.w_valid;
-  assign int_req_wr.b_ready   =  int_req.b_ready;
-  // Read
-  assign int_req_rd.ar        =  int_req.ar;
-  assign int_req_rd.ar_valid  =  int_req.ar_valid;
-  assign int_req_rd.r_ready   =  int_req.r_ready;
+  always_comb begin
+    int_req_wr          = int_req;
+    int_req_wr.ar       = 0;
+    int_req_wr.ar_valid = 0;
+    int_req_wr.r_ready  = 0;
+    wr_rsp              = rsp_i;
+    wr_rsp.ar_ready     = 0;
+    wr_rsp.r            = 0;
+    wr_rsp.r_valid      = 0;
+  end
 
-  // Write
-  assign wr_rsp.aw_ready   =  rsp_i.aw_ready;
-  assign wr_rsp.w_ready    =  rsp_i.w_ready;
-  assign wr_rsp.b          =  rsp_i.b;
-  assign wr_rsp.b_valid    =  rsp_i.b_valid;
   // Read
-  assign rd_rsp.ar_ready   =  rsp_i.ar_ready;
-  assign rd_rsp.r          =  rsp_i.r;
-  assign rd_rsp.r_valid    =  rsp_i.r_valid;
+  always_comb begin
+    int_req_rd          = int_req;
+    int_req_rd.aw       = 0;
+    int_req_rd.aw_valid = 0;
+    int_req_rd.w        = 0;
+    int_req_rd.w_valid  = 0;
+    int_req_rd.b_ready  = 0;
+    rd_rsp              = rsp_i;
+    rd_rsp.aw_ready     = 0;
+    rd_rsp.w_ready      = 0;
+    rd_rsp.b            = 0;
+    rd_rsp.b_valid      = 0;
+  end
 
-  assign rst_req = rst_req_wr | rst_req_rd;
-  assign irq_o   =  read_irq  | write_irq;
-  assign rst_req_o = rst_req;
-  
   write_guard #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxWrTxns  ( MaxTxns    ), // total writes
@@ -200,17 +198,26 @@ module slv_guard_top #(
     .slv_rsp_i    ( rd_rsp       ),                                                                               
     .reset_req_o  ( rst_req_rd   ),
     .irq_o        ( read_irq     ),
+    .reset_clear_i( rst_stat_i   ),
     .reg2hw_i     ( reg2hw_r     ),
     .hw2reg_o     ( hw2reg_r     )
   );
+  
+  assign rst_req = rst_req_wr | rst_req_rd;
+  assign irq_o   =  read_irq  | write_irq;
+  assign rst_req_o = rst_req;
   
   always_comb begin: proc_output_txn
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
+    rd_enqueue = int_req.ar_valid;
+    wr_enqueue = int_req.aw_valid;
     if ( guard_ena_i && rst_req) begin
       req_o = 'b0;
       int_rsp = 'b0;
+      wr_enqueue = 'b0;
+      rd_enqueue = 'b0;
     end
   end
 
