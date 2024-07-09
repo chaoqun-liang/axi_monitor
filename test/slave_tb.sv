@@ -193,7 +193,7 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  slv_guard_top #(
+  monitor_wrap #(
     .AddrWidth    ( TbAxiAddrWidth ),
     .DataWidth    ( TbAxiDataWidth ),
     .StrbWidth    ( AxiStrbWidth   ),
@@ -207,7 +207,7 @@ module tb_slv_guard #(
     .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
-) i_slv_guard_top (
+) i_monitor_wrap (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
     .guard_ena_i (   1'b1         ),

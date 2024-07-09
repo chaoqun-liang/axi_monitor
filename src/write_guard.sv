@@ -103,17 +103,17 @@ module write_guard #(
   // Transaction counter type def
   typedef struct packed {
     // AWVALID to AWREADY
-    logic [CntWidth -1:0] cnt_awvalid_awready; 
+    cnt_t cnt_awvalid_awready; 
     // AWVALID to WFIRST
-    logic [CntWidth -1:0] cnt_awvalid_wfirst; 
+    cnt_t cnt_awvalid_wfirst; 
     // WVALID to WREADY of WFIRST 
-    logic [CntWidth -1:0] cnt_wvalid_wready_first; 
+    cnt_t cnt_wvalid_wready_first; 
     // WFIRST to WLAST
-    logic [CntWidth -1:0] cnt_wfirst_wlast;  
+    cnt_t cnt_wfirst_wlast;  
     // WLAST to BVALID  
-    logic [CntWidth -1:0] cnt_wlast_bvalid;  
+    cnt_t cnt_wlast_bvalid;  
     // WLAST to BREADY  
-    logic [CntWidth  -1:0] cnt_wlast_bready;   
+    cnt_t cnt_wlast_bready;   
   } write_cnters_t;
 
   // FSM per each transaction
@@ -273,7 +273,7 @@ module write_guard #(
     accum_burst_length = 0;
     for (int i = 0; i < MaxWrTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += linked_data_q[i].metadata.len;
+        accum_burst_length += ( linked_data_q[i].metadata.len + 1 );
       end
     end
   end
@@ -317,13 +317,13 @@ module write_guard #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
-      awvld_wfirst_budget = budget_awvld_wvld * (accum_burst_length + mst_req_i.aw.len ); // to-do: if not the first txn in ld, use w_fifo
-      wfirst_wlast_budget = budget_wvld_wlast * mst_req_i.aw.len;
+      awvld_wfirst_budget = budget_awvld_wvld * ( accum_burst_length + mst_req_i.aw.len + 1); // to-do: if not the first txn in ld, use w_fifo
+      wfirst_wlast_budget = budget_wvld_wlast * ( mst_req_i.aw.len + 1 );
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       // When an AW request is accepted, index it into the FIFO. 
       // This index refers to the slot in the linked data table where the transaction details are stored.
-      if ( slv_rsp_i.aw_ready && !fifo_full_q) begin: proc_w_fifo
+      if (mst_req_i.aw_valid && !fifo_full_q) begin: proc_w_fifo
         w_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
         wr_ptr_d = (wr_ptr_q + 1) % MaxWrTxns;//circular buffer
         fifo_empty_d = 0;
@@ -463,7 +463,18 @@ module write_guard #(
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               // false w state, more of group state
               linked_data_d[i].write_state = WRITE_DATA;
-            end
+            end 
+            // one transfer burst can have w_valid and w_last in the same cycle
+            if ( (mst_req_i.w_valid && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+              hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
+              hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
+              hw2reg_o.latency_wvld_wrdy.d = 0;
+              hw2reg_o.latency_wvld_wlast.d = 0;
+              // false w state, more of group state
+              linked_data_d[i].write_state = WRITE_RESPONSE;
+              rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q); 
+            end 
           end
 
           WRITE_DATA: begin
@@ -529,7 +540,7 @@ module write_guard #(
           end
 
           default: begin
-            linked_data_d[i].write_state = WRITE_ADDRESS;
+            linked_data_d[i].write_state = IDLE;
           end
         endcase 
         if(linked_data_q[i].timeout) begin

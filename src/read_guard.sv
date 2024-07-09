@@ -90,13 +90,13 @@ module read_guard #(
   // Transaction counter type def
   typedef struct packed {
     // ARVALID to ARREADY
-    logic [CntWidth -1:0] cnt_arvalid_arready; 
+    cnt_t cnt_arvalid_arready; 
     // ARVALID to RVALID
-    logic [CntWidth -1:0] cnt_arvalid_rfirst;  
+    cnt_t cnt_arvalid_rfirst;  
     // RVALID to RREADY
-    logic [CntWidth -1:0] cnt_rvalid_rready_first; 
+    cnt_t cnt_rvalid_rready_first; 
     // RVALID to RLAST
-    logic [CntWidth -1:0] cnt_rfirst_rlast;   
+    cnt_t cnt_rfirst_rlast;   
   } read_cnters_t;
 
   // FSM state of each transaction
@@ -119,7 +119,16 @@ module read_guard #(
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
-  
+   
+  // R fifo
+  localparam int unsigned PtrWidth = $clog2(MaxRdTxns);
+  // FIFO storage for transaction indices 
+  logic [LdIdxWidth-1:0] r_fifo [MaxRdTxns]; 
+  // Write and read pointers
+  logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
+  // Status signals
+  logic fifo_full_d, fifo_full_q, fifo_empty_d, fifo_empty_q;
+
   // Head tail table entry
   head_tail_t [HtCapacity-1:0]    head_tail_d,    head_tail_q;
     
@@ -148,7 +157,8 @@ module read_guard #(
                                   rsp_idx;
 
   ld_idx_t                        linked_data_free_idx,
-                                  oup_data_free_idx;
+                                  oup_data_free_idx,
+                                  active_idx;
 
   logic                           oup_data_valid,                    
                                   oup_data_popped,
@@ -227,14 +237,16 @@ module read_guard #(
 
   // Data can be accepted if the linked list pool is not full, or some data is simultaneously.
   assign inp_gnt = ~full || oup_data_popped;
-  
+  assign active_idx = r_fifo[rd_ptr_q];
+
   // To calculate the total burst lengths of all txns prior at time of request acceptance
   logic [CntWidth-1:0] accum_burst_length;
   always_comb begin: proc_accum_length
     accum_burst_length = 0;
     for (int i = 0; i < MaxRdTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += linked_data_q[i].metadata.len;
+        // total number of transfers in a transaction,encoded as: Length = AxLEN + 1
+        accum_burst_length += (linked_data_q[i].metadata.len + 1);
       end
     end
   end
@@ -252,6 +264,10 @@ module read_guard #(
     oup_id              =  'b0;
     oup_req             = 1'b0;
     irq                 = 0; 
+    wr_ptr_d            = wr_ptr_q;
+    rd_ptr_d            = rd_ptr_q;
+    fifo_full_d         = fifo_full_q;
+    fifo_empty_d        = fifo_empty_q;
     reset_req           = reset_req_q;
     hw2reg_o.latency_arvld_arrdy.d = reg2hw_i.latency_arvld_arrdy.q;
     hw2reg_o.latency_arvld_rvld.d  = reg2hw_i.latency_arvld_rvld.q;
@@ -278,7 +294,13 @@ module read_guard #(
     if (rd_en_i && inp_gnt ) begin : proc_enqueue
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
-      rvalid_rlast_budget = budget_rvld_rlast * ( accum_burst_length + mst_req_i.ar.len );
+      rvalid_rlast_budget = budget_rvld_rlast * ( accum_burst_length + mst_req_i.ar.len + 1 );
+      if ( mst_req_i.ar_valid && !fifo_full_q) begin: proc_r_fifo
+        r_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
+        wr_ptr_d = (wr_ptr_q + 1) % MaxRdTxns;//circular buffer
+        fifo_empty_d = 0;
+        fifo_full_d = (rd_ptr_q == (wr_ptr_q + 1) % MaxRdTxns);
+      end
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       if (oup_ht_popped && (oup_id == mst_req_i.ar.id)) begin
@@ -402,22 +424,50 @@ module read_guard #(
               reset_req = 1'b1;
               hw2reg_o.irq.r1.d = 1'b1; 
             end
-            if ( slv_rsp_i.r_valid && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ) begin
+            if ( slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
               linked_data_d[i].read_state = READ_DATA;
+              rd_ptr_d = (rd_ptr_q + 1)% MaxRdTxns;  // Update read pointer after last W data
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q);
+            end
+            // for bursts of single transfer, r_valid and r_last asserted at the same cycle
+            if ( slv_rsp_i.r_valid && mst_req_i.r_ready && slv_rsp_i.r.last && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+              // if no match, keep comparing
+              if( id_exists ) begin
+                linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
+              end else begin
+                hw2reg_o.irq.unwanted_txn.d = 1'b1;
+                hw2reg_o.reset.d = 1'b1;
+                reset_req = 1'b1;
+                irq = 1'b1;
+              end 
+            end
+            if ( linked_data_q[i].found_match) begin
+              oup_req = 1; 
+              oup_id = linked_data_q[i].metadata.id;
+              hw2reg_o.latency_rvld_rrdy.d = 0;
+              hw2reg_o.latency_rvld_rlast.d = 0;
+              hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
+              hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
+              linked_data_d[i].read_state = IDLE;
+              rd_ptr_d = (rd_ptr_q + 1)% MaxRdTxns;  // Update read pointer after last W data
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q);
             end
           end
+
           READ_DATA: begin
             if ( linked_data_q[i].counters.cnt_rvalid_rready_first > budget_rvld_rrdy ) begin
               linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.r2.d = 1'b1;
               reset_req = 1'b1; 
+              irq = 1'b1;
             end
             if ( linked_data_q[i].counters.cnt_rfirst_rlast > linked_data_q[i].r3_budget) begin
               linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.r3.d = 1'b1;
               reset_req = 1'b1;
+              irq = 1'b1;
             end
             // handshake, id match and no timeout, successful completion
             if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout) begin
@@ -441,7 +491,7 @@ module read_guard #(
           end
 
           default: begin
-            linked_data_d[i].read_state = READ_ADDRESS;
+            linked_data_d[i].read_state = IDLE;
           end
         endcase
         if( linked_data_q[i].timeout ) begin 
@@ -533,8 +583,16 @@ module read_guard #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      reset_req_q <= 1'b0;   
+      reset_req_q <= 1'b0; 
+      wr_ptr_q  <= '0;
+      rd_ptr_q  <= '0;
+      fifo_full_q  <= '0;
+      fifo_empty_q  <= '0;  
     end else begin
+      wr_ptr_q <= wr_ptr_d;
+      rd_ptr_q <= rd_ptr_d;
+      fifo_empty_q <= fifo_empty_d;
+      fifo_full_q <= fifo_full_d;
       if (reset_req) begin
         reset_req_q <= reset_req;
       end else if (reset_clear_i) begin
