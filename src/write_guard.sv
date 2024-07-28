@@ -10,6 +10,8 @@ module write_guard #(
   parameter int unsigned MaxWrTxns   = 0,
   // Counter width 
   parameter int unsigned CntWidth    = 0,
+  // Counter width for HS counters
+  parameter int unsigned HsCntWidth = 0,
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -56,30 +58,31 @@ module write_guard #(
   assign hw2reg_o.latency_wvld_wrdy.de = 1'b1; 
   assign hw2reg_o.latency_wvld_wlast.de = 1'b1;
   assign hw2reg_o.latency_wlast_bvld.de = 1'b1;
-  assign hw2reg_o.latency_wlast_brdy.de = 1'b1;
+  assign hw2reg_o.latency_bvld_brdy.de = 1'b1;
   
   // Counter type based on used-defined counter width
   typedef logic [CntWidth-1:0] cnt_t;
+  typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
   // Budget time from aw_valid to aw_ready
-  cnt_t  budget_awvld_awrdy;
+  hs_cnt_t  budget_awvld_awrdy;
   // Budget time from aw_valid to w_valid (w_first)
   cnt_t  budget_awvld_wvld;
   // Budget time from w_valid to w_ready (of w_first)
-  cnt_t  budget_wvld_wrdy;
+  hs_cnt_t  budget_wvld_wrdy;
   // Budget time from w_valid to w_last (w_first to w_last)
   cnt_t  budget_wvld_wlast;
   // Budget time from w_last to b_valid
-  cnt_t  budget_wlast_bvld;
+  hs_cnt_t  budget_wlast_bvld;
   // Budget time from w_last to b_ready
-  cnt_t  budget_wlast_brdy;
+  hs_cnt_t  budget_bvld_brdy;
 
   assign budget_awvld_awrdy = reg2hw_i.budget_awvld_awrdy.q;
-  assign budget_awvld_wvld  = reg2hw_i.budget_awvld_wfirst.q;
+  assign budget_awvld_wvld  = reg2hw_i.unit_budget_w.q;
   assign budget_wvld_wrdy   = reg2hw_i.budget_wvld_wrdy.q;
-  assign budget_wvld_wlast  = reg2hw_i.budget_wvld_wlast.q;
+  assign budget_wvld_wlast  = reg2hw_i.unit_budget_w.q;
   assign budget_wlast_bvld  = reg2hw_i.budget_wlast_bvld.q;
-  assign budget_wlast_brdy  = reg2hw_i.budget_wlast_brdy.q;
+  assign budget_bvld_brdy   = reg2hw_i.budget_bvld_brdy.q;
 
   // Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxWrTxns) ? MaxUniqIds : MaxWrTxns;
@@ -103,17 +106,17 @@ module write_guard #(
   // Transaction counter type def
   typedef struct packed {
     // AWVALID to AWREADY
-    cnt_t cnt_awvalid_awready; 
+    hs_cnt_t cnt_awvalid_awready; 
     // AWVALID to WFIRST
     cnt_t cnt_awvalid_wfirst; 
     // WVALID to WREADY of WFIRST 
-    cnt_t cnt_wvalid_wready_first; 
+    hs_cnt_t cnt_wvalid_wready_first; 
     // WFIRST to WLAST
     cnt_t cnt_wfirst_wlast;  
     // WLAST to BVALID  
-    cnt_t cnt_wlast_bvalid;  
+    hs_cnt_t cnt_wlast_bvalid;  
     // WLAST to BREADY  
-    cnt_t cnt_wlast_bready;   
+    hs_cnt_t cnt_bvalid_bready;   
   } write_cnters_t;
 
   // FSM per each transaction
@@ -128,8 +131,6 @@ module write_guard #(
   typedef struct packed {
     // Txn meta info, put AW channel info  
     aw_chan_t       metadata;
-    // Timeout ? can be triggered by any stage monitored
-    logic           timeout;
     // AW, W, B or IDLE(after dequeue)
     write_state_t   write_state;
     // Six counters per each write txn
@@ -140,8 +141,9 @@ module write_guard #(
     // W_VALID to W_LAST (W_FIRST to W_LAST)
     cnt_t           w3_budget;
     // Response ID matches request ID?
-    logic           found_match; 
-    // Next pointer
+    logic           found_match;
+    logic           timeout;
+    // Next pointer in LD table
     ld_idx_t        next;
     // Is this LD entry occupied by any txn?
     logic           free;
@@ -193,7 +195,7 @@ module write_guard #(
   
   logic                           reset_req, reset_req_q,                        
                                   id_exists,
-                                  oup_req,
+                                  oup_req,timeout,
                                   irq;
 
   cnt_t                           awvld_wfirst_budget,
@@ -277,7 +279,7 @@ module write_guard #(
       end
     end
   end
-  
+
   always_comb begin : proc_wr_queue
     match_in_id         = '0;
     match_out_id        = '0;
@@ -288,9 +290,10 @@ module write_guard #(
     oup_data_valid      = 1'b0;
     oup_data_popped     = 1'b0;
     oup_ht_popped       = 1'b0;
-    oup_id              = '0;
     oup_req             = 1'b0;
+    oup_id              = '0;
     irq                 = '0; 
+    timeout             = '0;
     reset_req           = reset_req_q;
     wr_ptr_d            = wr_ptr_q;
     rd_ptr_d            = rd_ptr_q;
@@ -299,7 +302,7 @@ module write_guard #(
     hw2reg_o.latency_awvld_awrdy.d  = reg2hw_i.latency_awvld_awrdy.q;
     hw2reg_o.latency_awvld_wfirst.d = reg2hw_i.latency_awvld_wfirst.q;
     hw2reg_o.latency_wlast_bvld.d   = reg2hw_i.latency_wlast_bvld.q;
-    hw2reg_o.latency_wlast_brdy.d   = reg2hw_i.latency_wlast_brdy.q;
+    hw2reg_o.latency_bvld_brdy.d    = reg2hw_i.latency_bvld_brdy.q;
     hw2reg_o.latency_awvld_awrdy.d  = reg2hw_i.latency_awvld_awrdy.q;
     hw2reg_o.latency_awvld_wfirst.d = reg2hw_i.latency_awvld_wfirst.q;
     hw2reg_o.irq.w0.d               = reg2hw_i.irq.w0.q;
@@ -338,12 +341,12 @@ module write_guard #(
         };
         linked_data_d[oup_data_free_idx] = '{
           metadata: mst_req_i.aw,
-          timeout: 0,
           write_state: WRITE_ADDRESS,
           counters: 0,
           w1_budget: awvld_wfirst_budget,
           w3_budget: wfirst_wlast_budget,
           found_match: 0,
+          timeout: 0,
           next: '0,
           free: 1'b0
         };
@@ -359,12 +362,12 @@ module write_guard #(
           };
           linked_data_d[oup_data_free_idx] = '{
             metadata: mst_req_i.aw,
-            timeout: 0,
             write_state: WRITE_ADDRESS,
             counters: 0,
             w1_budget: awvld_wfirst_budget,
             w3_budget: wfirst_wlast_budget,
             found_match: 0,
+            timeout: 0,
             next: '0,
             free: 1'b0
             };
@@ -378,12 +381,12 @@ module write_guard #(
             };
             linked_data_d[oup_data_free_idx] = '{
               metadata: mst_req_i.aw,
-              timeout: 0,
               write_state: WRITE_ADDRESS,
               counters: 0,
               w1_budget: awvld_wfirst_budget,
               w3_budget: wfirst_wlast_budget,
               found_match: 0,
+              timeout: 0,
               next: '0,
               free: 1'b0
             };
@@ -396,12 +399,12 @@ module write_guard #(
             };
             linked_data_d[linked_data_free_idx] = '{
               metadata: mst_req_i.aw,
-              timeout: 0,
               write_state: WRITE_ADDRESS,
               counters: 0,
               w1_budget: awvld_wfirst_budget,
               w3_budget: wfirst_wlast_budget,
               found_match: 0,
+              timeout: 0,
               next: '0,
               free: 1'b0
             };
@@ -414,12 +417,12 @@ module write_guard #(
           head_tail_d[match_in_idx].tail = oup_data_free_idx;
           linked_data_d[oup_data_free_idx] = '{
             metadata: mst_req_i.aw,
-            timeout: 0,
             write_state: WRITE_ADDRESS,
             counters: 0,
             w1_budget: awvld_wfirst_budget,
             w3_budget: wfirst_wlast_budget,
             found_match: 0,
+            timeout: 0,
             next: '0,
             free: 1'b0
           };
@@ -428,12 +431,12 @@ module write_guard #(
           head_tail_d[match_in_idx].tail = linked_data_free_idx;
           linked_data_d[linked_data_free_idx] = '{
             metadata: mst_req_i.aw,
-            timeout: 0,
             write_state: WRITE_ADDRESS,
             counters: 0,
             w1_budget: awvld_wfirst_budget,
             w3_budget: wfirst_wlast_budget,
             found_match: 0,
+            timeout: 0,
             next: '0,
             free: 1'b0
           };
@@ -449,31 +452,25 @@ module write_guard #(
             if (linked_data_q[i].counters.cnt_awvalid_awready > budget_awvld_awrdy) begin
               linked_data_d[i].timeout = 1'b1;
               reset_req = 1'b1;
-              // log timeout info into regs
-              hw2reg_o.irq.w0.d = 1'b1;   
+              hw2reg_o.reset.d = 1'b1;
+              hw2reg_o.irq.w0.d = 1'b1;
             end 
-            //if(linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst < 0 ) begin //this does not work, why
             if( linked_data_q[i].counters.cnt_awvalid_wfirst >  linked_data_q[i].w1_budget) begin
               linked_data_d[i].timeout = 1'b1;
-              reset_req = 1'b1;
               hw2reg_o.irq.w1.d = 1'b1;      
             end
+            // to enter write_data state, last txn has done one w channel
+            // w_valid comes and next active transaction on w channel points to current one
             if ( mst_req_i.w_valid && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
-              // false w state, more of group state
               linked_data_d[i].write_state = WRITE_DATA;
             end 
-            // one transfer burst can have w_valid and w_last in the same cycle
+            // single transfer transaction where w_valid and w_last are shown at the same cycle
             if ( (mst_req_i.w_valid && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
-              hw2reg_o.latency_wvld_wrdy.d = 0;
-              hw2reg_o.latency_wvld_wlast.d = 0;
-              // false w state, more of group state
-              linked_data_d[i].write_state = WRITE_RESPONSE;
-              rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
-              fifo_empty_d = (rd_ptr_q == wr_ptr_q); 
+              linked_data_d[i].write_state = WRITE_DATA;
             end 
           end
 
@@ -481,11 +478,11 @@ module write_guard #(
             if (linked_data_q[i].counters.cnt_wvalid_wready_first > budget_wvld_wrdy) begin
               linked_data_d[i].timeout = 1'b1;
               reset_req = 1'b1;
+              hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.w2.d = 1'b1;
             end 
             if (linked_data_q[i].counters.cnt_wfirst_wlast > linked_data_q[i].w3_budget) begin
               linked_data_d[i].timeout = 1'b1;
-              reset_req = 1'b1;
               hw2reg_o.irq.w3.d = 1'b1;
             end                                                                                                                        
             if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
@@ -496,22 +493,16 @@ module write_guard #(
               fifo_empty_d = (rd_ptr_q == wr_ptr_q); 
             end
           end
-          // Timeout check, also handle txn dequeue in both faulty and fault-free case, plus id check
-          // ID check if HS is validated AND no timeout
-          // so, we first start with HS check when there is no timeout detected
-          // if that is a yes, do ID check. if no, HS violation. write to different cause registers,
-          // but in case of ID mismatch, as out of order completion is allowed in axi4(a generous budget might benefit?).
-          // but in case of mismatch, we cannot dequeue it immediately,
-          // first check if it is in ht, if yes, keep checking til there is a match as long as no timeout. if not in ht, report unwanted txn.
+
           WRITE_RESPONSE: begin
             if ( linked_data_q[i].counters.cnt_wlast_bvalid > budget_wlast_bvld ) begin
               linked_data_d[i].timeout = 1'b1;
               reset_req = 1'b1;
+              hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.w4.d = 1'b1;
             end
-            if ( linked_data_q[i].counters.cnt_wlast_bready > budget_wlast_brdy) begin
+            if ( linked_data_q[i].counters.cnt_bvalid_bready > budget_bvld_brdy) begin
               linked_data_d[i].timeout = 1'b1;
-              reset_req = 1'b1;
               hw2reg_o.irq.w5.d = 1'b1;
             end
             // handshake, id match and no timeout, successul completion
@@ -521,48 +512,48 @@ module write_guard #(
                 // if IDs match, successful completion. dequeue request and mark the match as found
                 // also make sure it is the first txn of the same id
                 linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
-              end else begin 
-                hw2reg_o.irq.unwanted_txn.d = 'b1;
-                hw2reg_o.reset.d = 1'b1;
-                //mst_rsp_o.b.resp = 2'b10;
+              end else begin
                 reset_req = 1'b1;
-                irq = 1'b1;
+                hw2reg_o.reset.d = 1'b1;
+                hw2reg_o.irq.unwanted_txn.d = 'b1;
               end 
             end 
-
             if ( linked_data_q[i].found_match) begin
               oup_req = 1; 
               oup_id = linked_data_q[i].metadata.id;
               //$display("found match! oup_req = %0d, oup_id = %0d", oup_req, oup_id);
               hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
-              hw2reg_o.latency_wlast_brdy.d = linked_data_q[i].counters.cnt_wlast_bready;
+              hw2reg_o.latency_bvld_brdy.d = linked_data_q[i].counters.cnt_bvalid_bready;
             end
           end
 
-          default: begin
+          default:
             linked_data_d[i].write_state = IDLE;
-          end
-        endcase 
-        if(linked_data_q[i].timeout) begin
-          hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
-          hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-          hw2reg_o.reset.d = 1'b1;
+        endcase
+        // timeout and reset_req do not necessarily happen at the same time
+        // but we need to abort all txns if any of them happens
+        if (linked_data_q[i].timeout || reset_req) begin
+          // Specific handling for reset_req
           irq = 1'b1;
+          hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
+          hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
+          // clear all LD slots for both timeout and reset_req
+        end
+
+        timeout = |( linked_data_q[i].timeout);
+      end
+    end
+    
+    if( reset_req | timeout ) begin
+      for (int i = 0; i < MaxWrTxns; i++ ) begin
+        if (!linked_data_q[i].free) begin
+          oup_req = '1;
+          oup_id = linked_data_q[i].metadata.id;
+          $display("Current index i: %d", i); // Displaying the value of i
         end
       end
     end
 
-    if(reset_req) begin  // makes sense to drop all txns being monitored at thie moment
-      // clear all LD slots
-      for (int i = 0; i < MaxWrTxns; i++ ) begin
-        if (!linked_data_q[i].free) begin 
-          linked_data_d[i]          = '0;
-          linked_data_d[i].write_state    = IDLE;
-          linked_data_d[i].free     = 1'b1;
-        end
-      end
-    end
-    
     // Dequeue 
     if (oup_req) begin : proc_txn_dequeue
       match_out_id = oup_id;
@@ -572,6 +563,7 @@ module write_guard #(
         oup_data_popped = 1;
         // Set free bit of linked data entry, all other bits are don't care.
         linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].counters     = '0;
         linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
         linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
         //$display("found match 3 valuel %d",linked_data_d[head_tail_q[match_out_idx].head].found_match );
@@ -605,52 +597,43 @@ module write_guard #(
         // mark all slots as free
         linked_data_q[i][0] <= 1'b1;
       end else begin
-        linked_data_q[i]  <= linked_data_d[i];
+        linked_data_q[i]  <= linked_data_d[i]; 
         // only if this slot is in use, that is to say there is an outstanding transaction
-        if (!linked_data_q[i].free) begin 
-          case (linked_data_q[i].write_state) 
+        if (!linked_data_q[i].free) begin
+          case (linked_data_q[i].write_state)
             WRITE_ADDRESS: begin
               // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
-              if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready) begin
+              if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready)
                 linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do self-increment
-              end
-              // Counter 1: AW Phase - AW_VALID to W_VALID (first data) 
-              linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
+              // Counter 1: AW Phase - AW_VALID to W_VALID (first data)
+             // if (!mst_req_i.w_valid) 
+                linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
             end
-        
+
             WRITE_DATA: begin
               // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
-              if (mst_req_i.w_valid && !slv_rsp_i.w_ready) begin
+              if (mst_req_i.w_valid && !slv_rsp_i.w_ready) 
                 linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
-              end
-              // Counter 3: W Phase - W_VALID to W_LAST 
-              if (!mst_req_i.w.last) begin
+              // Counter 3: W Phase - W_VALID(W_FIRST) to W_LAST 
+              //if (!mst_req_i.w.last)
                 linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
-              // Timeout check W state
-              end
             end
 
             WRITE_RESPONSE: begin
               // B_valid comes the cycle after w_last. 
-              // found_match and b_valid at the same cycle! are synced. so cound till found_match
-              // Counter 4: B Phase - W_LAST to B_VALID, handshake is checked, stop counting upon handshake
-              if(mst_req_i.b_ready && !linked_data_q[i].found_match) begin
+              // Counter 4: B Phase - W_LAST to B_VALID
+              if(!slv_rsp_i.b_valid)
                 linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
-              end else if (mst_req_i.b_ready && slv_rsp_i.b_valid) begin
-              // Stop counting when handshake occurs
-                linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid;
-              end
-              //  Counter 5: B Phase - B_VALID to B_READY
-              if(! mst_req_i.b_ready && !linked_data_q[i].found_match)
-              linked_data_q[i].counters.cnt_wlast_bready <= linked_data_q[i].counters.cnt_wlast_bready +1;
-              // Timeout check B state 
+              // Counter 5: B Phase - B_VALID to B_READY, handshake is checked, stop counting upon handshake
+              if(slv_rsp_i.b_valid && !mst_req_i.b_ready)
+                linked_data_q[i].counters.cnt_bvalid_bready <= linked_data_q[i].counters.cnt_bvalid_bready +1;
             end 
-          endcase
+          endcase // linked_data_q[i].write_state
         end
       end
     end
   end
-
+  
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       reset_req_q <= 1'b0;

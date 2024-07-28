@@ -193,21 +193,25 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  monitor_wrap #(
-    .AddrWidth    ( TbAxiAddrWidth ),
-    .DataWidth    ( TbAxiDataWidth ),
-    .StrbWidth    ( AxiStrbWidth   ),
-    .AxiIdWidth   ( TbAxiIdWidth   ),
-    .AxiUserWidth ( TbAxiUserWidth ),
-    .MaxTxnsPerId ( MaxTxnsPerId   ),
-    .MaxUniqIds   ( MaxUniqIds     ),
-    .req_t        ( axi_req_t      ), 
-    .rsp_t        ( axi_rsp_t      ),
-    .int_req_t    ( slv_req_t      ),
-    .int_rsp_t    ( slv_rsp_t      ),
-    .reg_req_t    ( cfg_req_t      ), 
-    .reg_rsp_t    ( cfg_rsp_t      )
-) i_monitor_wrap (
+  slv_guard_top
+ // `ifndef TARGET_NETLIST_SIM
+  #(
+      .AddrWidth    ( TbAxiAddrWidth ),
+      .DataWidth    ( TbAxiDataWidth ),
+      .StrbWidth    ( AxiStrbWidth   ),
+      .AxiIdWidth   ( TbAxiIdWidth   ),
+      .AxiUserWidth ( TbAxiUserWidth ),
+      .MaxTxnsPerId ( MaxTxnsPerId   ),
+      .MaxUniqIds   ( MaxUniqIds     ),
+      .req_t        ( axi_req_t      ), 
+      .rsp_t        ( axi_rsp_t      ),
+      .int_req_t    ( slv_req_t      ),
+      .int_rsp_t    ( slv_rsp_t      ),
+      .reg_req_t    ( cfg_req_t      ), 
+      .reg_rsp_t    ( cfg_rsp_t      )
+  )
+ // `endif
+   i_monitor_wrap (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
     .guard_ena_i (   1'b1         ),
@@ -254,27 +258,23 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0100, 4'hf, reg_error);
 
     // budget from aw_valid to aw_ready
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0010, 4'hf, reg_error); 
-    // budget from aw_valid to w_valid of first word
+    reg_drv.send_write(32'h0000_0004, 32'h0000_000f, 4'hf, reg_error); 
+    // time budget for unit length on w channel
     reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_0010, 4'hf, reg_error); 
-    // budget from w_valid to w_last
-    reg_drv.send_write(32'h0000_0010, 32'h0000_0001, 4'hf, reg_error);
+    reg_drv.send_write(32'h0000_000c, 32'h0000_000f, 4'hf, reg_error); 
     // budget from w_last to b_valid
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0010, 4'hf, reg_error); 
-    // budget from w_last to b_ready
-    reg_drv.send_write(32'h0000_0018, 32'h0000_0010, 4'hf, reg_error);
-
+    reg_drv.send_write(32'h0000_0010, 32'h0000_0001, 4'hf, reg_error);
+    // budget from b_valid to b_ready
+    reg_drv.send_write(32'h0000_0014, 32'h0000_000f, 4'hf, reg_error); 
+    
     // budget from ar_valid to ar_ready
-    reg_drv.send_write(32'h0000_001c, 32'h0000_000f, 4'hf, reg_error); 
-    // budget from ar_valid to r_valid of first word
-    reg_drv.send_write(32'h0000_0020, 32'h0000_000f, 4'hf, reg_error);
-    // budget from r_valid to r_ready
-    reg_drv.send_write(32'h0000_0024, 32'h0000_000f, 4'hf, reg_error); 
-    // budget from r_valid to r_last
-    reg_drv.send_write(32'h0000_0028, 32'h0000_0020, 4'hf, reg_error);
-
+    reg_drv.send_write(32'h0000_0018, 32'h0000_000f, 4'hf, reg_error);
+    // time budget for unit length on r channel
+    reg_drv.send_write(32'h0000_001c, 32'h0000_0001, 4'hf, reg_error); 
+    // budget from rvld to rrdy
+    reg_drv.send_write(32'h0000_0020, 32'h0000_000f, 4'hf, reg_error); 
+   
     repeat (5) @(posedge clk);
 
     // config is done

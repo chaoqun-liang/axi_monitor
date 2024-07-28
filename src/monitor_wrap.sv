@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 
+// Authors:
+// - Chaoqun Liang <chaoqun.liang@unibo.it>
+
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"

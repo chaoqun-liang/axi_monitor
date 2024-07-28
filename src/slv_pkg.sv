@@ -6,15 +6,14 @@ package slv_pkg;
 
 // Monitor parameters
   parameter int unsigned MaxUniqIds    = 1;
-  parameter int unsigned MaxTxnsPerId  = 1; 
+  parameter int unsigned MaxTxnsPerId  = 2; 
   parameter int unsigned CntWidth      = 10;
   // AXI parameters
-  parameter int unsigned AxiAddrWidth  = 64;
+  parameter int unsigned AxiAddrWidth  = 48;
   parameter int unsigned AxiDataWidth  = 64;
   parameter int unsigned AxiIdWidth    = 2;
   parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1;
-  parameter int unsigned AxiUserWidth  = 1;
-  parameter int unsigned AxiLogDepth   = 1;
+  parameter int unsigned AxiUserWidth  = 2;
   // Regbus parameters
   parameter int unsigned  RegAddrWidth = 32;
   parameter int unsigned  RegDataWidth = 32;

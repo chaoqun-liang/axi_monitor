@@ -18,44 +18,36 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_guard_enable_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
+    logic [3:0]  q;
   } slv_guard_reg2hw_budget_awvld_awrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_awvld_wfirst_reg_t;
+    logic [3:0]  q;
+  } slv_guard_reg2hw_unit_budget_w_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
+    logic [3:0]  q;
   } slv_guard_reg2hw_budget_wvld_wrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wvld_wlast_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
+    logic [3:0]  q;
   } slv_guard_reg2hw_budget_wlast_bvld_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_wlast_brdy_reg_t;
+    logic [3:0]  q;
+  } slv_guard_reg2hw_budget_bvld_brdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
+    logic [3:0]  q;
   } slv_guard_reg2hw_budget_arvld_arrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_arvld_rvld_reg_t;
+    logic [3:0]  q;
+  } slv_guard_reg2hw_unit_budget_r_reg_t;
 
   typedef struct packed {
-    logic [9:0] q;
+    logic [3:0]  q;
   } slv_guard_reg2hw_budget_rvld_rrdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] q;
-  } slv_guard_reg2hw_budget_rvld_rlast_reg_t;
 
   typedef struct packed {
     logic        q;
@@ -132,7 +124,7 @@ package slv_guard_reg_pkg;
 
   typedef struct packed {
     logic [9:0] q;
-  } slv_guard_reg2hw_latency_wlast_brdy_reg_t;
+  } slv_guard_reg2hw_latency_bvld_brdy_reg_t;
 
   typedef struct packed {
     logic [9:0] q;
@@ -156,54 +148,44 @@ package slv_guard_reg_pkg;
   } slv_guard_hw2reg_guard_enable_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
   } slv_guard_hw2reg_budget_awvld_awrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
-  } slv_guard_hw2reg_budget_awvld_wfirst_reg_t;
+  } slv_guard_hw2reg_unit_budget_w_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
   } slv_guard_hw2reg_budget_wvld_wrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
-    logic        de;
-  } slv_guard_hw2reg_budget_wvld_wlast_reg_t;
-
-  typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
   } slv_guard_hw2reg_budget_wlast_bvld_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
-  } slv_guard_hw2reg_budget_wlast_brdy_reg_t;
+  } slv_guard_hw2reg_budget_bvld_brdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
   } slv_guard_hw2reg_budget_arvld_arrdy_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
-  } slv_guard_hw2reg_budget_arvld_rvld_reg_t;
+  } slv_guard_hw2reg_unit_budget_r_reg_t;
 
   typedef struct packed {
-    logic [9:0] d;
+    logic [3:0]  d;
     logic        de;
   } slv_guard_hw2reg_budget_rvld_rrdy_reg_t;
-
-  typedef struct packed {
-    logic [9:0] d;
-    logic        de;
-  } slv_guard_hw2reg_budget_rvld_rlast_reg_t;
 
   typedef struct packed {
     logic        d;
@@ -302,7 +284,7 @@ package slv_guard_reg_pkg;
   typedef struct packed {
     logic [9:0] d;
     logic        de;
-  } slv_guard_hw2reg_latency_wlast_brdy_reg_t;
+  } slv_guard_hw2reg_latency_bvld_brdy_reg_t;
 
   typedef struct packed {
     logic [9:0] d;
@@ -326,17 +308,15 @@ package slv_guard_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [258:258]
-    slv_guard_reg2hw_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [257:248]
-    slv_guard_reg2hw_budget_awvld_wfirst_reg_t budget_awvld_wfirst; // [247:238]
-    slv_guard_reg2hw_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [237:228]
-    slv_guard_reg2hw_budget_wvld_wlast_reg_t budget_wvld_wlast; // [227:218]
-    slv_guard_reg2hw_budget_wlast_bvld_reg_t budget_wlast_bvld; // [217:208]
-    slv_guard_reg2hw_budget_wlast_brdy_reg_t budget_wlast_brdy; // [207:198]
-    slv_guard_reg2hw_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [197:188]
-    slv_guard_reg2hw_budget_arvld_rvld_reg_t budget_arvld_rvld; // [187:178]
-    slv_guard_reg2hw_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [177:168]
-    slv_guard_reg2hw_budget_rvld_rlast_reg_t budget_rvld_rlast; // [167:158]
+    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [190:190]
+    slv_guard_reg2hw_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [189:186]
+    slv_guard_reg2hw_unit_budget_w_reg_t unit_budget_w; // [185:182]
+    slv_guard_reg2hw_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [181:178]
+    slv_guard_reg2hw_budget_wlast_bvld_reg_t budget_wlast_bvld; // [177:174]
+    slv_guard_reg2hw_budget_bvld_brdy_reg_t budget_bvld_brdy; // [173:170]
+    slv_guard_reg2hw_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [169:166]
+    slv_guard_reg2hw_unit_budget_r_reg_t unit_budget_r; // [165:162]
+    slv_guard_reg2hw_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [161:158]
     slv_guard_reg2hw_reset_reg_t reset; // [157:157]
     slv_guard_reg2hw_irq_reg_t irq; // [156:132]
     slv_guard_reg2hw_irq_addr_reg_t irq_addr; // [131:100]
@@ -345,7 +325,7 @@ package slv_guard_reg_pkg;
     slv_guard_reg2hw_latency_wvld_wrdy_reg_t latency_wvld_wrdy; // [79:70]
     slv_guard_reg2hw_latency_wvld_wlast_reg_t latency_wvld_wlast; // [69:60]
     slv_guard_reg2hw_latency_wlast_bvld_reg_t latency_wlast_bvld; // [59:50]
-    slv_guard_reg2hw_latency_wlast_brdy_reg_t latency_wlast_brdy; // [49:40]
+    slv_guard_reg2hw_latency_bvld_brdy_reg_t latency_bvld_brdy; // [49:40]
     slv_guard_reg2hw_latency_arvld_arrdy_reg_t latency_arvld_arrdy; // [39:30]
     slv_guard_reg2hw_latency_arvld_rvld_reg_t latency_arvld_rvld; // [29:20]
     slv_guard_reg2hw_latency_rvld_rrdy_reg_t latency_rvld_rrdy; // [19:10]
@@ -354,17 +334,15 @@ package slv_guard_reg_pkg;
 
   // HW -> register type
   typedef struct packed {
-    slv_guard_hw2reg_guard_enable_reg_t guard_enable; // [295:294]
-    slv_guard_hw2reg_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [293:283]
-    slv_guard_hw2reg_budget_awvld_wfirst_reg_t budget_awvld_wfirst; // [282:272]
-    slv_guard_hw2reg_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [271:261]
-    slv_guard_hw2reg_budget_wvld_wlast_reg_t budget_wvld_wlast; // [260:250]
-    slv_guard_hw2reg_budget_wlast_bvld_reg_t budget_wlast_bvld; // [249:239]
-    slv_guard_hw2reg_budget_wlast_brdy_reg_t budget_wlast_brdy; // [238:228]
-    slv_guard_hw2reg_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [227:217]
-    slv_guard_hw2reg_budget_arvld_rvld_reg_t budget_arvld_rvld; // [216:206]
-    slv_guard_hw2reg_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [205:195]
-    slv_guard_hw2reg_budget_rvld_rlast_reg_t budget_rvld_rlast; // [194:184]
+    slv_guard_hw2reg_guard_enable_reg_t guard_enable; // [225:224]
+    slv_guard_hw2reg_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [223:219]
+    slv_guard_hw2reg_unit_budget_w_reg_t unit_budget_w; // [218:214]
+    slv_guard_hw2reg_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [213:209]
+    slv_guard_hw2reg_budget_wlast_bvld_reg_t budget_wlast_bvld; // [208:204]
+    slv_guard_hw2reg_budget_bvld_brdy_reg_t budget_bvld_brdy; // [203:199]
+    slv_guard_hw2reg_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [198:194]
+    slv_guard_hw2reg_unit_budget_r_reg_t unit_budget_r; // [193:189]
+    slv_guard_hw2reg_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [188:184]
     slv_guard_hw2reg_reset_reg_t reset; // [183:182]
     slv_guard_hw2reg_irq_reg_t irq; // [181:143]
     slv_guard_hw2reg_irq_addr_reg_t irq_addr; // [142:110]
@@ -373,7 +351,7 @@ package slv_guard_reg_pkg;
     slv_guard_hw2reg_latency_wvld_wrdy_reg_t latency_wvld_wrdy; // [87:77]
     slv_guard_hw2reg_latency_wvld_wlast_reg_t latency_wvld_wlast; // [76:66]
     slv_guard_hw2reg_latency_wlast_bvld_reg_t latency_wlast_bvld; // [65:55]
-    slv_guard_hw2reg_latency_wlast_brdy_reg_t latency_wlast_brdy; // [54:44]
+    slv_guard_hw2reg_latency_bvld_brdy_reg_t latency_bvld_brdy; // [54:44]
     slv_guard_hw2reg_latency_arvld_arrdy_reg_t latency_arvld_arrdy; // [43:33]
     slv_guard_hw2reg_latency_arvld_rvld_reg_t latency_arvld_rvld; // [32:22]
     slv_guard_hw2reg_latency_rvld_rrdy_reg_t latency_rvld_rrdy; // [21:11]
@@ -383,42 +361,38 @@ package slv_guard_reg_pkg;
   // Register offsets
   parameter logic [BlockAw-1:0] SLV_GUARD_GUARD_ENABLE_OFFSET = 7'h 0;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_AWVLD_AWRDY_OFFSET = 7'h 4;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_AWVLD_WFIRST_OFFSET = 7'h 8;
+  parameter logic [BlockAw-1:0] SLV_GUARD_UNIT_BUDGET_W_OFFSET = 7'h 8;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WVLD_WRDY_OFFSET = 7'h c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WVLD_WLAST_OFFSET = 7'h 10;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BVLD_OFFSET = 7'h 14;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BRDY_OFFSET = 7'h 18;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_ARRDY_OFFSET = 7'h 1c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_RVLD_OFFSET = 7'h 20;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RRDY_OFFSET = 7'h 24;
-  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RLAST_OFFSET = 7'h 28;
-  parameter logic [BlockAw-1:0] SLV_GUARD_RESET_OFFSET = 7'h 2c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_OFFSET = 7'h 30;
-  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_ADDR_OFFSET = 7'h 34;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_AWVLD_AWRDY_OFFSET = 7'h 38;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_AWVLD_WFIRST_OFFSET = 7'h 3c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WVLD_WRDY_OFFSET = 7'h 40;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WVLD_WLAST_OFFSET = 7'h 44;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WLAST_BVLD_OFFSET = 7'h 48;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WLAST_BRDY_OFFSET = 7'h 4c;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_ARVLD_ARRDY_OFFSET = 7'h 50;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_ARVLD_RVLD_OFFSET = 7'h 54;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_RVLD_RRDY_OFFSET = 7'h 58;
-  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_RVLD_RLAST_OFFSET = 7'h 5c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BVLD_OFFSET = 7'h 10;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_BVLD_BRDY_OFFSET = 7'h 14;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_ARRDY_OFFSET = 7'h 18;
+  parameter logic [BlockAw-1:0] SLV_GUARD_UNIT_BUDGET_R_OFFSET = 7'h 1c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RRDY_OFFSET = 7'h 20;
+  parameter logic [BlockAw-1:0] SLV_GUARD_RESET_OFFSET = 7'h 24;
+  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_OFFSET = 7'h 28;
+  parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_ADDR_OFFSET = 7'h 2c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_AWVLD_AWRDY_OFFSET = 7'h 30;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_AWVLD_WFIRST_OFFSET = 7'h 34;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WVLD_WRDY_OFFSET = 7'h 38;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WVLD_WLAST_OFFSET = 7'h 3c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_WLAST_BVLD_OFFSET = 7'h 40;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_BVLD_BRDY_OFFSET = 7'h 44;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_ARVLD_ARRDY_OFFSET = 7'h 48;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_ARVLD_RVLD_OFFSET = 7'h 4c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_RVLD_RRDY_OFFSET = 7'h 50;
+  parameter logic [BlockAw-1:0] SLV_GUARD_LATENCY_RVLD_RLAST_OFFSET = 7'h 54;
 
   // Register index
   typedef enum int {
     SLV_GUARD_GUARD_ENABLE,
     SLV_GUARD_BUDGET_AWVLD_AWRDY,
-    SLV_GUARD_BUDGET_AWVLD_WFIRST,
+    SLV_GUARD_UNIT_BUDGET_W,
     SLV_GUARD_BUDGET_WVLD_WRDY,
-    SLV_GUARD_BUDGET_WVLD_WLAST,
     SLV_GUARD_BUDGET_WLAST_BVLD,
-    SLV_GUARD_BUDGET_WLAST_BRDY,
+    SLV_GUARD_BUDGET_BVLD_BRDY,
     SLV_GUARD_BUDGET_ARVLD_ARRDY,
-    SLV_GUARD_BUDGET_ARVLD_RVLD,
+    SLV_GUARD_UNIT_BUDGET_R,
     SLV_GUARD_BUDGET_RVLD_RRDY,
-    SLV_GUARD_BUDGET_RVLD_RLAST,
     SLV_GUARD_RESET,
     SLV_GUARD_IRQ,
     SLV_GUARD_IRQ_ADDR,
@@ -427,7 +401,7 @@ package slv_guard_reg_pkg;
     SLV_GUARD_LATENCY_WVLD_WRDY,
     SLV_GUARD_LATENCY_WVLD_WLAST,
     SLV_GUARD_LATENCY_WLAST_BVLD,
-    SLV_GUARD_LATENCY_WLAST_BRDY,
+    SLV_GUARD_LATENCY_BVLD_BRDY,
     SLV_GUARD_LATENCY_ARVLD_ARRDY,
     SLV_GUARD_LATENCY_ARVLD_RVLD,
     SLV_GUARD_LATENCY_RVLD_RRDY,
@@ -435,31 +409,29 @@ package slv_guard_reg_pkg;
   } slv_guard_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] SLV_GUARD_PERMIT [24] = '{
+  parameter logic [3:0] SLV_GUARD_PERMIT [22] = '{
     4'b 0001, // index[ 0] SLV_GUARD_GUARD_ENABLE
-    4'b 0011, // index[ 1] SLV_GUARD_BUDGET_AWVLD_AWRDY
-    4'b 0011, // index[ 2] SLV_GUARD_BUDGET_AWVLD_WFIRST
-    4'b 0011, // index[ 3] SLV_GUARD_BUDGET_WVLD_WRDY
-    4'b 0011, // index[ 4] SLV_GUARD_BUDGET_WVLD_WLAST
-    4'b 0011, // index[ 5] SLV_GUARD_BUDGET_WLAST_BVLD
-    4'b 0011, // index[ 6] SLV_GUARD_BUDGET_WLAST_BRDY
-    4'b 0011, // index[ 7] SLV_GUARD_BUDGET_ARVLD_ARRDY
-    4'b 0011, // index[ 8] SLV_GUARD_BUDGET_ARVLD_RVLD
-    4'b 0011, // index[ 9] SLV_GUARD_BUDGET_RVLD_RRDY
-    4'b 0011, // index[10] SLV_GUARD_BUDGET_RVLD_RLAST
-    4'b 0001, // index[11] SLV_GUARD_RESET
-    4'b 1111, // index[12] SLV_GUARD_IRQ
-    4'b 1111, // index[13] SLV_GUARD_IRQ_ADDR
-    4'b 0011, // index[14] SLV_GUARD_LATENCY_AWVLD_AWRDY
-    4'b 0011, // index[15] SLV_GUARD_LATENCY_AWVLD_WFIRST
-    4'b 0011, // index[16] SLV_GUARD_LATENCY_WVLD_WRDY
-    4'b 0011, // index[17] SLV_GUARD_LATENCY_WVLD_WLAST
-    4'b 0011, // index[18] SLV_GUARD_LATENCY_WLAST_BVLD
-    4'b 0011, // index[19] SLV_GUARD_LATENCY_WLAST_BRDY
-    4'b 0011, // index[20] SLV_GUARD_LATENCY_ARVLD_ARRDY
-    4'b 0011, // index[21] SLV_GUARD_LATENCY_ARVLD_RVLD
-    4'b 0011, // index[22] SLV_GUARD_LATENCY_RVLD_RRDY
-    4'b 0011  // index[23] SLV_GUARD_LATENCY_RVLD_RLAST
+    4'b 0001, // index[ 1] SLV_GUARD_BUDGET_AWVLD_AWRDY
+    4'b 0001, // index[ 2] SLV_GUARD_UNIT_BUDGET_W
+    4'b 0001, // index[ 3] SLV_GUARD_BUDGET_WVLD_WRDY
+    4'b 0001, // index[ 4] SLV_GUARD_BUDGET_WLAST_BVLD
+    4'b 0001, // index[ 5] SLV_GUARD_BUDGET_BVLD_BRDY
+    4'b 0001, // index[ 6] SLV_GUARD_BUDGET_ARVLD_ARRDY
+    4'b 0001, // index[ 7] SLV_GUARD_UNIT_BUDGET_R
+    4'b 0001, // index[ 8] SLV_GUARD_BUDGET_RVLD_RRDY
+    4'b 0001, // index[ 9] SLV_GUARD_RESET
+    4'b 1111, // index[10] SLV_GUARD_IRQ
+    4'b 1111, // index[11] SLV_GUARD_IRQ_ADDR
+    4'b 0011, // index[12] SLV_GUARD_LATENCY_AWVLD_AWRDY
+    4'b 0011, // index[13] SLV_GUARD_LATENCY_AWVLD_WFIRST
+    4'b 0011, // index[14] SLV_GUARD_LATENCY_WVLD_WRDY
+    4'b 0011, // index[15] SLV_GUARD_LATENCY_WVLD_WLAST
+    4'b 0011, // index[16] SLV_GUARD_LATENCY_WLAST_BVLD
+    4'b 0011, // index[17] SLV_GUARD_LATENCY_BVLD_BRDY
+    4'b 0011, // index[18] SLV_GUARD_LATENCY_ARVLD_ARRDY
+    4'b 0011, // index[19] SLV_GUARD_LATENCY_ARVLD_RVLD
+    4'b 0011, // index[20] SLV_GUARD_LATENCY_RVLD_RRDY
+    4'b 0011  // index[21] SLV_GUARD_LATENCY_RVLD_RLAST
   };
 
 endpackage

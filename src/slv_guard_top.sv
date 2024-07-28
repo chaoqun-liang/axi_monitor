@@ -89,16 +89,14 @@ module slv_guard_top #(
   assign hw2reg.irq      = hw2reg_w.irq | hw2reg_r.irq;
 
   assign reg2hw_w.budget_awvld_awrdy  = reg2hw.budget_awvld_awrdy;
-  assign reg2hw_w.budget_awvld_wfirst = reg2hw.budget_awvld_wfirst;
   assign reg2hw_w.budget_wvld_wrdy    = reg2hw.budget_wvld_wrdy;
-  assign reg2hw_w.budget_wvld_wlast   = reg2hw.budget_wvld_wlast;
+  assign reg2hw_w.unit_budget_w   = reg2hw.unit_budget_w;
   assign reg2hw_w.budget_wlast_bvld   = reg2hw.budget_wlast_bvld;
-  assign reg2hw_w.budget_wlast_brdy   = reg2hw.budget_wlast_brdy;
+  assign reg2hw_w.budget_bvld_brdy   = reg2hw.budget_bvld_brdy;
 
   assign reg2hw_r.budget_arvld_arrdy  = reg2hw.budget_arvld_arrdy;
-  assign reg2hw_r.budget_arvld_rvld   = reg2hw.budget_arvld_rvld;
   assign reg2hw_r.budget_rvld_rrdy    = reg2hw.budget_rvld_rrdy;
-  assign reg2hw_r.budget_rvld_rlast   = reg2hw.budget_rvld_rlast;
+  assign reg2hw_r.unit_budget_r   = reg2hw.unit_budget_r;
   
   // min internal width
   localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
@@ -180,7 +178,7 @@ module slv_guard_top #(
   ) i_write_monitor_unit (
     .clk_i,
     .rst_ni,
-    .wr_en_i      ( wr_enqueue   ),
+    .wr_en_i      ( wr_enqueue ),
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
     .reset_req_o  ( rst_req_wr   ),
@@ -221,8 +219,8 @@ module slv_guard_top #(
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    wr_enqueue = int_req.aw_valid;
-    rd_enqueue = int_req.ar_valid;
+    rd_enqueue = int_req.ar_valid && !rst_req && guard_ena_i;
+    wr_enqueue = int_req.aw_valid && !rst_req && guard_ena_i;
     if (guard_ena_i && rst_req) begin
       req_o = 'b0;
       int_rsp = 'b0;
