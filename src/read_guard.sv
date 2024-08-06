@@ -179,7 +179,7 @@ module read_guard #(
                                   irq;
 
   cnt_t                           arvld_rfirst_budget,
-                                  rfisrt_rlast_budget;
+                                  rfirst_rlast_budget;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
@@ -265,7 +265,7 @@ module read_guard #(
   prescaler #(
     .DivFactor(PrescalerDiv)
     )i_rd_prescaler(
-    .clk_i(),
+    .clk_i(clk_i),
     .rst_ni(rst_ni),
     .prescaled_o(prescaled_en)
   );
