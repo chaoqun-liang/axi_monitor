@@ -22,6 +22,8 @@ module slv_guard_top #(
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
   parameter int unsigned CntWidth      = 10,
+  parameter int unsigned HsCntWidth    = 0,
+  parameter int unsigned PrescalerDiv  = 4,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -211,7 +213,8 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  assign rst_req = rst_req_wr | rst_req_rd;
+  //assign rst_req = rst_req_wr | rst_req_rd;
+  assign rst_req = rst_req_wr ;
   assign irq_o   =  read_irq  | write_irq;
   assign rst_req_o = rst_req;
 

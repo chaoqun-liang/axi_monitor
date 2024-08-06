@@ -10,8 +10,10 @@ module write_guard #(
   parameter int unsigned MaxWrTxns   = 0,
   // Counter width 
   parameter int unsigned CntWidth    = 0,
-  // Counter width for HS counters
+  // Counter width for small counters
   parameter int unsigned HsCntWidth = 0,
+  // Prescaler division value 
+  parameter int unsigned PrescalerDiv = 4,
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -64,17 +66,17 @@ module write_guard #(
   typedef logic [CntWidth-1:0] cnt_t;
   typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
-  // Budget time from aw_valid to aw_ready
+  // Unit Budget time from aw_valid to aw_ready
   hs_cnt_t  budget_awvld_awrdy;
-  // Budget time from aw_valid to w_valid (w_first)
-  cnt_t  budget_awvld_wvld;
-  // Budget time from w_valid to w_ready (of w_first)
+  // Unit Budget time from aw_valid to w_valid (w_first)
+  hs_cnt_t  budget_awvld_wvld;
+  // Unit Budget time from w_valid to w_ready (of w_first)
   hs_cnt_t  budget_wvld_wrdy;
-  // Budget time from w_valid to w_last (w_first to w_last)
-  cnt_t  budget_wvld_wlast;
-  // Budget time from w_last to b_valid
+  // Unit Budget time from w_valid to w_last (w_first to w_last)
+  hs_cnt_t  budget_wvld_wlast;
+  // Unit Budget time from w_last to b_valid
   hs_cnt_t  budget_wlast_bvld;
-  // Budget time from w_last to b_ready
+  // Unit Budget time from w_last to b_ready
   hs_cnt_t  budget_bvld_brdy;
 
   assign budget_awvld_awrdy = reg2hw_i.budget_awvld_awrdy.q;
@@ -279,6 +281,75 @@ module write_guard #(
       end
     end
   end
+  
+  logic prescaled_en;
+  prescaler #(
+    .DivFactor(PrescalerDiv)
+    )i_wr_prescaler(
+    .clk_i( clk_i),
+    .rst_ni( rst_ni),
+    .prescaled_o( prescaled_en)
+  ); 
+
+  logic aw_valid_sticky, aw_ready_sticky;
+  logic w_valid_sticky, w_ready_sticky, w_last_sticky;
+  logic b_valid_sticky, b_ready_sticky;
+
+  sticky_bit i_awvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.aw_valid),
+    .sticky_o(aw_valid_sticky)
+  );
+
+  sticky_bit i_awready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.aw_ready),
+    .sticky_o(aw_ready_sticky)
+  );
+
+  sticky_bit i_wvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.w_valid),
+    .sticky_o(w_valid_sticky)
+  );
+
+  sticky_bit i_wready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.w_ready),
+    .sticky_o(w_ready_sticky)
+  );
+
+  sticky_bit i_wlast_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.w.last),
+    .sticky_o(w_last_sticky)
+  );
+
+  sticky_bit i_bvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.b_valid),
+    .sticky_o(b_valid_sticky)
+  );
+
+  sticky_bit i_bready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.b_ready),
+    .sticky_o(b_ready_sticky)
+  );
 
   always_comb begin : proc_wr_queue
     match_in_id         = '0;
@@ -461,13 +532,13 @@ module write_guard #(
             end
             // to enter write_data state, last txn has done one w channel
             // w_valid comes and next active transaction on w channel points to current one
-            if ( mst_req_i.w_valid && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+            if ( w_valid_sticky && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
             end 
             // single transfer transaction where w_valid and w_last are shown at the same cycle
-            if ( (mst_req_i.w_valid && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+            if ( (w_valid_sticky && w_last_sticky ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
@@ -485,7 +556,7 @@ module write_guard #(
               linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.w3.d = 1'b1;
             end                                                                                                                        
-            if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
+            if ( w_last_sticky && !linked_data_q[i].timeout ) begin
               hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
               linked_data_d[i].write_state = WRITE_RESPONSE;
@@ -507,7 +578,7 @@ module write_guard #(
             end
             // handshake, id match and no timeout, successul completion
             // Check for the valid and readhy handshake
-            if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout ) begin 
+            if ( b_ready_sticky && b_valid_sticky && !linked_data_q[i].timeout ) begin 
               if ( id_exists ) begin 
                 // if IDs match, successful completion. dequeue request and mark the match as found
                 // also make sure it is the first txn of the same id
@@ -524,6 +595,10 @@ module write_guard #(
               //$display("found match! oup_req = %0d, oup_id = %0d", oup_req, oup_id);
               hw2reg_o.latency_wlast_bvld.d = linked_data_q[i].counters.cnt_wlast_bvalid;
               hw2reg_o.latency_bvld_brdy.d = linked_data_q[i].counters.cnt_bvalid_bready;
+              linked_data_d[i]          = '0;
+              linked_data_d[i].counters     = '0;
+              linked_data_d[i].write_state     = IDLE;
+              linked_data_d[i].free     = 1'b1;
             end
           end
 
@@ -549,10 +624,10 @@ module write_guard #(
         if (!linked_data_q[i].free) begin
           oup_req = '1;
           oup_id = linked_data_q[i].metadata.id;
-          $display("Current index i: %d", i); // Displaying the value of i
+          //$display("Current index i: %d", i); // Displaying the value of i
         end
       end
-    end
+    end 
 
     // Dequeue 
     if (oup_req) begin : proc_txn_dequeue
@@ -603,29 +678,31 @@ module write_guard #(
           case (linked_data_q[i].write_state)
             WRITE_ADDRESS: begin
               // Counter 0: AW Phase - AW_VALID to AW_READY, handshake is checked meanwhile
-              if (mst_req_i.aw_valid && !slv_rsp_i.aw_ready)
+              if (!aw_ready_sticky && prescaled_en)
                 linked_data_q[i].counters.cnt_awvalid_awready <= linked_data_q[i].counters.cnt_awvalid_awready + 1 ; // note: cannot do self-increment
               // Counter 1: AW Phase - AW_VALID to W_VALID (first data)
              // if (!mst_req_i.w_valid) 
+              if ( prescaled_en)
                 linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
             end
 
             WRITE_DATA: begin
               // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
-              if (mst_req_i.w_valid && !slv_rsp_i.w_ready) 
+              if (w_valid_sticky && !w_ready_sticky && prescaled_en ) 
                 linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
               // Counter 3: W Phase - W_VALID(W_FIRST) to W_LAST 
               //if (!mst_req_i.w.last)
+              if (prescaled_en)
                 linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
             end
 
             WRITE_RESPONSE: begin
               // B_valid comes the cycle after w_last. 
               // Counter 4: B Phase - W_LAST to B_VALID
-              if(!slv_rsp_i.b_valid)
+              if(b_valid_sticky && prescaled_en )
                 linked_data_q[i].counters.cnt_wlast_bvalid <= linked_data_q[i].counters.cnt_wlast_bvalid + 1;
               // Counter 5: B Phase - B_VALID to B_READY, handshake is checked, stop counting upon handshake
-              if(slv_rsp_i.b_valid && !mst_req_i.b_ready)
+              if(b_valid_sticky && !b_ready_sticky && prescaled_en )
                 linked_data_q[i].counters.cnt_bvalid_bready <= linked_data_q[i].counters.cnt_bvalid_bready +1;
             end 
           endcase // linked_data_q[i].write_state

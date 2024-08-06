@@ -10,8 +10,10 @@ module read_guard #(
   parameter int unsigned MaxRdTxns  = 0, 
   // Counter width 
   parameter int unsigned CntWidth   = 0,
-  // Counter width for HS counters
+  // Counter width for small counters
   parameter int unsigned HsCntWidth = 0,
+  // Prescaler divsion value
+  parameter int unsigned PrescalerDiv = 4, 
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -20,6 +22,7 @@ module read_guard #(
   parameter type id_t  = logic,
   // Read address channel type
   parameter type ar_chan_t = logic,
+  // Register bus type
   parameter type reg2hw_t = logic,
   parameter type hw2reg_t = logic
 )(
@@ -55,17 +58,18 @@ module read_guard #(
   assign hw2reg_o.latency_rvld_rrdy.de = 1'b1; 
   assign hw2reg_o.latency_rvld_rlast.de = 1'b1; 
   
+  // Counter type based on used-defined counter width
   typedef logic [CntWidth-1:0] cnt_t;
   typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
-  // Budget time from ar_valid to ar_ready
+  // Unit Budget time from ar_valid to ar_ready
   hs_cnt_t  budget_arvld_arrdy;
-  // Budget time from ar_valid to r_valid
-  cnt_t  budget_arvld_rvld;
-  // Budget time from r_valid to r_ready
+  // Unit Budget time from ar_valid to r_valid
+  hs_cnt_t  budget_arvld_rvld;
+  // Unit Budget time from r_valid to r_ready
   hs_cnt_t  budget_rvld_rrdy;
-  // Budget time from r_valid to r_last
-  cnt_t  budget_rvld_rlast;
+  // Unit Budget time from r_valid to r_last
+  hs_cnt_t  budget_rvld_rlast;
 
   assign budget_arvld_arrdy = reg2hw_i.budget_arvld_arrdy.q;
   assign budget_arvld_rvld  = reg2hw_i.unit_budget_r.q;
@@ -114,12 +118,13 @@ module read_guard #(
   // Type of an entry in the linked data table.
   typedef struct packed {
     ar_chan_t       metadata;
-    logic           timeout;
     read_state_t    read_state;
     read_cnters_t   counters;
     // txn-specific dynamic budget
+    cnt_t           r1_budget;
     cnt_t           r3_budget;
     logic           found_match;
+    logic           timeout;
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
@@ -169,11 +174,12 @@ module read_guard #(
                                   oup_ht_popped;
   
   logic                           id_exists,
-                                  oup_req,
+                                  oup_req,timeout,
                                   reset_req, reset_req_q,
                                   irq;
 
-  cnt_t                           rvalid_rlast_budget;
+  cnt_t                           arvld_rfirst_budget,
+                                  rfisrt_rlast_budget;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
@@ -255,6 +261,57 @@ module read_guard #(
     end
   end
 
+  logic prescaled_en;
+  prescaler #(
+    .DivFactor(PrescalerDiv)
+    )i_rd_prescaler(
+    .clk_i(),
+    .rst_ni(rst_ni),
+    .prescaled_o(prescaled_en)
+  );
+
+  logic ar_valid_sticky, ar_ready_sticky;
+  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
+  
+  sticky_bit i_arvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.ar_valid),
+    .sticky_o(ar_valid_sticky)
+  );
+
+  sticky_bit i_arready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.ar_ready),
+    .sticky_o(ar_ready_sticky)
+  );
+
+  sticky_bit i_rvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.r_valid),
+    .sticky_o(r_valid_sticky)
+  );
+
+  sticky_bit i_rready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.r_ready),
+    .sticky_o(r_ready_sticky)
+  );
+
+  sticky_bit i_rlast_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.r.last),
+    .sticky_o(r_last_sticky)
+  );
   always_comb begin : proc_rd_queue
     match_in_id         = '0;
     match_out_id        = '0;
@@ -267,7 +324,8 @@ module read_guard #(
     oup_ht_popped       = 1'b0;
     oup_id              =  'b0;
     oup_req             = 1'b0;
-    irq                 = 0; 
+    timeout             = '0;
+    irq                 = '0; 
     wr_ptr_d            = wr_ptr_q;
     rd_ptr_d            = rd_ptr_q;
     fifo_full_d         = fifo_full_q;
@@ -298,7 +356,8 @@ module read_guard #(
     if (rd_en_i && inp_gnt ) begin : proc_enqueue
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
-      rvalid_rlast_budget = budget_rvld_rlast * ( accum_burst_length + mst_req_i.ar.len + 1 );
+      arvld_rfirst_budget = budget_arvld_rvld * ( accum_burst_length + mst_req_i.ar.len + 1 );
+      rfirst_rlast_budget = budget_rvld_rlast * ( accum_burst_length + mst_req_i.ar.len + 1 );
       if ( mst_req_i.ar_valid && !fifo_full_q) begin: proc_r_fifo
         r_fifo[wr_ptr_q] = oup_data_popped ? oup_data_free_idx : linked_data_free_idx;
         wr_ptr_d = (wr_ptr_q + 1) % MaxRdTxns;//circular buffer
@@ -319,7 +378,8 @@ module read_guard #(
           timeout: 0,
           read_state: READ_ADDRESS,
           counters: 0,
-          r3_budget: rvalid_rlast_budget,
+          r1_budget: arvld_rfirst_budget,
+          r3_budget: rfirst_rlast_budget,
           found_match: 0,
           next: '0,
           free: 1'b0
@@ -339,7 +399,8 @@ module read_guard #(
           timeout: 0,
           read_state: READ_ADDRESS,
           counters: 0,
-          r3_budget: rvalid_rlast_budget,
+          r1_budget: arvld_rfirst_budget,
+          r3_budget: rfirst_rlast_budget,
           found_match: 0,
           next: '0,
           free: 1'b0
@@ -357,7 +418,8 @@ module read_guard #(
               timeout: 0,
               read_state: READ_ADDRESS,
               counters: 0,
-              r3_budget: rvalid_rlast_budget,
+              r1_budget: arvld_rfirst_budget,
+              r3_budget: rfirst_rlast_budget,
               found_match: 0,
               next: '0, 
               free: 1'b0
@@ -374,7 +436,8 @@ module read_guard #(
               timeout: 0,
               read_state: READ_ADDRESS,
               counters: 0,
-              r3_budget: rvalid_rlast_budget,
+              r1_budget: arvld_rfirst_budget,
+              r3_budget: rfirst_rlast_budget,
               found_match: 0,
               next: '0,
               free: 1'b0
@@ -391,7 +454,8 @@ module read_guard #(
             timeout: 0,
             read_state: READ_ADDRESS,
             counters: 0,
-            r3_budget: rvalid_rlast_budget,
+            r1_budget: arvld_rfirst_budget,
+            r3_budget: rfirst_rlast_budget,
             found_match: 0,
             next: '0,
             free: 1'b0
@@ -404,7 +468,8 @@ module read_guard #(
             timeout: 0,
             read_state: READ_ADDRESS,
             counters: 0,
-            r3_budget: rvalid_rlast_budget,
+            r1_budget: arvld_rfirst_budget,
+            r3_budget: rfirst_rlast_budget,
             found_match: 0,
             next: '0,
             free: 1'b0
@@ -424,19 +489,19 @@ module read_guard #(
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.r0.d = 1'b1;
             end
-            if (linked_data_d[i].counters.cnt_arvalid_rfirst  > budget_arvld_rvld) begin
+            if (linked_data_q[i].counters.cnt_arvalid_rfirst  > budget_arvld_rvld) begin
               linked_data_d[i].timeout = 1'b1;
               reset_req = 1'b1;
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.r1.d = 1'b1; 
             end
-            if ( slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+            if ( r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
               linked_data_d[i].read_state = READ_DATA;
             end
             // for bursts of single transfer, r_valid and r_last asserted at the same cycle
-            if ( slv_rsp_i.r_valid && slv_rsp_i.r.last && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+            if ( r_valid_sticky && r_last_sticky && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               // if no match, keep comparing
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
@@ -456,7 +521,7 @@ module read_guard #(
               hw2reg_o.reset.d = 1'b1;
             end
             // handshake, id match and no timeout, successful completion
-            if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout) begin
+            if ( r_last_sticky && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout) begin
               // if no match, keep comparing
               if( id_exists ) begin
                 linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
@@ -544,19 +609,20 @@ module read_guard #(
           case (linked_data_q[i].read_state) 
             READ_ADDRESS: begin
               // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
-              if (mst_req_i.ar_valid && !slv_rsp_i.ar_ready) begin
+              if (!ar_ready_sticky && prescaled_en) begin
                 linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
               end
+              if(prescaled_en)
               // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
               linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
             end
         
             READ_DATA: begin
+              if( r_valid_sticky && !r_ready_sticky && prescaled_en)
               // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
-              if (slv_rsp_i.r_valid && !mst_req_i.r_ready) begin
                 linked_data_q[i].counters.cnt_rvalid_rready_first  <= linked_data_q[i].counters.cnt_rvalid_rready_first + 1;
-              end
               // Counter 3: R Phase - R_VALID to R_LAST
+              if( prescaled_en)
               linked_data_q[i].counters.cnt_rfirst_rlast  <= linked_data_q[i].counters.cnt_rfirst_rlast + 1;
             end
           endcase
