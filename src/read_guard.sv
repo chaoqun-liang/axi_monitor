@@ -271,7 +271,7 @@ module read_guard #(
   );
 
   logic ar_valid_sticky, ar_ready_sticky;
-  logic r_valid_sticky, r_ready_sticky;
+  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
   
   sticky_bit i_arvalid_sticky (
     .clk_i(clk_i),
@@ -305,6 +305,13 @@ module read_guard #(
     .sticky_o(r_ready_sticky)
   );
 
+  sticky_bit i_rlast_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.r.last),
+    .sticky_o(r_last_sticky)
+  );
   always_comb begin : proc_rd_queue
     match_in_id         = '0;
     match_out_id        = '0;
