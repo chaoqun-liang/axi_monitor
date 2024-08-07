@@ -271,7 +271,7 @@ module read_guard #(
   );
 
   logic ar_valid_sticky, ar_ready_sticky;
-  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
+  logic r_valid_sticky, r_ready_sticky;
   
   sticky_bit i_arvalid_sticky (
     .clk_i(clk_i),
@@ -305,13 +305,6 @@ module read_guard #(
     .sticky_o(r_ready_sticky)
   );
 
-  sticky_bit i_rlast_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.r.last),
-    .sticky_o(r_last_sticky)
-  );
   always_comb begin : proc_rd_queue
     match_in_id         = '0;
     match_out_id        = '0;
@@ -501,7 +494,7 @@ module read_guard #(
               linked_data_d[i].read_state = READ_DATA;
             end
             // for bursts of single transfer, r_valid and r_last asserted at the same cycle
-            if ( r_valid_sticky && r_last_sticky && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+            if ( r_valid_sticky && slv_rsp_i.r.last && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               // if no match, keep comparing
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
@@ -521,7 +514,7 @@ module read_guard #(
               hw2reg_o.reset.d = 1'b1;
             end
             // handshake, id match and no timeout, successful completion
-            if ( r_last_sticky && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout) begin
+            if ( slv_rsp_i.r.last && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout) begin
               // if no match, keep comparing
               if( id_exists ) begin
                 linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
