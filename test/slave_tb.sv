@@ -260,7 +260,7 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
 
     // write_budget
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0002, 4'hf, reg_error); 
 
     // read_budget
     reg_drv.send_write(32'h0000_0008, 32'h0000_0020, 4'hf, reg_error);

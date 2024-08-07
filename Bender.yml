@@ -24,6 +24,8 @@ sources:
       # Level 0
       - src/registers/slv_guard_reg_pkg.sv
       - src/registers/slv_guard_reg_top.sv
+      - src/prescaler.sv 
+      - src/sticky_bit.sv
       - src/write_guard.sv
       - src/read_guard.sv
       - src/id_remap.sv

@@ -14,23 +14,24 @@ DUT      ?= slv_guard_top
 
 # Design and simulation variables
 SLV_ROOT      ?= $(shell $(BENDER) path slv_guard)
-REG_DIR       := $(shell $(BENDER) path register_interface)
 SLV_VSIM_DIR  := $(SLV_ROOT)/target/sim/vsim
-
-
 
 compile_script_synth ?= $(SLV_ROOT)/target/sim/vsim/synth_compile.tcl
 
 QUESTA_FLAGS := -permissive -suppress 3009 -suppress 8386 -error 7 +UVM_NO_RELNOTES
 #QUESTA_FLAGS :=
 ifdef DEBUG
-	VOPT_FLAGS := $(QUESTA_FLAGS) +acc
-	VSIM_FLAGS := $(QUESTA_FLAGS) +acc
+	VOPT_FLAGS := $(QUESTA_FLAGS) -voptargs=+acc
+	VSIM_FLAGS := $(QUESTA_FLAGS) -voptargs=+acc
 	RUN_AND_EXIT := log -r /*; run -all
 else
-	VOPT_FLAGS := $(QUESTA_FLAGS) +acc
+	VOPT_FLAGS := $(QUESTA_FLAGS) +acc=p+$(TBENCH). +acc=np+$(DUT).
 	VSIM_FLAGS := $(QUESTA_FLAGS) -c
 	RUN_AND_EXIT := run -all; exit
+endif
+
+ifeq ($(netlist_sim),1)
+	NETLIST := -t netlist_sim
 endif
 
 # Download bender
@@ -52,7 +53,7 @@ synth-ips:
 
 # Questasim
 $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl: Bender.yml
-	$(BENDER) script vsim -t rtl -t test -t sim \
+	$(BENDER) script vsim -t rtl -t test -t sim $(NETLIST) \
 	--vlog-arg="-svinputport=compat" \
 	--vlog-arg="-override_timescale 1ns/1ps" \
 	--vlog-arg="-suppress 2583" > $@
@@ -63,9 +64,6 @@ slv-sim-init: $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl
 slv-build: slv-sim-init
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl]"
 
-slv-build-ps: slv-sim-init
-	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim -c -do "quit -code [source $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl; source $(SLV_ROOT)/target/sim/vsim/test.tcl]"
-
 slv-sim:
 	cd $(SLV_VSIM_DIR) && $(QUESTA) vsim $(VSIM_FLAGS) -do \
 		"set TESTBENCH $(TBENCH); \
@@ -74,8 +72,9 @@ slv-sim:
 		 $(RUN_AND_EXIT)"
 
 #################################
-# Phonies (KEEP AT END OF FILE) #
+# Phonies #
 #################################
+
 
 ## @section register generation
 .PHONY: regen_regs
@@ -98,6 +97,5 @@ $(SLV_ROOT)/sw/include/regs/slv_guard_reg.h: $(SLV_ROOT)/src/registers/slv_guard
 
 # Main target
 regen_regs: $(REGEN_TARGETS)
-
 
 .PHONY: slv-all slv-sim-init slv-build slv-sim 

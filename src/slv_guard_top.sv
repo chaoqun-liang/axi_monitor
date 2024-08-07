@@ -21,6 +21,8 @@ module slv_guard_top #(
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
   parameter int unsigned CntWidth      = 10,
+  /// Prescaler division value 
+  parameter int unsigned PrescalerDiv  = 4,
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -161,6 +163,7 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxWrTxns  ( MaxTxns    ), // total writes
     .CntWidth   ( CntWidth   ),
+    .PrescalerDiv (PrescalerDiv),
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
@@ -184,6 +187,7 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxRdTxns  ( MaxTxns    ), 
     .CntWidth   ( CntWidth   ),
+    .PrescalerDiv(PrescalerDiv),
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
@@ -211,13 +215,14 @@ module slv_guard_top #(
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    rd_enqueue = int_req.ar_valid;
-    wr_enqueue = int_req.aw_valid;
+    rd_enqueue = int_req.ar_valid && !rst_req && guard_ena_i;
+    wr_enqueue = int_req.aw_valid && !rst_req && guard_ena_i;
     if ( guard_ena_i && rst_req) begin
       req_o = 'b0;
       int_rsp = 'b0;
       wr_enqueue = 'b0;
       rd_enqueue = 'b0;
+      //mst_rsp_o.b.resp = 2'b10;
     end
   end
 

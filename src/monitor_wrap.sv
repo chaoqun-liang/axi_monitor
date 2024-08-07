@@ -47,6 +47,7 @@ slv_guard_top #(
   .MaxTxnsPerId ( MaxTxnsPerId   ),
   .MaxUniqIds   ( MaxUniqIds     ),
   .CntWidth     ( CntWidth       ),
+  .PrescalerDiv ( PrescalerDiv   ),
   .req_t        ( mst_req_t      ), 
   .rsp_t        ( mst_resp_t     ),
   .int_req_t    ( slv_req_t      ),
