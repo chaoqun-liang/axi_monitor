@@ -292,7 +292,7 @@ module write_guard #(
   ); 
 
   logic aw_valid_sticky, aw_ready_sticky;
-  logic w_valid_sticky, w_ready_sticky, w_last_sticky;
+  logic w_valid_sticky, w_ready_sticky;
   logic b_valid_sticky, b_ready_sticky;
 
   sticky_bit i_awvalid_sticky (
@@ -325,14 +325,6 @@ module write_guard #(
     .release_i(prescaled_en),
     .sticky_i(slv_rsp_i.w_ready),
     .sticky_o(w_ready_sticky)
-  );
-
-  sticky_bit i_wlast_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.w.last),
-    .sticky_o(w_last_sticky)
   );
 
   sticky_bit i_bvalid_sticky (
