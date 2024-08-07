@@ -20,9 +20,10 @@ module prescaler #(
     end else begin
       if (counter == ( DivFactor - 1)) begin
         counter <= 0;
-        prescaled_o <= ~prescaled_o;
+        prescaled_o <= 1;
       end else begin 
         counter <= counter + 1;
+        prescaled_o <= 0;
       end
     end
   end

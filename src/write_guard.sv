@@ -538,7 +538,7 @@ module write_guard #(
               linked_data_d[i].write_state = WRITE_DATA;
             end 
             // single transfer transaction where w_valid and w_last are shown at the same cycle
-            if ( (w_valid_sticky && w_last_sticky ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+            if ( (w_valid_sticky && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
@@ -556,7 +556,7 @@ module write_guard #(
               linked_data_d[i].timeout = 1'b1;
               hw2reg_o.irq.w3.d = 1'b1;
             end                                                                                                                        
-            if ( w_last_sticky && !linked_data_q[i].timeout ) begin
+            if ( mst_req_i.w.last && !linked_data_q[i].timeout ) begin
               hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
               linked_data_d[i].write_state = WRITE_RESPONSE;
@@ -691,8 +691,7 @@ module write_guard #(
               if (w_valid_sticky && !w_ready_sticky && prescaled_en ) 
                 linked_data_q[i].counters.cnt_wvalid_wready_first  <= linked_data_q[i].counters.cnt_wvalid_wready_first + 1;
               // Counter 3: W Phase - W_VALID(W_FIRST) to W_LAST 
-              //if (!mst_req_i.w.last)
-              if (prescaled_en)
+              if (!mst_req_i.w.last)
                 linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
             end
 
