@@ -70,9 +70,9 @@ module slv_guard_reg_top #(
   //        or <reg>_{wd|we|qs} if field == 1 or 0
   logic guard_enable_wd;
   logic guard_enable_we;
-  logic [19:0] budget_write_wd;
+  logic [3:0] budget_write_wd;
   logic budget_write_we;
-  logic [19:0] budget_read_wd;
+  logic [3:0] budget_read_wd;
   logic budget_read_we;
   logic reset_qs;
   logic irq_write_qs;
@@ -127,9 +127,9 @@ module slv_guard_reg_top #(
   // R[budget_write]: V(False)
 
   prim_subreg #(
-    .DW      (20),
+    .DW      (4),
     .SWACCESS("WO"),
-    .RESVAL  (20'h0)
+    .RESVAL  (4'h0)
   ) u_budget_write (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -153,9 +153,9 @@ module slv_guard_reg_top #(
   // R[budget_read]: V(False)
 
   prim_subreg #(
-    .DW      (20),
+    .DW      (4),
     .SWACCESS("WO"),
-    .RESVAL  (20'h0)
+    .RESVAL  (4'h0)
   ) u_budget_read (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -472,10 +472,10 @@ module slv_guard_reg_top #(
   assign guard_enable_wd = reg_wdata[0];
 
   assign budget_write_we = addr_hit[1] & reg_we & !reg_error;
-  assign budget_write_wd = reg_wdata[19:0];
+  assign budget_write_wd = reg_wdata[3:0];
 
   assign budget_read_we = addr_hit[2] & reg_we & !reg_error;
-  assign budget_read_wd = reg_wdata[19:0];
+  assign budget_read_wd = reg_wdata[3:0];
 
   assign irq_write_we = addr_hit[4] & reg_we & !reg_error;
   assign irq_write_wd = reg_wdata[0];
@@ -504,11 +504,11 @@ module slv_guard_reg_top #(
       end
 
       addr_hit[1]: begin
-        reg_rdata_next[19:0] = '0;
+        reg_rdata_next[3:0] = '0;
       end
 
       addr_hit[2]: begin
-        reg_rdata_next[19:0] = '0;
+        reg_rdata_next[3:0] = '0;
       end
 
       addr_hit[3]: begin

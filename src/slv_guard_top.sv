@@ -20,7 +20,7 @@ module slv_guard_top #(
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 10,
+  parameter int unsigned CntWidth      = 0,
   /// Prescaler division value 
   parameter int unsigned PrescalerDiv  = 4,
   /// Master request type

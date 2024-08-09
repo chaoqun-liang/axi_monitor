@@ -28,7 +28,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "19:0", name: "budget_write", desc: "time budget for one write transaction" }
+      { bits: "3:0", name: "budget_write", desc: "time budget for one write transaction" }
     ]
   },
   
@@ -38,7 +38,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "19:0", name: "budget_read", desc: "time budget for one read transaction" }
+      { bits: "3:0", name: "budget_read", desc: "time budget for one read transaction" }
     ]
   },
 
