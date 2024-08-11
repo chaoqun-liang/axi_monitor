@@ -92,13 +92,13 @@ module slv_guard_top #(
 
   assign reg2hw_w.budget_awvld_awrdy  = reg2hw.budget_awvld_awrdy;
   assign reg2hw_w.budget_wvld_wrdy    = reg2hw.budget_wvld_wrdy;
-  assign reg2hw_w.unit_budget_w   = reg2hw.unit_budget_w;
+  assign reg2hw_w.budget_unit_w       = reg2hw.budget_unit_w;
   assign reg2hw_w.budget_wlast_bvld   = reg2hw.budget_wlast_bvld;
-  assign reg2hw_w.budget_bvld_brdy   = reg2hw.budget_bvld_brdy;
+  assign reg2hw_w.budget_bvld_brdy    = reg2hw.budget_bvld_brdy;
 
   assign reg2hw_r.budget_arvld_arrdy  = reg2hw.budget_arvld_arrdy;
   assign reg2hw_r.budget_rvld_rrdy    = reg2hw.budget_rvld_rrdy;
-  assign reg2hw_r.unit_budget_r   = reg2hw.unit_budget_r;
+  assign reg2hw_r.budget_unit_r       = reg2hw.budget_unit_r;
   
   // min internal width
   localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 

@@ -45,7 +45,7 @@ module read_guard #(
   output hw2reg_t    hw2reg_o
 );
   
-  assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
+  assign hw2reg_o.irq.unwanted_rd_resp.de = 1'b1;
   assign hw2reg_o.irq.r0.de = 1'b1;
   assign hw2reg_o.irq.r1.de = 1'b1;
   assign hw2reg_o.irq.r2.de = 1'b1;
@@ -72,9 +72,9 @@ module read_guard #(
   hs_cnt_t  budget_rvld_rlast;
 
   assign budget_arvld_arrdy = reg2hw_i.budget_arvld_arrdy.q;
-  assign budget_arvld_rvld  = reg2hw_i.unit_budget_r.q;
+  assign budget_arvld_rvld  = reg2hw_i.budget_unit_r.q;
   assign budget_rvld_rrdy   = reg2hw_i.budget_rvld_rrdy.q;
-  assign budget_rvld_rlast  = reg2hw_i.unit_budget_r.q;
+  assign budget_rvld_rlast  = reg2hw_i.budget_unit_r.q;
 
   // Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxRdTxns) ? MaxUniqIds : MaxRdTxns;
@@ -335,7 +335,8 @@ module read_guard #(
     hw2reg_o.latency_arvld_rvld.d  = reg2hw_i.latency_arvld_rvld.q;
     hw2reg_o.latency_rvld_rrdy.d   = reg2hw_i.latency_rvld_rrdy.q;
     hw2reg_o.latency_rvld_rlast.d  = reg2hw_i.latency_rvld_rlast.q;
-    hw2reg_o.irq.unwanted_txn.d    = reg2hw_i.irq.unwanted_txn.q;
+    hw2reg_o.irq.unwanted_rd_resp.d    = reg2hw_i.irq.unwanted_rd_resp.q;
+    hw2reg_o.irq.irq.d                  = reg2hw_i.irq.irq.q;
     hw2reg_o.irq.txn_id.d          = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq.r0.d              = reg2hw_i.irq.r0.q;
     hw2reg_o.irq.r1.d              = reg2hw_i.irq.r1.q;
@@ -526,7 +527,7 @@ module read_guard #(
               if( id_exists ) begin
                 linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
               end else begin
-                hw2reg_o.irq.unwanted_txn.d = 1'b1;
+                hw2reg_o.irq.unwanted_rd_resp.d = 1'b1;
                 hw2reg_o.reset.d = 1'b1;
                 reset_req = 1'b1;
                 hw2reg_o.reset.d = 1'b1;
@@ -553,6 +554,7 @@ module read_guard #(
           hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
           hw2reg_o.reset.d = 1'b1;
           irq = 1'b1;
+          hw2reg_o.irq.irq.d = 1'b1;
           for (int i = 0; i < MaxRdTxns; i++ ) begin
             if (!linked_data_q[i].free) begin 
               oup_req = '1;

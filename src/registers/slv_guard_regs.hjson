@@ -32,13 +32,13 @@
     ]
   },
   
-  { name:     "unit_budget_w"
+  { name:     "budget_unit_w"
     desc:     "time budget for unit length on w channel"
     swaccess: "wo"
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "3:0", name: "unit_budget_w", desc: "unit budget time on w channel" }
+      { bits: "1:0", name: "unit_budget_w", desc: "unit budget time on w channel" }
     ]
   },
 
@@ -82,13 +82,13 @@
     ]
   },
   
-  { name:     "unit_budget_r"
+  { name:     "budget_unit_r"
     desc:     "time budget for unit length on r channel"
     swaccess: "wo"
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "3:0", name: "unit_budget_r", desc: "unit budget time on read data channel" }
+      { bits: "1:0", name: "unit_budget_r", desc: "unit budget time on read data channel" }
     ]
   },
 
@@ -103,88 +103,88 @@
   },
    
   { name:     "reset"
-    desc:     "Is the interface requested to be reset?"
+    desc:     "Is this slave device requested to be reset?"
     swaccess: "ro"
     hwaccess: "hrw"
     resval:   "0"
     fields: [
       { bits: "0:0", name: "reset", 
-        desc: "Is the interface requested to be reset?"  
+        desc: "Is this slave device requested to be reset?"  
       }
     ]
   },
 
   { name: "irq",
-          desc: "interrpt cause and clear",
+          desc: "interrpt cause",
           swaccess: "rw",
           hwaccess: "hrw",
           fields: [
-              { bits: "0", name: "w0",
+              { bits: "0", name: "irq",
+                desc: "interrupt raised by faulty transaction"
+                resval: "0"
+              },
+              { bits: "1", name: "w0",
                 desc: "timeout at w0 phase AWVALID to AWREADY"
                 resval: "0"
               },
-              { bits: "1", name: "w1",
+              { bits: "2", name: "w1",
                 desc: "timeout at w1 phase AWVALID to WVALID"
                 resval: "0"
               },
-              { bits: "2", name: "w2",
+              { bits: "3", name: "w2",
                 desc: "timeout at w2 phase WVALID to WREADY "
                 resval: "0"
               },
-              { bits: "3", name: "w3",
+              { bits: "4", name: "w3",
                 desc: "timeout at w3 phase WVALID to WLAST"
                 resval: "0"
               },
-              { bits: "4", name: "w4",
+              { bits: "5", name: "w4",
                 desc: "timeout at w4 phase WLAST to BVALID"
                 resval: "0"
               },
-              { bits: "5", name: "w5",
-                desc: "timeout at w5 phase WLAST to BREADY"
+              { bits: "6", name: "w5",
+                desc: "timeout at w5 phase BVALID to BREADY"
                 resval: "0"
               },
-              { bits: "6", name: "r0",
+              { bits: "7", name: "r0",
                 desc: "timeout at r0 phase ARVALID to ARREADY"
                 resval: "0"
               },
-              { bits: "7", name: "r1",
+              { bits: "8", name: "r1",
                 desc: "timeout at r1 phase ARVALID to RVALID"
                 resval: "0"
               },
-              { bits: "8", name: "r2",
+              { bits: "9", name: "r2",
                 desc: "timeout at r2 phase RVALID to RREADY"
                 resval: "0"
               },
-              { bits: "9", name: "r3",
+              { bits: "10", name: "r3",
                 desc: "timeout at r3 phase RVALID to RLAST"
                 resval: "0"
               },
-              { bits: "10", name: "mis_id_wr",
-                desc: "write id mismatch "
+              { bits: "11", name: "unwanted_wr_resp",
+                desc: "  this write response is unexpected "
                 resval: "0"
               },
-              { bits: "11", name: "mis_id_rd",
-                desc: " id mismatch "
-                resval: "0"
-              },
-              { bits: "12", name: "unwanted_txn",
-                desc: "  if the txn is unwanted "
+              { bits: "12", name: "unwanted_rd_resp",
+                desc: "  this read response is unexpected "
                 resval: "0"
               },
               { bits: "24:13", name: "txn_id",
-                desc: "id of the transaction going wrong"
+                desc: "id of the faulty transaction"
                 resval: "0"
               }
           ]
   },
 
   { name:     "irq_addr"
-    desc:     "address of the transaction going wrong"
+    desc:     "address of the faulty transaction"
     swaccess: "ro"
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
+      { bits: "31:0", name: "irq_addr", desc: "address of the faulty transaction" }
     ]
   },
   

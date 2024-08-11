@@ -45,7 +45,8 @@ module write_guard #(
   output hw2reg_t    hw2reg_o
 );
 
-  assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
+  assign hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
+  assign hw2reg_o.irq.irq.de = 1'b1;
   assign hw2reg_o.irq.w0.de = 1'b1;
   assign hw2reg_o.irq.w1.de = 1'b1;
   assign hw2reg_o.irq.w2.de = 1'b1;
@@ -80,9 +81,9 @@ module write_guard #(
   hs_cnt_t  budget_bvld_brdy;
 
   assign budget_awvld_awrdy = reg2hw_i.budget_awvld_awrdy.q;
-  assign budget_awvld_wvld  = reg2hw_i.unit_budget_w.q;
+  assign budget_awvld_wvld  = reg2hw_i.budget_unit_w.q;
   assign budget_wvld_wrdy   = reg2hw_i.budget_wvld_wrdy.q;
-  assign budget_wvld_wlast  = reg2hw_i.unit_budget_w.q;
+  assign budget_wvld_wlast  = reg2hw_i.budget_unit_w.q;
   assign budget_wlast_bvld  = reg2hw_i.budget_wlast_bvld.q;
   assign budget_bvld_brdy   = reg2hw_i.budget_bvld_brdy.q;
 
@@ -384,8 +385,9 @@ module write_guard #(
     hw2reg_o.irq.w5.d               = reg2hw_i.irq.w5.q;
     hw2reg_o.irq.txn_id.d           = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq_addr.d             = reg2hw_i.irq_addr.q;
+    hw2reg_o.irq.irq.d              = reg2hw_i.irq.irq.q;
     hw2reg_o.reset.d                = reg2hw_i.reset.q; 
-    hw2reg_o.irq.unwanted_txn.d     = reg2hw_i.irq.unwanted_txn.q;
+    hw2reg_o.irq.unwanted_wr_resp.d     = reg2hw_i.irq.unwanted_wr_resp.q;
     
     // Transaction enqueue into LD table
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
@@ -586,7 +588,7 @@ module write_guard #(
               end else begin
                 reset_req = 1'b1;
                 hw2reg_o.reset.d = 1'b1;
-                hw2reg_o.irq.unwanted_txn.d = 'b1;
+                hw2reg_o.irq.unwanted_wr_resp.d = 'b1;
               end 
             end 
             if ( linked_data_q[i].found_match) begin
@@ -610,6 +612,7 @@ module write_guard #(
         if (linked_data_q[i].timeout || reset_req) begin
           // Specific handling for reset_req
           irq = 1'b1;
+          hw2reg_o.irq.irq.d = 1'b1;
           hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
           hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
           // clear all LD slots for both timeout and reset_req

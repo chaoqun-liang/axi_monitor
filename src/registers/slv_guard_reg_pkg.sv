@@ -22,8 +22,8 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_budget_awvld_awrdy_reg_t;
 
   typedef struct packed {
-    logic [3:0]  q;
-  } slv_guard_reg2hw_unit_budget_w_reg_t;
+    logic [1:0]  q;
+  } slv_guard_reg2hw_budget_unit_w_reg_t;
 
   typedef struct packed {
     logic [3:0]  q;
@@ -42,8 +42,8 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_budget_arvld_arrdy_reg_t;
 
   typedef struct packed {
-    logic [3:0]  q;
-  } slv_guard_reg2hw_unit_budget_r_reg_t;
+    logic [1:0]  q;
+  } slv_guard_reg2hw_budget_unit_r_reg_t;
 
   typedef struct packed {
     logic [3:0]  q;
@@ -54,6 +54,9 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_reset_reg_t;
 
   typedef struct packed {
+    struct packed {
+      logic        q;
+    } irq;
     struct packed {
       logic        q;
     } w0;
@@ -86,13 +89,10 @@ package slv_guard_reg_pkg;
     } r3;
     struct packed {
       logic        q;
-    } mis_id_wr;
+    } unwanted_wr_resp;
     struct packed {
       logic        q;
-    } mis_id_rd;
-    struct packed {
-      logic        q;
-    } unwanted_txn;
+    } unwanted_rd_resp;
     struct packed {
       logic [11:0] q;
     } txn_id;
@@ -153,9 +153,9 @@ package slv_guard_reg_pkg;
   } slv_guard_hw2reg_budget_awvld_awrdy_reg_t;
 
   typedef struct packed {
-    logic [3:0]  d;
+    logic [1:0]  d;
     logic        de;
-  } slv_guard_hw2reg_unit_budget_w_reg_t;
+  } slv_guard_hw2reg_budget_unit_w_reg_t;
 
   typedef struct packed {
     logic [3:0]  d;
@@ -178,9 +178,9 @@ package slv_guard_reg_pkg;
   } slv_guard_hw2reg_budget_arvld_arrdy_reg_t;
 
   typedef struct packed {
-    logic [3:0]  d;
+    logic [1:0]  d;
     logic        de;
-  } slv_guard_hw2reg_unit_budget_r_reg_t;
+  } slv_guard_hw2reg_budget_unit_r_reg_t;
 
   typedef struct packed {
     logic [3:0]  d;
@@ -193,6 +193,10 @@ package slv_guard_reg_pkg;
   } slv_guard_hw2reg_reset_reg_t;
 
   typedef struct packed {
+    struct packed {
+      logic        d;
+      logic        de;
+    } irq;
     struct packed {
       logic        d;
       logic        de;
@@ -236,15 +240,11 @@ package slv_guard_reg_pkg;
     struct packed {
       logic        d;
       logic        de;
-    } mis_id_wr;
+    } unwanted_wr_resp;
     struct packed {
       logic        d;
       logic        de;
-    } mis_id_rd;
-    struct packed {
-      logic        d;
-      logic        de;
-    } unwanted_txn;
+    } unwanted_rd_resp;
     struct packed {
       logic [11:0] d;
       logic        de;
@@ -308,14 +308,14 @@ package slv_guard_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [190:190]
-    slv_guard_reg2hw_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [189:186]
-    slv_guard_reg2hw_unit_budget_w_reg_t unit_budget_w; // [185:182]
-    slv_guard_reg2hw_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [181:178]
-    slv_guard_reg2hw_budget_wlast_bvld_reg_t budget_wlast_bvld; // [177:174]
-    slv_guard_reg2hw_budget_bvld_brdy_reg_t budget_bvld_brdy; // [173:170]
-    slv_guard_reg2hw_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [169:166]
-    slv_guard_reg2hw_unit_budget_r_reg_t unit_budget_r; // [165:162]
+    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [186:186]
+    slv_guard_reg2hw_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [185:182]
+    slv_guard_reg2hw_budget_unit_w_reg_t budget_unit_w; // [181:180]
+    slv_guard_reg2hw_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [179:176]
+    slv_guard_reg2hw_budget_wlast_bvld_reg_t budget_wlast_bvld; // [175:172]
+    slv_guard_reg2hw_budget_bvld_brdy_reg_t budget_bvld_brdy; // [171:168]
+    slv_guard_reg2hw_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [167:164]
+    slv_guard_reg2hw_budget_unit_r_reg_t budget_unit_r; // [163:162]
     slv_guard_reg2hw_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [161:158]
     slv_guard_reg2hw_reset_reg_t reset; // [157:157]
     slv_guard_reg2hw_irq_reg_t irq; // [156:132]
@@ -334,14 +334,14 @@ package slv_guard_reg_pkg;
 
   // HW -> register type
   typedef struct packed {
-    slv_guard_hw2reg_guard_enable_reg_t guard_enable; // [225:224]
-    slv_guard_hw2reg_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [223:219]
-    slv_guard_hw2reg_unit_budget_w_reg_t unit_budget_w; // [218:214]
-    slv_guard_hw2reg_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [213:209]
-    slv_guard_hw2reg_budget_wlast_bvld_reg_t budget_wlast_bvld; // [208:204]
-    slv_guard_hw2reg_budget_bvld_brdy_reg_t budget_bvld_brdy; // [203:199]
-    slv_guard_hw2reg_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [198:194]
-    slv_guard_hw2reg_unit_budget_r_reg_t unit_budget_r; // [193:189]
+    slv_guard_hw2reg_guard_enable_reg_t guard_enable; // [221:220]
+    slv_guard_hw2reg_budget_awvld_awrdy_reg_t budget_awvld_awrdy; // [219:215]
+    slv_guard_hw2reg_budget_unit_w_reg_t budget_unit_w; // [214:212]
+    slv_guard_hw2reg_budget_wvld_wrdy_reg_t budget_wvld_wrdy; // [211:207]
+    slv_guard_hw2reg_budget_wlast_bvld_reg_t budget_wlast_bvld; // [206:202]
+    slv_guard_hw2reg_budget_bvld_brdy_reg_t budget_bvld_brdy; // [201:197]
+    slv_guard_hw2reg_budget_arvld_arrdy_reg_t budget_arvld_arrdy; // [196:192]
+    slv_guard_hw2reg_budget_unit_r_reg_t budget_unit_r; // [191:189]
     slv_guard_hw2reg_budget_rvld_rrdy_reg_t budget_rvld_rrdy; // [188:184]
     slv_guard_hw2reg_reset_reg_t reset; // [183:182]
     slv_guard_hw2reg_irq_reg_t irq; // [181:143]
@@ -361,12 +361,12 @@ package slv_guard_reg_pkg;
   // Register offsets
   parameter logic [BlockAw-1:0] SLV_GUARD_GUARD_ENABLE_OFFSET = 7'h 0;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_AWVLD_AWRDY_OFFSET = 7'h 4;
-  parameter logic [BlockAw-1:0] SLV_GUARD_UNIT_BUDGET_W_OFFSET = 7'h 8;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_UNIT_W_OFFSET = 7'h 8;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WVLD_WRDY_OFFSET = 7'h c;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_WLAST_BVLD_OFFSET = 7'h 10;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_BVLD_BRDY_OFFSET = 7'h 14;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_ARVLD_ARRDY_OFFSET = 7'h 18;
-  parameter logic [BlockAw-1:0] SLV_GUARD_UNIT_BUDGET_R_OFFSET = 7'h 1c;
+  parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_UNIT_R_OFFSET = 7'h 1c;
   parameter logic [BlockAw-1:0] SLV_GUARD_BUDGET_RVLD_RRDY_OFFSET = 7'h 20;
   parameter logic [BlockAw-1:0] SLV_GUARD_RESET_OFFSET = 7'h 24;
   parameter logic [BlockAw-1:0] SLV_GUARD_IRQ_OFFSET = 7'h 28;
@@ -386,12 +386,12 @@ package slv_guard_reg_pkg;
   typedef enum int {
     SLV_GUARD_GUARD_ENABLE,
     SLV_GUARD_BUDGET_AWVLD_AWRDY,
-    SLV_GUARD_UNIT_BUDGET_W,
+    SLV_GUARD_BUDGET_UNIT_W,
     SLV_GUARD_BUDGET_WVLD_WRDY,
     SLV_GUARD_BUDGET_WLAST_BVLD,
     SLV_GUARD_BUDGET_BVLD_BRDY,
     SLV_GUARD_BUDGET_ARVLD_ARRDY,
-    SLV_GUARD_UNIT_BUDGET_R,
+    SLV_GUARD_BUDGET_UNIT_R,
     SLV_GUARD_BUDGET_RVLD_RRDY,
     SLV_GUARD_RESET,
     SLV_GUARD_IRQ,
@@ -412,12 +412,12 @@ package slv_guard_reg_pkg;
   parameter logic [3:0] SLV_GUARD_PERMIT [22] = '{
     4'b 0001, // index[ 0] SLV_GUARD_GUARD_ENABLE
     4'b 0001, // index[ 1] SLV_GUARD_BUDGET_AWVLD_AWRDY
-    4'b 0001, // index[ 2] SLV_GUARD_UNIT_BUDGET_W
+    4'b 0001, // index[ 2] SLV_GUARD_BUDGET_UNIT_W
     4'b 0001, // index[ 3] SLV_GUARD_BUDGET_WVLD_WRDY
     4'b 0001, // index[ 4] SLV_GUARD_BUDGET_WLAST_BVLD
     4'b 0001, // index[ 5] SLV_GUARD_BUDGET_BVLD_BRDY
     4'b 0001, // index[ 6] SLV_GUARD_BUDGET_ARVLD_ARRDY
-    4'b 0001, // index[ 7] SLV_GUARD_UNIT_BUDGET_R
+    4'b 0001, // index[ 7] SLV_GUARD_BUDGET_UNIT_R
     4'b 0001, // index[ 8] SLV_GUARD_BUDGET_RVLD_RRDY
     4'b 0001, // index[ 9] SLV_GUARD_RESET
     4'b 1111, // index[10] SLV_GUARD_IRQ
