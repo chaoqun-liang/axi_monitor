@@ -18,7 +18,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "0:0", name: "enable", desc: "Enable slave guard feature" }
+      { bits: "0", name: "enable", desc: "Enable slave guard feature" }
     ]
   },
     
@@ -43,51 +43,51 @@
   },
 
   { name:     "reset"
-    desc:     "Is the interface requested to be reset?"
+    desc:     "Is the slave requested to be reset?"
     swaccess: "ro"
     hwaccess: "hrw"
     fields: [
-      { bits: "0:0", name: "reset", desc: "Is the interface requested to be reset?" }
+      { bits: "0:0", name: "reset", desc: "Is the slave requested to be reset?" }
     ]
   },
 
   { name: "irq",
-          desc: "interrpt cause and clear",
-          swaccess: "rw",
+          desc: "interrupt information",
+          swaccess: "ro",
           hwaccess: "hrw",
           fields: [
-              { bits: "0", name: "write",
+              { bits: "0", name: "irq",
+                desc: "interrupt line"
+                resval: "0"
+              },
+              { bits: "1", name: "wr_timeout",
                 desc: "write timeout"
                 resval: "0"
               },
-              { bits: "1", name: "read",
+              { bits: "2", name: "rd_timeout",
                 desc: "read timeout"
                 resval: "0"
               },
-              { bits: "2", name: "mis_id_wr",
-                desc: "write id mismatch "
+              { bits: "3", name: "unwanted_wr_resp",
+                desc: "  if this is unwanted write response"
                 resval: "0"
               },
-              { bits: "3", name: "mis_id_rd",
-                desc: " id mismatch "
+              { bits: "4", name: "unwanted_rd_resp",
+                desc: "  if this is unwanted read response"
                 resval: "0"
               },
-              { bits: "4", name: "unwanted_txn",
-                desc: "  if the txn is unwanted "
-                resval: "0"
-              },
-              { bits: "16:5", name: "txn_id",
-                desc: "id of the transaction going wrong"
+              { bits: "9:5", name: "txn_id",
+                desc: "id of the faulty transaction"
               }
           ]
   },
 
   { name:     "irq_addr"
-    desc:     "address of the transaction going wrong"
+    desc:     "address of the faulty transaction"
     swaccess: "ro"
     hwaccess: "hrw"
     fields: [
-      { bits: "31:0", name: "irq_addr", desc: "address of the transaction going wrong" }
+      { bits: "31:0", name: "irq_addr", desc: "address of the faulty transaction" }
     ]
   },
 
@@ -108,7 +108,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "9:0", name: "latency_awvld_wfirst", desc: "latency of one read" }
+      { bits: "9:0", name: "latency_read", desc: "latency of one read" }
     ]
   },
 

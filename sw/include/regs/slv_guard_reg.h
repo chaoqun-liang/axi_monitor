@@ -34,23 +34,23 @@ extern "C" {
 #define SLV_GUARD_BUDGET_READ_BUDGET_READ_FIELD \
   ((bitfield_field32_t) { .mask = SLV_GUARD_BUDGET_READ_BUDGET_READ_MASK, .index = SLV_GUARD_BUDGET_READ_BUDGET_READ_OFFSET })
 
-// Is the interface requested to be reset?
+// Is the slave requested to be reset?
 #define SLV_GUARD_RESET_REG_OFFSET 0xc
 #define SLV_GUARD_RESET_RESET_BIT 0
 
-// interrpt cause and clear
+// interrupt information
 #define SLV_GUARD_IRQ_REG_OFFSET 0x10
-#define SLV_GUARD_IRQ_WRITE_BIT 0
-#define SLV_GUARD_IRQ_READ_BIT 1
-#define SLV_GUARD_IRQ_MIS_ID_WR_BIT 2
-#define SLV_GUARD_IRQ_MIS_ID_RD_BIT 3
-#define SLV_GUARD_IRQ_UNWANTED_TXN_BIT 4
-#define SLV_GUARD_IRQ_TXN_ID_MASK 0xfff
+#define SLV_GUARD_IRQ_IRQ_BIT 0
+#define SLV_GUARD_IRQ_WR_TIMEOUT_BIT 1
+#define SLV_GUARD_IRQ_RD_TIMEOUT_BIT 2
+#define SLV_GUARD_IRQ_UNWANTED_WR_RESP_BIT 3
+#define SLV_GUARD_IRQ_UNWANTED_RD_RESP_BIT 4
+#define SLV_GUARD_IRQ_TXN_ID_MASK 0x1f
 #define SLV_GUARD_IRQ_TXN_ID_OFFSET 5
 #define SLV_GUARD_IRQ_TXN_ID_FIELD \
   ((bitfield_field32_t) { .mask = SLV_GUARD_IRQ_TXN_ID_MASK, .index = SLV_GUARD_IRQ_TXN_ID_OFFSET })
 
-// address of the transaction going wrong
+// address of the faulty transaction
 #define SLV_GUARD_IRQ_ADDR_REG_OFFSET 0x14
 
 // letency of one write txn
@@ -62,10 +62,10 @@ extern "C" {
 
 // latency of one read txn
 #define SLV_GUARD_LATENCY_READ_REG_OFFSET 0x1c
-#define SLV_GUARD_LATENCY_READ_LATENCY_AWVLD_WFIRST_MASK 0x3ff
-#define SLV_GUARD_LATENCY_READ_LATENCY_AWVLD_WFIRST_OFFSET 0
-#define SLV_GUARD_LATENCY_READ_LATENCY_AWVLD_WFIRST_FIELD \
-  ((bitfield_field32_t) { .mask = SLV_GUARD_LATENCY_READ_LATENCY_AWVLD_WFIRST_MASK, .index = SLV_GUARD_LATENCY_READ_LATENCY_AWVLD_WFIRST_OFFSET })
+#define SLV_GUARD_LATENCY_READ_LATENCY_READ_MASK 0x3ff
+#define SLV_GUARD_LATENCY_READ_LATENCY_READ_OFFSET 0
+#define SLV_GUARD_LATENCY_READ_LATENCY_READ_FIELD \
+  ((bitfield_field32_t) { .mask = SLV_GUARD_LATENCY_READ_LATENCY_READ_MASK, .index = SLV_GUARD_LATENCY_READ_LATENCY_READ_OFFSET })
 
 #ifdef __cplusplus
 }  // extern "C"

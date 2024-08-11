@@ -41,7 +41,9 @@ module read_guard #(
   output hw2reg_t    hw2reg_o
 );
 
-  assign hw2reg_o.irq.unwanted_txn.de = 1'b1;
+  assign hw2reg_o.irq.unwanted_rd_resp.de = 1'b1;
+  assign hw2reg_o.irq.irq.de          = 1'b1;
+  assign hw2reg_o.irq.rd_timeout.de       = 1'b1;
   assign hw2reg_o.irq.txn_id.de = 1'b1;
   assign hw2reg_o.irq_addr.de = 1'b1;
   assign hw2reg_o.reset.de = 1'b1; 
@@ -251,7 +253,9 @@ module read_guard #(
     oup_req             = 1'b0;
     irq                 = 1'b0;
     reset_req           = reset_req_q;
-    hw2reg_o.irq.unwanted_txn.d = reg2hw_i.irq.unwanted_txn.q;
+    hw2reg_o.irq.unwanted_rd_resp.d = reg2hw_i.irq.unwanted_rd_resp.q;
+    hw2reg_o.irq.irq.d    = reg2hw_i.irq.irq.q;
+    hw2reg_o.irq.rd_timeout.d = reg2hw_i.irq.rd_timeout.q;
     hw2reg_o.irq.txn_id.d       = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq_addr.d         = reg2hw_i.irq_addr.q;
     hw2reg_o.reset.d            = reg2hw_i.reset.q;
@@ -363,19 +367,22 @@ module read_guard #(
       if (!linked_data_q[i].free) begin 
         if (linked_data_q[i].counter == 0) begin 
           linked_data_d[i].timeout = 1'b1;
+          hw2reg_o.irq.rd_timeout.d = 1'b1;
           reset_req = 1'b1;
           hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
           hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
           hw2reg_o.reset.d = 1'b1;
+          hw2reg_o.irq.irq.d = 1'b1;
           irq = 1'b1;
         end 
         if ( r_last_sticky && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout ) begin
           if( id_exists ) begin
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.r.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
           end else begin 
-            hw2reg_o.irq.unwanted_txn.d = 'b1;
+            hw2reg_o.irq.unwanted_rd_resp.d = 'b1;
             hw2reg_o.reset.d = 1'b1;
             reset_req = 1'b1;
+            hw2reg_o.irq.irq.d = 1'b1;
             irq = 1'b1;
           end
         end

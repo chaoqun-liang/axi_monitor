@@ -75,24 +75,12 @@ module slv_guard_reg_top #(
   logic [3:0] budget_read_wd;
   logic budget_read_we;
   logic reset_qs;
-  logic irq_write_qs;
-  logic irq_write_wd;
-  logic irq_write_we;
-  logic irq_read_qs;
-  logic irq_read_wd;
-  logic irq_read_we;
-  logic irq_mis_id_wr_qs;
-  logic irq_mis_id_wr_wd;
-  logic irq_mis_id_wr_we;
-  logic irq_mis_id_rd_qs;
-  logic irq_mis_id_rd_wd;
-  logic irq_mis_id_rd_we;
-  logic irq_unwanted_txn_qs;
-  logic irq_unwanted_txn_wd;
-  logic irq_unwanted_txn_we;
-  logic [11:0] irq_txn_id_qs;
-  logic [11:0] irq_txn_id_wd;
-  logic irq_txn_id_we;
+  logic irq_irq_qs;
+  logic irq_wr_timeout_qs;
+  logic irq_rd_timeout_qs;
+  logic irq_unwanted_wr_resp_qs;
+  logic irq_unwanted_rd_resp_qs;
+  logic [4:0] irq_txn_id_qs;
   logic [31:0] irq_addr_qs;
   logic [9:0] latency_write_qs;
   logic [9:0] latency_read_qs;
@@ -204,148 +192,142 @@ module slv_guard_reg_top #(
 
   // R[irq]: V(False)
 
-  //   F[write]: 0:0
+  //   F[irq]: 0:0
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("RW"),
+    .SWACCESS("RO"),
     .RESVAL  (1'h0)
-  ) u_irq_write (
+  ) u_irq_irq (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_write_we),
-    .wd     (irq_write_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.irq.write.de),
-    .d      (hw2reg.irq.write.d ),
+    .de     (hw2reg.irq.irq.de),
+    .d      (hw2reg.irq.irq.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.write.q ),
+    .q      (reg2hw.irq.irq.q ),
 
     // to register interface (read)
-    .qs     (irq_write_qs)
+    .qs     (irq_irq_qs)
   );
 
 
-  //   F[read]: 1:1
+  //   F[wr_timeout]: 1:1
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("RW"),
+    .SWACCESS("RO"),
     .RESVAL  (1'h0)
-  ) u_irq_read (
+  ) u_irq_wr_timeout (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_read_we),
-    .wd     (irq_read_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.irq.read.de),
-    .d      (hw2reg.irq.read.d ),
+    .de     (hw2reg.irq.wr_timeout.de),
+    .d      (hw2reg.irq.wr_timeout.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.read.q ),
+    .q      (reg2hw.irq.wr_timeout.q ),
 
     // to register interface (read)
-    .qs     (irq_read_qs)
+    .qs     (irq_wr_timeout_qs)
   );
 
 
-  //   F[mis_id_wr]: 2:2
+  //   F[rd_timeout]: 2:2
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("RW"),
+    .SWACCESS("RO"),
     .RESVAL  (1'h0)
-  ) u_irq_mis_id_wr (
+  ) u_irq_rd_timeout (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_mis_id_wr_we),
-    .wd     (irq_mis_id_wr_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.irq.mis_id_wr.de),
-    .d      (hw2reg.irq.mis_id_wr.d ),
+    .de     (hw2reg.irq.rd_timeout.de),
+    .d      (hw2reg.irq.rd_timeout.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.mis_id_wr.q ),
+    .q      (reg2hw.irq.rd_timeout.q ),
 
     // to register interface (read)
-    .qs     (irq_mis_id_wr_qs)
+    .qs     (irq_rd_timeout_qs)
   );
 
 
-  //   F[mis_id_rd]: 3:3
+  //   F[unwanted_wr_resp]: 3:3
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("RW"),
+    .SWACCESS("RO"),
     .RESVAL  (1'h0)
-  ) u_irq_mis_id_rd (
+  ) u_irq_unwanted_wr_resp (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_mis_id_rd_we),
-    .wd     (irq_mis_id_rd_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.irq.mis_id_rd.de),
-    .d      (hw2reg.irq.mis_id_rd.d ),
+    .de     (hw2reg.irq.unwanted_wr_resp.de),
+    .d      (hw2reg.irq.unwanted_wr_resp.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.mis_id_rd.q ),
+    .q      (reg2hw.irq.unwanted_wr_resp.q ),
 
     // to register interface (read)
-    .qs     (irq_mis_id_rd_qs)
+    .qs     (irq_unwanted_wr_resp_qs)
   );
 
 
-  //   F[unwanted_txn]: 4:4
+  //   F[unwanted_rd_resp]: 4:4
   prim_subreg #(
     .DW      (1),
-    .SWACCESS("RW"),
+    .SWACCESS("RO"),
     .RESVAL  (1'h0)
-  ) u_irq_unwanted_txn (
+  ) u_irq_unwanted_rd_resp (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_unwanted_txn_we),
-    .wd     (irq_unwanted_txn_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
-    .de     (hw2reg.irq.unwanted_txn.de),
-    .d      (hw2reg.irq.unwanted_txn.d ),
+    .de     (hw2reg.irq.unwanted_rd_resp.de),
+    .d      (hw2reg.irq.unwanted_rd_resp.d ),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.unwanted_txn.q ),
+    .q      (reg2hw.irq.unwanted_rd_resp.q ),
 
     // to register interface (read)
-    .qs     (irq_unwanted_txn_qs)
+    .qs     (irq_unwanted_rd_resp_qs)
   );
 
 
-  //   F[txn_id]: 16:5
+  //   F[txn_id]: 9:5
   prim_subreg #(
-    .DW      (12),
-    .SWACCESS("RW"),
-    .RESVAL  (12'h0)
+    .DW      (5),
+    .SWACCESS("RO"),
+    .RESVAL  (5'h0)
   ) u_irq_txn_id (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
-    // from register interface
-    .we     (irq_txn_id_we),
-    .wd     (irq_txn_id_wd),
+    .we     (1'b0),
+    .wd     ('0  ),
 
     // from internal hardware
     .de     (hw2reg.irq.txn_id.de),
@@ -477,24 +459,6 @@ module slv_guard_reg_top #(
   assign budget_read_we = addr_hit[2] & reg_we & !reg_error;
   assign budget_read_wd = reg_wdata[3:0];
 
-  assign irq_write_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_write_wd = reg_wdata[0];
-
-  assign irq_read_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_read_wd = reg_wdata[1];
-
-  assign irq_mis_id_wr_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_mis_id_wr_wd = reg_wdata[2];
-
-  assign irq_mis_id_rd_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_mis_id_rd_wd = reg_wdata[3];
-
-  assign irq_unwanted_txn_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_unwanted_txn_wd = reg_wdata[4];
-
-  assign irq_txn_id_we = addr_hit[4] & reg_we & !reg_error;
-  assign irq_txn_id_wd = reg_wdata[16:5];
-
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
@@ -516,12 +480,12 @@ module slv_guard_reg_top #(
       end
 
       addr_hit[4]: begin
-        reg_rdata_next[0] = irq_write_qs;
-        reg_rdata_next[1] = irq_read_qs;
-        reg_rdata_next[2] = irq_mis_id_wr_qs;
-        reg_rdata_next[3] = irq_mis_id_rd_qs;
-        reg_rdata_next[4] = irq_unwanted_txn_qs;
-        reg_rdata_next[16:5] = irq_txn_id_qs;
+        reg_rdata_next[0] = irq_irq_qs;
+        reg_rdata_next[1] = irq_wr_timeout_qs;
+        reg_rdata_next[2] = irq_rd_timeout_qs;
+        reg_rdata_next[3] = irq_unwanted_wr_resp_qs;
+        reg_rdata_next[4] = irq_unwanted_rd_resp_qs;
+        reg_rdata_next[9:5] = irq_txn_id_qs;
       end
 
       addr_hit[5]: begin
