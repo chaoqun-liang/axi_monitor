@@ -10,8 +10,6 @@ module write_guard #(
   parameter int unsigned MaxWrTxns   = 0,
   /// Counter width 
   parameter int unsigned CntWidth    = 0,
-  /// Prescaler division value 
-  parameter int unsigned PrescalerDiv = 4,
   /// AXI request type
   parameter type req_t = logic,
   /// AXI response type
@@ -206,33 +204,6 @@ module write_guard #(
     end
   end
 
-  logic prescaled_en;
-  prescaler #(
-    .DivFactor(PrescalerDiv)
-    )i_wr_prescaler(
-    .clk_i( clk_i),
-    .rst_ni( rst_ni),
-    .prescaled_o( prescaled_en)
-  ); 
-
-  logic b_valid_sticky, b_ready_sticky;
-
-  sticky_bit i_bvalid_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.b_valid),
-    .sticky_o(b_valid_sticky)
-  );
-
-  sticky_bit i_bready_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.b_ready),
-    .sticky_o(b_ready_sticky)
-  );
-
   always_comb begin : proc_wr_queue
     match_in_id         = '0;
     match_out_id        = '0;
@@ -369,7 +340,7 @@ module write_guard #(
           hw2reg_o.irq.irq.d = 1'b1;
           irq = 1'b1;
         end
-        if( b_valid_sticky && b_ready_sticky && !linked_data_q[i].timeout ) begin 
+        if( slv_rsp_i.b_valid && mst_req_i.b_ready && !linked_data_q[i].timeout ) begin 
           if( id_exists ) begin
             // if no match yet, determine if there's a match and update status
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
@@ -442,7 +413,7 @@ module write_guard #(
         linked_data_q[i]  <= linked_data_d[i];
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
-          if (!(b_valid_sticky && b_ready_sticky && prescaled_en) )begin
+          if (!(slv_rsp_i.b_valid && mst_req_i.b_ready) )begin
             linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do self-decrement due to buggy tool
           end
         end

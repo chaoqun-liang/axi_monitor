@@ -263,7 +263,7 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0004, 32'h0000_0002, 4'hf, reg_error); 
 
     // read_budget
-    reg_drv.send_write(32'h0000_0008, 32'h0000_0020, 4'hf, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_0002, 4'hf, reg_error);
 
     repeat (5) @(posedge clk);
 

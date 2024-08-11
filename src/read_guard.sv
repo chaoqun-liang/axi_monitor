@@ -10,8 +10,7 @@ module read_guard #(
   parameter int unsigned MaxRdTxns  = 0, 
   // Counter width 
   parameter int unsigned CntWidth   = 0,
-  // Prescaler divsion value
-  parameter int unsigned PrescalerDiv = 4, 
+
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -203,41 +202,6 @@ module read_guard #(
       end
     end
   end
-  
-  logic prescaled_en;
-  prescaler #(
-    .DivFactor(PrescalerDiv)
-    )i_rd_prescaler(
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .prescaled_o(prescaled_en)
-  );
-
-  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
-
-  sticky_bit i_rvalid_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.r_valid),
-    .sticky_o(r_valid_sticky)
-  );
-
-  sticky_bit i_rready_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.r_ready),
-    .sticky_o(r_ready_sticky)
-  );
-
-  sticky_bit i_rlast_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.r.last),
-    .sticky_o(r_last_sticky)
-  );
 
   always_comb begin : proc_rd_queue
     match_in_id         = '0;
@@ -375,7 +339,7 @@ module read_guard #(
           hw2reg_o.irq.irq.d = 1'b1;
           irq = 1'b1;
         end 
-        if ( r_last_sticky && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout ) begin
+        if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout ) begin
           if( id_exists ) begin
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.r.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
           end else begin 
@@ -446,7 +410,7 @@ module read_guard #(
         linked_data_q[i]  <= linked_data_d[i];
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
-          if  (!(r_last_sticky && r_valid_sticky && r_ready_sticky && prescaled_en) ) begin
+          if  (!(slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready) ) begin
             linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do auto-increment
           end      
         end

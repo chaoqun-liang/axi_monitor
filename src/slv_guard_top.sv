@@ -20,9 +20,7 @@ module slv_guard_top #(
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 0,
-  /// Prescaler division value 
-  parameter int unsigned PrescalerDiv  = 4,
+  parameter int unsigned CntWidth      = 10,
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -163,7 +161,6 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxWrTxns  ( MaxTxns    ), // total writes
     .CntWidth   ( CntWidth   ),
-    .PrescalerDiv (PrescalerDiv),
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
@@ -187,7 +184,6 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds ),
     .MaxRdTxns  ( MaxTxns    ), 
     .CntWidth   ( CntWidth   ),
-    .PrescalerDiv(PrescalerDiv),
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
@@ -207,7 +203,7 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  assign rst_req = rst_req_wr | rst_req_rd;
+  assign rst_req =  rst_req_rd | rst_req_wr;
   assign irq_o   =  read_irq  | write_irq;
   assign rst_req_o = rst_req;
   
