@@ -6,9 +6,8 @@ package slv_pkg;
 // Monitor parameters
   parameter int unsigned MaxUniqIds    = 1;
   parameter int unsigned MaxTxnsPerId  = 1; 
-  parameter int unsigned CntWidth      = 4;
+  parameter int unsigned CntWidth      = 10;
   parameter int unsigned HsCntWidth    = 3;
-  parameter int unsigned PrescalerDiv  = 64;
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 48; 
   parameter int unsigned AxiDataWidth  = 64;
@@ -35,3 +34,4 @@ package slv_pkg;
   `REG_BUS_TYPEDEF_ALL(reg, reg_addr_t, reg_data_t, reg_strb_t);
 
 endpackage
+

@@ -12,8 +12,6 @@ module read_guard #(
   parameter int unsigned CntWidth   = 0,
   // Counter width for small counters
   parameter int unsigned HsCntWidth = 0,
-  // Prescaler divsion value
-  parameter int unsigned PrescalerDiv = 4, 
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -261,57 +259,6 @@ module read_guard #(
     end
   end
 
-  logic prescaled_en;
-  prescaler #(
-    .DivFactor(PrescalerDiv)
-    )i_rd_prescaler(
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .prescaled_o(prescaled_en)
-  );
-
-  logic ar_valid_sticky, ar_ready_sticky;
-  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
-  
-  sticky_bit i_arvalid_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.ar_valid),
-    .sticky_o(ar_valid_sticky)
-  );
-
-  sticky_bit i_arready_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.ar_ready),
-    .sticky_o(ar_ready_sticky)
-  );
-
-  sticky_bit i_rvalid_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.r_valid),
-    .sticky_o(r_valid_sticky)
-  );
-
-  sticky_bit i_rready_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.r_ready),
-    .sticky_o(r_ready_sticky)
-  );
-
-  sticky_bit i_rlast_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(slv_rsp_i.r.last),
-    .sticky_o(r_last_sticky)
-  );
   always_comb begin : proc_rd_queue
     match_in_id         = '0;
     match_out_id        = '0;
@@ -496,13 +443,13 @@ module read_guard #(
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.r1.d = 1'b1; 
             end
-            if ( r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+            if ( slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
               linked_data_d[i].read_state = READ_DATA;
             end
             // for bursts of single transfer, r_valid and r_last asserted at the same cycle
-            if ( r_valid_sticky && slv_rsp_i.r.last && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
+            if ( slv_rsp_i.r_valid && slv_rsp_i.r.last && !linked_data_q[i].timeout && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q && (active_idx == i)) begin
               // if no match, keep comparing
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
@@ -522,7 +469,7 @@ module read_guard #(
               hw2reg_o.reset.d = 1'b1;
             end
             // handshake, id match and no timeout, successful completion
-            if ( slv_rsp_i.r.last && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout) begin
+            if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout) begin
               // if no match, keep comparing
               if( id_exists ) begin
                 linked_data_d[i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.r.id) ? 1'b1 : 1'b0;
@@ -557,8 +504,13 @@ module read_guard #(
           hw2reg_o.irq.irq.d = 1'b1;
           for (int i = 0; i < MaxRdTxns; i++ ) begin
             if (!linked_data_q[i].free) begin 
-              oup_req = '1;
-              oup_id = linked_data_q[i].metadata.id;
+              oup_data_valid = 1'b1;
+              oup_data_popped = 1;
+              // Set free bit of linked data entry, all other bits are don't care.
+              linked_data_d[i]          = '0;
+              linked_data_d[i].counters     = '0;
+              linked_data_d[i].read_state     = IDLE;
+              linked_data_d[i].free     = 1'b1;
             end
           end
         end
@@ -611,20 +563,18 @@ module read_guard #(
           case (linked_data_q[i].read_state) 
             READ_ADDRESS: begin
               // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
-              if (!ar_ready_sticky && prescaled_en) begin
+              if (!slv_rsp_i.ar_ready) begin
                 linked_data_q[i].counters.cnt_arvalid_arready <= linked_data_q[i].counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
               end
-              if(prescaled_en)
               // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
               linked_data_q[i].counters.cnt_arvalid_rfirst <= linked_data_q[i].counters.cnt_arvalid_rfirst + 1;
             end
         
             READ_DATA: begin
-              if( r_valid_sticky && !r_ready_sticky && prescaled_en)
+              if( slv_rsp_i.r_valid && !mst_req_i.r_ready)
               // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
                 linked_data_q[i].counters.cnt_rvalid_rready_first  <= linked_data_q[i].counters.cnt_rvalid_rready_first + 1;
               // Counter 3: R Phase - R_VALID to R_LAST
-              if( prescaled_en)
               linked_data_q[i].counters.cnt_rfirst_rlast  <= linked_data_q[i].counters.cnt_rfirst_rlast + 1;
             end
           endcase

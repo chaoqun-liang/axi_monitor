@@ -23,7 +23,6 @@ module slv_guard_top #(
   /// Counter width
   parameter int unsigned CntWidth      = 10,
   parameter int unsigned HsCntWidth    = 0,
-  parameter int unsigned PrescalerDiv  = 4,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -171,7 +170,6 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds   ),
     .MaxWrTxns  ( MaxTxns      ), 
     .CntWidth   ( CntWidth     ),
-    .PrescalerDiv(PrescalerDiv),
     .req_t      ( int_req_t    ),
     .rsp_t      ( int_rsp_t    ),
     .id_t       ( int_id_t     ),
@@ -195,7 +193,6 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds   ),
     .MaxRdTxns  ( MaxTxns      ), 
     .CntWidth   ( CntWidth     ),
-    .PrescalerDiv( PrescalerDiv),
     .req_t      ( int_req_t    ),
     .rsp_t      ( int_rsp_t    ),
     .id_t       ( int_id_t     ),
@@ -216,7 +213,7 @@ module slv_guard_top #(
   );
   
   //assign rst_req = rst_req_wr | rst_req_rd;
-  assign rst_req = rst_req_wr ;
+  assign rst_req = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;
   assign rst_req_o = rst_req;
 
