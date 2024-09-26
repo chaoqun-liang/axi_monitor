@@ -55,7 +55,7 @@ module tb_slv_guard #(
   `AXI_TYPEDEF_RESP_T(slv_rsp_t, int_b_t, int_r_t );
 
   `REG_BUS_TYPEDEF_ALL(cfg, addr_t, logic[31:0], logic[3:0]) 
-
+  
   cfg_req_t cfg_req;
   cfg_rsp_t cfg_rsp;
 
@@ -281,10 +281,8 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0020, 32'h0000_000f, 4'hf, reg_error); 
    
     repeat (5) @(posedge clk);
-
     // config is done
     guard_configured = 1;
     //$stop();
   end
-
 endmodule
