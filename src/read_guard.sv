@@ -59,7 +59,7 @@ module read_guard #(
   assign hw2reg_o.latency_rvld_rlast.de = 1'b1; 
   
   // Counter type based on used-defined counter width
-  typedef logic [CntWidth-1:0] cnt_t;
+  //typedef logic [CntWidth-1:0] cnt_t;
   typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
   // Unit Budget time from ar_valid to ar_ready
@@ -100,11 +100,11 @@ module read_guard #(
     // ARVALID to ARREADY
     hs_cnt_t cnt_arvalid_arready; 
     // ARVALID to RVALID
-    cnt_t cnt_arvalid_rfirst;  
+    logic [13:0] cnt_arvalid_rfirst;  
     // RVALID to RREADY
     hs_cnt_t cnt_rvalid_rready_first; 
     // RVALID to RLAST
-    cnt_t cnt_rfirst_rlast;   
+    logic [13:0] cnt_rfirst_rlast;   
   } read_cnters_t;
 
   // FSM state of each transaction
@@ -121,8 +121,8 @@ module read_guard #(
     read_state_t    read_state;
     read_cnters_t   counters;
     // txn-specific dynamic budget
-    cnt_t           r1_budget;
-    cnt_t           r3_budget;
+    logic [13:0]           r1_budget;
+    logic [13:0]          r3_budget;
     logic           found_match;
     logic           timeout;
     ld_idx_t        next;
@@ -177,8 +177,7 @@ module read_guard #(
                                   oup_req,timeout,
                                   reset_req, reset_req_q,
                                   irq;
-
-  cnt_t                           arvld_rfirst_budget,
+  logic [13:0]                           arvld_rfirst_budget,
                                   rfirst_rlast_budget;
 
   // Find the index in the head-tail table that matches a given ID.

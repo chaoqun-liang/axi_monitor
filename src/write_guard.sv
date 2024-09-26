@@ -13,7 +13,7 @@ module write_guard #(
   // Counter width for small counters
   parameter int unsigned HsCntWidth = 0,
   // Prescaler division value 
-  parameter int unsigned PrescalerDiv = 4,
+  parameter int unsigned PrescalerDiv = 0,
   // AXI request type
   parameter type req_t = logic,
   // AXI response type
@@ -42,7 +42,9 @@ module write_guard #(
   input  logic       reset_clear_i,
   // Register bus
   input  reg2hw_t    reg2hw_i,
-  output hw2reg_t    hw2reg_o
+  output hw2reg_t    hw2reg_o,
+  output logic oup_ht_popped,
+  output logic  timeout
 );
 
   assign hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
@@ -64,7 +66,7 @@ module write_guard #(
   assign hw2reg_o.latency_bvld_brdy.de = 1'b1;
   
   // Counter type based on used-defined counter width
-  typedef logic [CntWidth-1:0] cnt_t;
+  //typedef logic [CntWidth-1:0] cnt_t;
   typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
   // Unit Budget time from aw_valid to aw_ready
@@ -111,11 +113,11 @@ module write_guard #(
     // AWVALID to AWREADY
     hs_cnt_t cnt_awvalid_awready; 
     // AWVALID to WFIRST
-    cnt_t cnt_awvalid_wfirst; 
+    logic [13:0] cnt_awvalid_wfirst; 
     // WVALID to WREADY of WFIRST 
     hs_cnt_t cnt_wvalid_wready_first; 
     // WFIRST to WLAST
-    cnt_t cnt_wfirst_wlast;  
+    logic [13:0] cnt_wfirst_wlast;  
     // WLAST to BVALID  
     hs_cnt_t cnt_wlast_bvalid;  
     // WLAST to BREADY  
@@ -140,9 +142,9 @@ module write_guard #(
     write_cnters_t  counters; 
     // W1 and w3 are dynamic budget determined by unit_budget given in sw and accum length in hw
     // AW_VALID to W_VALID (W_FIRST)
-    cnt_t           w1_budget; 
+    logic [13:0]    w1_budget; 
     // W_VALID to W_LAST (W_FIRST to W_LAST)
-    cnt_t           w3_budget;
+    logic [13:0]    w3_budget;
     // Response ID matches request ID?
     logic           found_match;
     logic           timeout;
@@ -193,15 +195,15 @@ module write_guard #(
                                   active_idx;
 
   logic                           oup_data_valid,                           
-                                  oup_data_popped,
-                                  oup_ht_popped;
+                                  oup_data_popped;
+                                 // oup_ht_popped;
   
   logic                           reset_req, reset_req_q,                        
                                   id_exists,
-                                  oup_req,timeout,
+                                  oup_req,
                                   irq;
 
-  cnt_t                           awvld_wfirst_budget,
+  logic [13:0]                    awvld_wfirst_budget,
                                   wfirst_wlast_budget;
 
   // Find the index in the head-tail table that matches a given ID.
@@ -388,7 +390,41 @@ module write_guard #(
     hw2reg_o.irq.irq.d              = reg2hw_i.irq.irq.q;
     hw2reg_o.reset.d                = reg2hw_i.reset.q; 
     hw2reg_o.irq.unwanted_wr_resp.d     = reg2hw_i.irq.unwanted_wr_resp.q;
+
+
+    if( reset_req | timeout ) begin
+      for (int i = 0; i < MaxWrTxns; i++ ) begin
+        if (!linked_data_q[i].free) begin
+          oup_req = '1;
+          oup_id = linked_data_q[i].metadata.id;
+          //$display("Current index i: %d", i); // Displaying the value of i
+        end
+      end
+    end 
     
+    // Dequeue 
+    if (oup_req) begin : proc_txn_dequeue
+      match_out_id = oup_id;
+      match_out_id_valid = 1'b1;
+      if (!no_out_id_match) begin
+        oup_data_valid = 1'b1;
+        oup_data_popped = 1;
+        // Set free bit of linked data entry, all other bits are don't care.
+        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].counters     = '0;
+        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
+        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
+        //$display("found match 3 valuel %d",linked_data_d[head_tail_q[match_out_idx].head].found_match );
+        // If it is the last cell of this ID
+        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
+          oup_ht_popped = 1'b1;
+          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
+        end else begin
+          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
+        end
+      end 
+    end
+
     // Transaction enqueue into LD table
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
@@ -516,8 +552,9 @@ module write_guard #(
         end
       end
     end
-    
+
     // Transaction states handling
+    // remove stick signals from states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free) begin 
         case ( linked_data_q[i].write_state )
@@ -534,13 +571,13 @@ module write_guard #(
             end
             // to enter write_data state, last txn has done one w channel
             // w_valid comes and next active transaction on w channel points to current one
-            if ( w_valid_sticky && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+            if ( mst_req_i.w_valid && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
             end 
             // single transfer transaction where w_valid and w_last are shown at the same cycle
-            if ( (w_valid_sticky && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
+            if ( ( mst_req_i.w_valid && mst_req_i.w.last ) && !linked_data_q[i].timeout && !fifo_empty_q && (active_idx == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
@@ -580,7 +617,7 @@ module write_guard #(
             end
             // handshake, id match and no timeout, successul completion
             // Check for the valid and readhy handshake
-            if ( b_ready_sticky && b_valid_sticky && !linked_data_q[i].timeout ) begin 
+            if ( mst_req_i.b_ready && slv_rsp_i.b_valid && !linked_data_q[i].timeout ) begin 
               if ( id_exists ) begin 
                 // if IDs match, successful completion. dequeue request and mark the match as found
                 // also make sure it is the first txn of the same id
@@ -617,43 +654,10 @@ module write_guard #(
           hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
           // clear all LD slots for both timeout and reset_req
         end
-
         timeout = |( linked_data_q[i].timeout);
       end
     end
     
-    if( reset_req | timeout ) begin
-      for (int i = 0; i < MaxWrTxns; i++ ) begin
-        if (!linked_data_q[i].free) begin
-          oup_req = '1;
-          oup_id = linked_data_q[i].metadata.id;
-          //$display("Current index i: %d", i); // Displaying the value of i
-        end
-      end
-    end 
-
-    // Dequeue 
-    if (oup_req) begin : proc_txn_dequeue
-      match_out_id = oup_id;
-      match_out_id_valid = 1'b1;
-      if (!no_out_id_match) begin
-        oup_data_valid = 1'b1;
-        oup_data_popped = 1;
-        // Set free bit of linked data entry, all other bits are don't care.
-        linked_data_d[head_tail_q[match_out_idx].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].counters     = '0;
-        linked_data_d[head_tail_q[match_out_idx].head].write_state     = IDLE;
-        linked_data_d[head_tail_q[match_out_idx].head].free     = 1'b1;
-        //$display("found match 3 valuel %d",linked_data_d[head_tail_q[match_out_idx].head].found_match );
-        // If it is the last cell of this ID
-        if (head_tail_q[match_out_idx].head == head_tail_q[match_out_idx].tail) begin
-          oup_ht_popped = 1'b1;
-          head_tail_d[match_out_idx] = '{free: 1'b1, default: '0};
-        end else begin
-          head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
-        end
-      end 
-    end
   end
 
   // HT table registers

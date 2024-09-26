@@ -16,14 +16,14 @@ module slv_guard_top #(
   parameter int unsigned AxiIdWidth    = 0,
   parameter int unsigned AxiUserWidth  = 0,
 
-  parameter int unsigned MaxUniqIds    = 4,
-  parameter int unsigned MaxTxnsPerId  = 4,
+  parameter int unsigned MaxUniqIds    = 0,
+  parameter int unsigned MaxTxnsPerId  = 0,
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 10,
+  parameter int unsigned CntWidth      = 0,
   parameter int unsigned HsCntWidth    = 0,
-  parameter int unsigned PrescalerDiv  = 4,
+  parameter int unsigned PrescalerDiv  = 0,
   /// Subordinate request type
   parameter type req_t                 = logic, 
   /// Subordinate response type
@@ -101,8 +101,11 @@ module slv_guard_top #(
   assign reg2hw_r.budget_unit_r       = reg2hw.budget_unit_r;
   
   // min internal width
-  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
+  // localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
+  localparam int unsigned IntIdWidth = 6; 
 
+  //localparam int unsigned IntIdWidth = 2; 
+  
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
   typedef logic [StrbWidth-1:0] strb_t;
@@ -122,7 +125,7 @@ module slv_guard_top #(
   int_rsp_t  int_rsp, rd_rsp, wr_rsp;
 
   /// Remap wider ID to narrower ID
-  id_remap #(
+  axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
     .AxiSlvPortMaxUniqIds ( MaxUniqIds    ),
     .AxiMaxTxnsPerId      ( MaxTxnsPerId  ),
@@ -171,7 +174,7 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds   ),
     .MaxWrTxns  ( MaxTxns      ), 
     .CntWidth   ( CntWidth     ),
-    .PrescalerDiv(PrescalerDiv),
+    .PrescalerDiv(PrescalerDiv ),
     .req_t      ( int_req_t    ),
     .rsp_t      ( int_rsp_t    ),
     .id_t       ( int_id_t     ),
