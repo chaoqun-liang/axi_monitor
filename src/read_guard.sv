@@ -193,7 +193,7 @@ module read_guard #(
   assign inp_gnt = ~full || oup_data_popped;
 
   // To calculate the total burst lengths.
-  logic [CntWidth-1:0] accum_burst_length;
+  logic [13:0] accum_burst_length;
 
   always_comb begin: proc_accum_length
     accum_burst_length = 0;
@@ -265,7 +265,7 @@ module read_guard #(
     if (rd_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.ar.id;
       match_in_id_valid = 1'b1;
-      txn_budget = budget_read * (accum_burst_length + mst_req_i.ar.len); 
+      txn_budget = budget_read * (accum_burst_length + mst_req_i.ar.len) / 32; 
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       if (oup_ht_popped && (oup_id == mst_req_i.ar.id)) begin
@@ -375,7 +375,7 @@ module read_guard #(
           hw2reg_o.irq.irq.d = 1'b1;
           irq = 1'b1;
         end 
-        if ( r_last_sticky && r_valid_sticky && r_ready_sticky && !linked_data_q[i].timeout ) begin
+        if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready && !linked_data_q[i].timeout ) begin
           if( id_exists ) begin
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.r.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
           end else begin 
@@ -446,8 +446,8 @@ module read_guard #(
         linked_data_q[i]  <= linked_data_d[i];
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
-          if  (!(r_last_sticky && r_valid_sticky && r_ready_sticky && prescaled_en) ) begin
-            linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do auto-increment
+          if ( !(r_last_sticky && r_valid_sticky && r_ready_sticky) && prescaled_en) begin
+            linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do self-increment
           end      
         end
       end

@@ -55,7 +55,7 @@ module write_guard #(
   typedef logic [CntWidth-1:0] cnt_t;
 
   /// Budget time from aw_valid to aw_ready
-  cnt_t  budget_write;
+  logic [3:0] budget_write; // 4 bit 
   assign budget_write = reg2hw_i.budget_write.q;
  
   /// Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
@@ -126,12 +126,13 @@ module write_guard #(
                                   oup_req,
                                   id_exists;
 
-  cnt_t                           txn_budget;
+  logic [CntWidth - 1:0]          txn_budget;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
     assign idx_matches_in_id[i] = match_in_id_valid && (head_tail_q[i].id == match_in_id) && !head_tail_q[i].free;
     assign idx_matches_out_id[i] = match_out_id_valid && (head_tail_q[i].id == match_out_id) && !head_tail_q[i].free;
+    // check if the rsp id exists is recorded in ht table. This can exclude unrequested repsonse.
     assign idx_rsp_id[i] = (head_tail_q[i].id == slv_rsp_i.b.id) && !head_tail_q[i].free;
   end
     
@@ -196,12 +197,12 @@ module write_guard #(
   assign inp_gnt = ~full || oup_data_popped;
 
   // To calculate the total burst lengths at time of request acce
-  logic [CntWidth-1:0] accum_burst_length;
+  logic [13:0] accum_burst_length;
   always_comb begin: proc_accum_length
     accum_burst_length = 0;
     for (int i = 0; i < MaxWrTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += linked_data_q[i].metadata.len;
+        accum_burst_length += linked_data_q[i].metadata.len/4 ;
       end
     end
   end
@@ -259,7 +260,7 @@ module write_guard #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
-      txn_budget = budget_write * (accum_burst_length + mst_req_i.aw.len); // need to count itself
+      txn_budget = budget_write * (accum_burst_length ) + budget_write* mst_req_i.aw.len /4; // need to count itself
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
@@ -369,12 +370,12 @@ module write_guard #(
           hw2reg_o.irq.irq.d = 1'b1;
           irq = 1'b1;
         end
-        if( b_valid_sticky && b_ready_sticky && !linked_data_q[i].timeout ) begin 
+        if( slv_rsp_i.b_valid && mst_req_i.b_ready && !linked_data_q[i].timeout ) begin 
           if( id_exists ) begin
             // if no match yet, determine if there's a match and update status
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
           end else begin 
-            hw2reg_o.irq.unwanted_wr_resp.d = 'b1;
+            hw2reg_o.irq.unwanted_wr_resp.d = 1'b1;
             hw2reg_o.reset.d = 1'b1;
             reset_req = 1'b1;
             hw2reg_o.irq.irq.d = 1'b1;
@@ -442,7 +443,7 @@ module write_guard #(
         linked_data_q[i]  <= linked_data_d[i];
         // only if this slot is in use, that is to say there is an outstanding transaction
         if (!linked_data_q[i].free) begin 
-          if (!(b_valid_sticky && b_ready_sticky && prescaled_en) )begin
+          if (!(b_valid_sticky && b_ready_sticky) && prescaled_en) begin
             linked_data_q[i].counter <= linked_data_q[i].counter - 1 ; // note: cannot do self-decrement due to buggy tool
           end
         end

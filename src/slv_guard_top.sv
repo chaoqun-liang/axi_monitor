@@ -14,15 +14,14 @@ module slv_guard_top #(
   parameter int unsigned StrbWidth     = 0,
   parameter int unsigned AxiIdWidth    = 0,
   parameter int unsigned AxiUserWidth  = 0,
-  
-  parameter int unsigned MaxUniqIds    = 4,
-  parameter int unsigned MaxTxnsPerId  = 4, 
+
+  parameter int unsigned MaxUniqIds    = 0,
+  parameter int unsigned MaxTxnsPerId  = 0,
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
   parameter int unsigned CntWidth      = 0,
-  /// Prescaler division value 
-  parameter int unsigned PrescalerDiv  = 4,
+  parameter int unsigned PrescalerDiv  = 0, // 4,8 fine
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -114,7 +113,7 @@ module slv_guard_top #(
   int_rsp_t  int_rsp, rd_rsp, wr_rsp;
   
   /// Remap wider ID to narrower ID
-  id_remap #(
+  axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
     .AxiSlvPortMaxUniqIds ( MaxUniqIds    ),
     .AxiMaxTxnsPerId      ( MaxTxnsPerId  ),
@@ -207,8 +206,10 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  assign rst_req = rst_req_wr | rst_req_rd;
-  assign irq_o   =  read_irq  | write_irq;
+ // assign rst_req = rst_req_wr | rst_req_rd;
+  //assign irq_o   =  read_irq  | write_irq;
+  assign rst_req = rst_req_wr;
+  assign irq_o   = write_irq;
   assign rst_req_o = rst_req;
   
   always_comb begin: proc_output_txn

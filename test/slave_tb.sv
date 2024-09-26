@@ -19,6 +19,8 @@ module tb_slv_guard #(
   /// Slave Monitoring unit parameters
   localparam int unsigned MaxTxnsPerId = 32'd4; 
   localparam int unsigned MaxUniqIds = 32'd4;
+  localparam int unsigned CntWidth = 32'd4;
+  localparam int unsigned PrescalerDiv = 32'd32;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
   localparam int unsigned IntIdWidth   = $clog2(MaxUniqIds);
@@ -172,7 +174,7 @@ module tb_slv_guard #(
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
-    .axi_req_i          ( slave_req     ),
+    .axi_req_i          ( slave_req     ), // 
     .axi_rsp_o          ( slave_rsp     ),
     .mon_r_last_o       ( /* NOT CONNECTED */ ),
     .mon_r_beat_count_o ( /* NOT CONNECTED */ ),
@@ -201,6 +203,8 @@ module tb_slv_guard #(
     .AxiUserWidth ( TbAxiUserWidth ),
     .MaxTxnsPerId ( MaxTxnsPerId   ),
     .MaxUniqIds   ( MaxUniqIds     ),
+    .CntWidth     ( CntWidth       ),
+    .PrescalerDiv ( PrescalerDiv   ),
     .req_t        ( axi_req_t      ), 
     .rsp_t        ( axi_rsp_t      ),
     .int_req_t    ( slv_req_t      ),
@@ -228,8 +232,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-counter/slv_guard/test/stimuli/axi_rt_writes.txt"));
-  
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_writes.txt"));
     // tb metrics
     // total_num_reads [i] = axi_file_master.num_reads;
     // total_num_writes[i] = axi_file_master.num_writes;
@@ -260,7 +263,7 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
 
     // write_budget
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0002, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0002, 'hff, reg_error); 
 
     // read_budget
     reg_drv.send_write(32'h0000_0008, 32'h0000_0020, 4'hf, reg_error);
