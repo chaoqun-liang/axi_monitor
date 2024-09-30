@@ -21,7 +21,7 @@ module slv_guard_top #(
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
   parameter int unsigned CntWidth      = 0,
-  parameter int unsigned PrescalerDiv  = 0, // 4,8 fine
+  parameter int unsigned PrescalerDiv  = 0, 
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -59,7 +59,6 @@ module slv_guard_top #(
   output logic               rst_req_o,
   /// Reset status
   input  logic               rst_stat_i
-  /// TBD: Reset configuration
 );
 
   // register signals
@@ -81,7 +80,6 @@ module slv_guard_top #(
 
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
-  logic rst_req;
   logic wr_enqueue, rd_enqueue;
 
   assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
@@ -166,7 +164,7 @@ module slv_guard_top #(
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
-    .aw_chan_t  ( int_aw_t   ),
+    .meta_t     ( int_aw_t   ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
@@ -190,7 +188,7 @@ module slv_guard_top #(
     .req_t      ( int_req_t  ),
     .rsp_t      ( int_rsp_t  ),
     .id_t       ( int_id_t   ),
-    .ar_chan_t  ( int_ar_t   ),
+    .meta_t     ( int_ar_t   ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_read_monitor_unit (
@@ -206,24 +204,22 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
- // assign rst_req = rst_req_wr | rst_req_rd;
+  //assign rst_req_o = rst_req_wr | rst_req_rd;
+  assign rst_req_o = rst_req_wr ;
+
   //assign irq_o   =  read_irq  | write_irq;
-  assign rst_req = rst_req_wr;
-  assign irq_o   = write_irq;
-  assign rst_req_o = rst_req;
-  
+  assign irq_o   =  write_irq;
+ 
   always_comb begin: proc_output_txn
-    // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    rd_enqueue = int_req.ar_valid && !rst_req && guard_ena_i;
-    wr_enqueue = int_req.aw_valid && !rst_req && guard_ena_i;
-    if ( guard_ena_i && rst_req) begin
+    rd_enqueue = int_req.ar_valid && !rst_req_o && guard_ena_i;
+    wr_enqueue = int_req.aw_valid && !rst_req_o && guard_ena_i;
+    if (guard_ena_i && (rst_req_o || irq_o)) begin
       req_o = 'b0;
       int_rsp = 'b0;
       wr_enqueue = 'b0;
       rd_enqueue = 'b0;
-      //mst_rsp_o.b.resp = 2'b10;
     end
   end
 

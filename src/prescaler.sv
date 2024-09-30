@@ -4,7 +4,7 @@
 //
 
 module prescaler #(
-  parameter int unsigned DivFactor = 4 
+  parameter int unsigned DivFactor = 1 
 )(
     input logic clk_i, 
     input logic rst_ni,

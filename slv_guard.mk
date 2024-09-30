@@ -32,6 +32,7 @@ endif
 
 ifeq ($(netlist_sim),1)
 	NETLIST := -t netlist_sim
+	VSIM_FLAGS += +notimingchecks
 endif
 
 # Download bender

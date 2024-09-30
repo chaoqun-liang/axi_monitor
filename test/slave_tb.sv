@@ -10,20 +10,20 @@ module tb_slv_guard #(
   parameter time ApplTime                = 100ps,
   parameter time TestTime                = 500ps,
   /// AXI configuration
-  parameter int unsigned TbAxiIdWidth    = 32'd4,
+  parameter int unsigned TbAxiIdWidth    = 32'd6,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
   parameter int unsigned TbAxiDataWidth  = 32'd32,
-  parameter int unsigned TbAxiUserWidth  = 32'd1 
+  parameter int unsigned TbAxiUserWidth  = 32'd2 
 );
   
   /// Slave Monitoring unit parameters
-  localparam int unsigned MaxTxnsPerId = 32'd4; 
-  localparam int unsigned MaxUniqIds = 32'd4;
-  localparam int unsigned CntWidth = 32'd4;
-  localparam int unsigned PrescalerDiv = 32'd32;
+  localparam int unsigned MaxTxnsPerId = 32'd1; 
+  localparam int unsigned MaxUniqIds = 32'd64;
+  localparam int unsigned CntWidth = 32'd10;
+  localparam int unsigned PrescalerDiv = 32'd16;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
-  localparam int unsigned IntIdWidth   = $clog2(MaxUniqIds);
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
 
   /// AXI4+ATOP typedefs
   typedef logic [TbAxiIdWidth-1    :0] id_t;
@@ -63,13 +63,13 @@ module tb_slv_guard #(
     .TT ( TestTime       )
   ) reg_drv_t;
 
-    typedef axi_test::axi_file_master#(
-      .AW                   ( TbAxiAddrWidth ),
-      .DW                   ( TbAxiDataWidth ),
-      .IW                   ( TbAxiIdWidth   ),
-      .UW                   ( TbAxiUserWidth ),
-      .TA                   ( ApplTime       ),
-      .TT                   ( TestTime       )
+  typedef axi_test::axi_file_master#(
+    .AW                   ( TbAxiAddrWidth ),
+    .DW                   ( TbAxiDataWidth ),
+    .IW                   ( TbAxiIdWidth   ),
+    .UW                   ( TbAxiUserWidth ),
+    .TA                   ( ApplTime       ),
+    .TT                   ( TestTime       )
   ) axi_file_master_t;
 
   typedef axi_test::axi_driver #(
@@ -86,8 +86,8 @@ module tb_slv_guard #(
   // -------------
   logic clk;
   logic rst_n;
-  logic                     reg_error;
-  logic [31:0]              reg_data;
+  logic         reg_error;
+  logic [31:0]  reg_data;
   logic guard_configured;
 
   AXI_BUS #(
@@ -232,7 +232,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_writes.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/64_wr.txt"));
     // tb metrics
     // total_num_reads [i] = axi_file_master.num_reads;
     // total_num_writes[i] = axi_file_master.num_writes;
@@ -263,16 +263,16 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
 
     // write_budget
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0002, 'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 'hff, reg_error); 
 
     // read_budget
-    reg_drv.send_write(32'h0000_0008, 32'h0000_0020, 4'hf, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
 
     repeat (5) @(posedge clk);
 
     // config is done
     guard_configured = 1;
-    $stop();
+    //$stop();
   end
 
 endmodule

@@ -5,24 +5,26 @@
 
 module write_guard #(
   /// Maximum number of unique IDs
-  parameter int unsigned MaxUniqIds  = 0,
+  parameter int unsigned MaxUniqIds   = 0,
   /// Maximum write transactions
-  parameter int unsigned MaxWrTxns   = 0,
+  parameter int unsigned MaxWrTxns    = 0,
   /// Counter width 
-  parameter int unsigned CntWidth    = 0,
+  parameter int unsigned CntWidth     = 0,
   /// Prescaler division value 
-  parameter int unsigned PrescalerDiv = 4,
+  parameter int unsigned PrescalerDiv = 0,
+  // Prescaled accumulative Counterwidth. Don't Override. 
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv),
   /// AXI request type
-  parameter type req_t = logic,
+  parameter type req_t                = logic,
   /// AXI response type
-  parameter type rsp_t = logic,
+  parameter type rsp_t                = logic,
   /// ID type
-  parameter type id_t  = logic,
+  parameter type id_t                 = logic,
   /// Write request channel type
-  parameter type aw_chan_t = logic,
+  parameter type meta_t               = logic,
   /// Regbus type
-  parameter type reg2hw_t  = logic,
-  parameter type hw2reg_t  = logic
+  parameter type reg2hw_t             = logic,
+  parameter type hw2reg_t             = logic
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
@@ -44,7 +46,7 @@ module write_guard #(
 );
 
   assign hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
-  assign hw2reg_o.irq.irq.de          = 1'b1;
+  assign hw2reg_o.irq.irq.de              = 1'b1;
   assign hw2reg_o.irq.wr_timeout.de       = 1'b1;
   assign hw2reg_o.irq.txn_id.de       = 1'b1;
   assign hw2reg_o.irq_addr.de         = 1'b1;
@@ -52,10 +54,10 @@ module write_guard #(
   assign hw2reg_o.latency_write.de    = 1'b1;
   
   /// Counter type based on used-defined counter width
-  typedef logic [CntWidth-1:0] cnt_t;
+  typedef logic [AccuCntWidth-1:0] accu_cnt_t;
 
   /// Budget time from aw_valid to aw_ready
-  logic [3:0] budget_write; // 4 bit 
+  logic [2:0] budget_write; 
   assign budget_write = reg2hw_i.budget_write.q;
  
   /// Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
@@ -79,9 +81,8 @@ module write_guard #(
   
   /// Type of an entry in the linked data table.
   typedef struct packed {
-    aw_chan_t       metadata;
-    logic           timeout;
-    cnt_t           counter;
+    meta_t          metadata;
+    accu_cnt_t      counter;
     logic           found_match;
     ld_idx_t        next;
     logic           free;
@@ -119,14 +120,12 @@ module write_guard #(
 
   logic                           oup_data_valid,                           
                                   oup_data_popped,
+                                  oup_req,
                                   oup_ht_popped;
   
   logic                           reset_req, reset_req_q,
-                                  irq,
-                                  oup_req,
-                                  id_exists;
-
-  logic [CntWidth - 1:0]          txn_budget;
+                                  id_exists,
+                                  irq, timeout;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
@@ -139,7 +138,6 @@ module write_guard #(
   assign no_in_id_match = !(|idx_matches_in_id);
   assign no_out_id_match = !(|idx_matches_out_id);
   assign id_exists =  (|idx_rsp_id);
-  assign irq_o = irq;
 
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
@@ -197,12 +195,12 @@ module write_guard #(
   assign inp_gnt = ~full || oup_data_popped;
 
   // To calculate the total burst lengths at time of request acce
-  logic [13:0] accum_burst_length;
+  accu_cnt_t  accum_burst_length, txn_budget;
   always_comb begin: proc_accum_length
     accum_burst_length = 0;
     for (int i = 0; i < MaxWrTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += linked_data_q[i].metadata.len/4 ;
+        accum_burst_length += ((linked_data_q[i].metadata.len + 1)/PrescalerDiv + 1);
       end
     end
   end
@@ -211,9 +209,9 @@ module write_guard #(
   prescaler #(
     .DivFactor(PrescalerDiv)
     )i_wr_prescaler(
-    .clk_i( clk_i),
-    .rst_ni( rst_ni),
-    .prescaled_o( prescaled_en)
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .prescaled_o(prescaled_en)
   ); 
 
   logic b_valid_sticky, b_ready_sticky;
@@ -246,7 +244,7 @@ module write_guard #(
     oup_ht_popped       = 1'b0;
     oup_id              = 1'b0;
     oup_req             = 1'b0;
-    irq                 = 1'b0; 
+    timeout             = '0; 
     reset_req           = reset_req_q;
     hw2reg_o.irq.unwanted_wr_resp.d = reg2hw_i.irq.unwanted_wr_resp.q;
     hw2reg_o.irq.txn_id.d       = reg2hw_i.irq.txn_id.q;
@@ -256,121 +254,19 @@ module write_guard #(
     hw2reg_o.reset.d            = reg2hw_i.reset.q;
     hw2reg_o.latency_write.d    = reg2hw_i.latency_write.q;
     
-    // Enqueue
-    if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
-      match_in_id = mst_req_i.aw.id;
-      match_in_id_valid = 1'b1;  
-      txn_budget = budget_write * (accum_burst_length ) + budget_write* mst_req_i.aw.len /4; // need to count itself
-      // If output data was popped for this ID, which lead the head_tail to be popped,
-      // then repopulate this head_tail immediately.
-      if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
-        head_tail_d[match_out_idx] = '{
-          id: mst_req_i.aw.id,
-          head: oup_data_free_idx,
-          tail: oup_data_free_idx,
-          free: 1'b0
-        };
-        linked_data_d[oup_data_free_idx] = '{
-          metadata: mst_req_i.aw,
-          timeout: 0,
-          counter: txn_budget,
-          found_match: 0,
-          next: '0,
-          free: 1'b0
-        };
-      end else if (no_in_id_match) begin
-        // Else, if no head_tail corresponds to the input id, and no same ID just popped.
-        // 3 cases
-        if (oup_ht_popped) begin
-          head_tail_d[match_out_idx] = '{
-            id: mst_req_i.aw.id,
-            head: oup_data_free_idx,
-            tail: oup_data_free_idx,
-            free: 1'b0
-          };
-          linked_data_d[oup_data_free_idx] = '{
-            metadata: mst_req_i.aw,
-            timeout: 0,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end else begin
-          if (oup_data_popped) begin
-            head_tail_d[head_tail_free_idx] = '{
-              id: mst_req_i.aw.id,
-              head: oup_data_free_idx,
-              tail: oup_data_free_idx,
-              free: 1'b0
-            };
-            linked_data_d[oup_data_free_idx] = '{
-              metadata: mst_req_i.aw,
-              timeout: 0,
-              counter: txn_budget,
-              found_match: 0,
-              next: '0,
-              free: 1'b0
-            };
-          end else begin
-            head_tail_d[head_tail_free_idx] = '{
-              id: mst_req_i.aw.id,
-              head: linked_data_free_idx,
-              tail: linked_data_free_idx,
-              free: 1'b0
-            };
-            linked_data_d[linked_data_free_idx] = '{
-              metadata: mst_req_i.aw,
-              timeout: 0,
-              counter: txn_budget,
-              found_match: 0,
-              next: '0,
-              free: 1'b0
-            };
-          end
-        end
-      end else begin
-        // Otherwise append it to the existing ID subqueue.
-        if (oup_data_popped) begin
-          linked_data_d[head_tail_q[match_in_idx].tail].next = oup_data_free_idx;
-          head_tail_d[match_in_idx].tail = oup_data_free_idx;
-          linked_data_d[oup_data_free_idx] = '{
-            metadata: mst_req_i.aw,
-            timeout: 0,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end else begin
-          linked_data_d[head_tail_q[match_in_idx].tail].next = linked_data_free_idx;
-          head_tail_d[match_in_idx].tail = linked_data_free_idx;
-          linked_data_d[linked_data_free_idx] = '{
-            metadata: mst_req_i.aw,
-            timeout: 0,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end
-      end
-    end
-
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free ) begin 
         if (linked_data_q[i].counter == 0 ) begin 
-          linked_data_d[i].timeout = 1'b1;
+          timeout = 1'b1;
           hw2reg_o.irq.wr_timeout.d = 1'b1;
           reset_req = 1'b1;
           hw2reg_o.reset.d = 1'b1;
           hw2reg_o.irq_addr.d = linked_data_q[i].metadata.addr;
           hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
           hw2reg_o.irq.irq.d = 1'b1;
-          irq = 1'b1;
         end
-        if( slv_rsp_i.b_valid && mst_req_i.b_ready && !linked_data_q[i].timeout ) begin 
+        if( slv_rsp_i.b_valid && mst_req_i.b_ready && !timeout ) begin 
           if( id_exists ) begin
             // if no match yet, determine if there's a match and update status
             linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx].head == i) )? 1'b1 : 1'b0;
@@ -379,13 +275,15 @@ module write_guard #(
             hw2reg_o.reset.d = 1'b1;
             reset_req = 1'b1;
             hw2reg_o.irq.irq.d = 1'b1;
-            irq = 1'b1;
           end
         end 
         if ( linked_data_q[i].found_match) begin
           oup_req = 1; 
           oup_id = linked_data_q[i].metadata.id;
           hw2reg_o.latency_write.d = linked_data_q[i].counter;
+          linked_data_d[i] = '0;
+          linked_data_d[i].counter = '0;
+          linked_data_d[i].free = 1'b1;
         end
       end
     end
@@ -394,7 +292,10 @@ module write_guard #(
       // clear all LD slots
       for (int i = 0; i < MaxWrTxns; i++ ) begin
         if (!linked_data_q[i].free) begin 
+          oup_req = 1;
+          oup_id = linked_data_q[i].metadata.id;
           linked_data_d[i]          = '0;
+          linked_data_d[i].counter = '0;
           linked_data_d[i].free     = 1'b1;
         end
       end
@@ -419,6 +320,101 @@ module write_guard #(
           head_tail_d[match_out_idx].head = linked_data_q[head_tail_q[match_out_idx].head].next;
         end
       end 
+    end
+
+    // Enqueue
+    if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
+      match_in_id = mst_req_i.aw.id;
+      match_in_id_valid = 1'b1;  
+      txn_budget = budget_write * accum_burst_length + budget_write*( mst_req_i.aw.len +1)/PrescalerDiv + 1; // need to count itself
+      // If output data was popped for this ID, which lead the head_tail to be popped,
+      // then repopulate this head_tail immediately.
+      if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
+        head_tail_d[match_out_idx] = '{
+          id: mst_req_i.aw.id,
+          head: oup_data_free_idx,
+          tail: oup_data_free_idx,
+          free: 1'b0
+        };
+        linked_data_d[oup_data_free_idx] = '{
+          metadata: mst_req_i.aw,
+          counter: txn_budget,
+          found_match: 0,
+          next: '0,
+          free: 1'b0
+        };
+      end else if (no_in_id_match) begin
+        // Else, if no head_tail corresponds to the input id, and no same ID just popped.
+        // 3 cases
+        if (oup_ht_popped) begin
+          head_tail_d[match_out_idx] = '{
+            id: mst_req_i.aw.id,
+            head: oup_data_free_idx,
+            tail: oup_data_free_idx,
+            free: 1'b0
+          };
+          linked_data_d[oup_data_free_idx] = '{
+            metadata: mst_req_i.aw,
+            counter: txn_budget,
+            found_match: 0,
+            next: '0,
+            free: 1'b0
+          };
+        end else begin
+          if (oup_data_popped) begin
+            head_tail_d[head_tail_free_idx] = '{
+              id: mst_req_i.aw.id,
+              head: oup_data_free_idx,
+              tail: oup_data_free_idx,
+              free: 1'b0
+            };
+            linked_data_d[oup_data_free_idx] = '{
+              metadata: mst_req_i.aw,
+              counter: txn_budget,
+              found_match: 0,
+              next: '0,
+              free: 1'b0
+            };
+          end else begin
+            head_tail_d[head_tail_free_idx] = '{
+              id: mst_req_i.aw.id,
+              head: linked_data_free_idx,
+              tail: linked_data_free_idx,
+              free: 1'b0
+            };
+            linked_data_d[linked_data_free_idx] = '{
+              metadata: mst_req_i.aw,
+              counter: txn_budget,
+              found_match: 0,
+              next: '0,
+              free: 1'b0
+            };
+          end
+        end
+      end else begin
+        // Otherwise append it to the existing ID subqueue.
+        if (oup_data_popped) begin
+          linked_data_d[head_tail_q[match_in_idx].tail].next = oup_data_free_idx;
+          head_tail_d[match_in_idx].tail = oup_data_free_idx;
+          linked_data_d[oup_data_free_idx] = '{
+            metadata: mst_req_i.aw,
+            counter: txn_budget,
+            found_match: 0,
+            next: '0,
+            free: 1'b0
+          };
+        end else begin
+          linked_data_d[head_tail_q[match_in_idx].tail].next = linked_data_free_idx;
+          head_tail_d[match_in_idx].tail = linked_data_free_idx;
+          linked_data_d[linked_data_free_idx] = '{
+            metadata: mst_req_i.aw,
+            counter: txn_budget,
+            found_match: 0,
+            next: '0,
+            free: 1'b0
+          };
+        end
+      end
     end
   end
 
@@ -454,10 +450,12 @@ module write_guard #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       reset_req_q <= 1'b0;
+      irq <= 1'b0;
     end else begin
       // Latch reset request
       if (reset_req) begin
         reset_req_q <= 1'b1;
+        irq <= 1'b1;
       end else if (reset_clear_i) begin
         reset_req_q <= 1'b0;
       end
@@ -465,6 +463,7 @@ module write_guard #(
   end
 
   assign  reset_req_o = reset_req_q;
+  assign irq_o = irq;
 
 // Validate parameters.
 `ifndef SYNTHESIS
