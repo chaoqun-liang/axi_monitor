@@ -12,7 +12,7 @@ package slv_pkg;
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 48; 
   parameter int unsigned AxiDataWidth  = 64;
-  parameter int unsigned AxiIdWidth    = 2;
+  parameter int unsigned AxiIdWidth    = 6;
   parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1;
   parameter int unsigned AxiUserWidth  = 2;
   // Regbus parameters

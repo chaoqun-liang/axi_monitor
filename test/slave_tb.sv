@@ -13,7 +13,7 @@ module tb_slv_guard #(
   parameter int unsigned TbAxiIdWidth    = 32'd6,
   parameter int unsigned TbAxiAddrWidth  = 32'd32,
   parameter int unsigned TbAxiDataWidth  = 32'd32,
-  parameter int unsigned TbAxiUserWidth  = 32'd1 
+  parameter int unsigned TbAxiUserWidth  = 32'd2 
 );
  
   /// Slave Monitoring unit parameters
@@ -24,10 +24,8 @@ module tb_slv_guard #(
   localparam int unsigned PrescalerDiv = 32'd16;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
-  //localparam int unsigned IntIdWidth   = $clog2(MaxUniqIds);
-  //localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
   
-  localparam int unsigned IntIdWidth = TbAxiIdWidth;
   /// AXI4+ATOP typedefs
   typedef logic [TbAxiIdWidth-1    :0] id_t;
   typedef logic [TbAxiAddrWidth-1  :0] addr_t;

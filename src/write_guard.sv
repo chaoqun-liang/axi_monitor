@@ -5,26 +5,30 @@
 
 module write_guard #(
   // Maximum number of unique IDs
-  parameter int unsigned MaxUniqIds  = 0,
+  parameter int unsigned MaxUniqIds   = 0,
   // Maximum write transactions
-  parameter int unsigned MaxWrTxns   = 0,
+  parameter int unsigned MaxWrTxns    = 0,
   // Counter width 
-  parameter int unsigned CntWidth    = 0,
+  parameter int unsigned CntWidth     = 0,
   // Counter width for small counters
-  parameter int unsigned HsCntWidth = 0,
+  parameter int unsigned HsCntWidth   = 0,
   // Prescaler division value 
   parameter int unsigned PrescalerDiv = 0,
+  // Prescaled Counterwidth. Don't Override.
+  parameter int unsigned ScaledWidth  = CntWidth-$clog2(PrescalerDiv),
+  // Prescaled accumulative Counterwidth. Don't Override. 
+  parameter int unsigned AccuCntWidth = 10-$clog2(PrescalerDiv), 
   // AXI request type
-  parameter type req_t = logic,
+  parameter type req_t                = logic,
   // AXI response type
-  parameter type rsp_t = logic,
+  parameter type rsp_t                = logic,
   // ID type
-  parameter type id_t  = logic,
-  // Write address channel type
-  parameter type aw_chan_t = logic,
+  parameter type id_t                 = logic,
+  // Trsaction meta type
+  parameter type meta_t               = logic,
   // Regbus type
-  parameter type reg2hw_t = logic,
-  parameter type hw2reg_t = logic
+  parameter type reg2hw_t             = logic,
+  parameter type hw2reg_t             = logic
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
@@ -34,22 +38,17 @@ module write_guard #(
   input  req_t       mst_req_i,
   // Response from slave
   input  rsp_t       slv_rsp_i,
+  // Reset state
+  input  logic       reset_clear_i,
   // Reset request 
   output logic       reset_req_o,
   // Interrupt line
   output logic       irq_o,
-  // Reset state
-  input  logic       reset_clear_i,
   // Register bus
   input  reg2hw_t    reg2hw_i,
-  output hw2reg_t    hw2reg_o,
-  output logic       oup_ht_popped,
-  output logic       timeout,
-  output logic       oup_req 
+  output hw2reg_t    hw2reg_o
 );
 
-  assign hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
-  assign hw2reg_o.irq.irq.de = 1'b1;
   assign hw2reg_o.irq.w0.de = 1'b1;
   assign hw2reg_o.irq.w1.de = 1'b1;
   assign hw2reg_o.irq.w2.de = 1'b1;
@@ -59,6 +58,8 @@ module write_guard #(
   assign hw2reg_o.irq_addr.de = 1'b1;
   assign hw2reg_o.irq.txn_id.de = 1'b1;
   assign hw2reg_o.reset.de = 1'b1; 
+  assign hw2reg_o.irq.irq.de = 1'b1;
+  assign hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
   assign hw2reg_o.latency_awvld_awrdy.de = 1'b1;
   assign hw2reg_o.latency_awvld_wfirst.de = 1'b1;
   assign hw2reg_o.latency_wvld_wrdy.de = 1'b1; 
@@ -67,7 +68,8 @@ module write_guard #(
   assign hw2reg_o.latency_bvld_brdy.de = 1'b1;
   
   // Counter type based on used-defined counter width
-  //typedef logic [CntWidth-1:0] cnt_t;
+  typedef logic [AccuCntWidth-1:0] accu_cnt_t;
+  typedef logic [ScaledWidth-1:0] cnt_t;
   typedef logic [HsCntWidth-1:0] hs_cnt_t;
 
   // Unit Budget time from aw_valid to aw_ready
@@ -114,11 +116,11 @@ module write_guard #(
     // AWVALID to AWREADY
     hs_cnt_t cnt_awvalid_awready; 
     // AWVALID to WFIRST
-    logic [13:0] cnt_awvalid_wfirst; 
+    accu_cnt_t cnt_awvalid_wfirst; 
     // WVALID to WREADY of WFIRST 
     hs_cnt_t cnt_wvalid_wready_first; 
     // WFIRST to WLAST
-    logic [13:0] cnt_wfirst_wlast;  
+    cnt_t    cnt_wfirst_wlast;  
     // WLAST to BVALID  
     hs_cnt_t cnt_wlast_bvalid;  
     // WLAST to BREADY  
@@ -136,16 +138,16 @@ module write_guard #(
   // LD entry for each txn
   typedef struct packed {
     // Txn meta info, put AW channel info  
-    aw_chan_t       metadata;
+    meta_t          metadata;
     // AW, W, B or IDLE(after dequeue)
     write_state_t   write_state;
     // Six counters per each write txn
     write_cnters_t  counters; 
     // W1 and w3 are dynamic budget determined by unit_budget given in sw and accum length in hw
     // AW_VALID to W_VALID (W_FIRST)
-    logic [13:0]    w1_budget; 
+    accu_cnt_t      w1_budget; 
     // W_VALID to W_LAST (W_FIRST to W_LAST)
-    logic [13:0]    w3_budget;
+    cnt_t           w3_budget;
     // Response ID matches request ID?
     logic           found_match;
     // Next pointer in LD table
@@ -159,7 +161,7 @@ module write_guard #(
   // FIFO storage for transaction indices 
   logic [LdIdxWidth-1:0] w_fifo [MaxWrTxns]; 
   // Write and read pointers
-  logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
+  logic [PtrWidth:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals
   logic fifo_full_d, fifo_full_q, fifo_empty_d, fifo_empty_q; 
  
@@ -195,16 +197,13 @@ module write_guard #(
                                   active_idx;
 
   logic                           oup_data_valid,                           
-                                  oup_data_popped;
-                                 // oup_ht_popped;
+                                  oup_data_popped,
+                                  oup_req,
+                                  oup_ht_popped;
   
   logic                           reset_req, reset_req_q,                        
                                   id_exists,
-                                
-                                  irq;
-
-  logic [13:0]                    awvld_wfirst_budget,
-                                  wfirst_wlast_budget;
+                                  timeout, irq;
 
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
@@ -216,7 +215,6 @@ module write_guard #(
   assign no_in_id_match = !(|idx_matches_in_id);
   assign no_out_id_match = !(|idx_matches_out_id);
   assign id_exists =  (|idx_rsp_id);
-  assign irq_o = irq;
 
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
@@ -275,12 +273,13 @@ module write_guard #(
   assign active_idx = w_fifo[rd_ptr_q];
 
   // To calculate the total burst lengths of all txns prior at time of request acceptance
-  logic [CntWidth-1:0] accum_burst_length;
+  accu_cnt_t  accum_burst_length, awvld_wfirst_budget;
+  cnt_t       wfirst_wlast_budget;
   always_comb begin: proc_accum_length
     accum_burst_length = 0;
     for (int i = 0; i < MaxWrTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += ( linked_data_q[i].metadata.len + 1 );
+        accum_burst_length += ( linked_data_q[i].metadata.len/PrescalerDiv + 1 );
       end
     end
   end
@@ -294,17 +293,9 @@ module write_guard #(
     .prescaled_o( prescaled_en)
   ); 
 
-  logic aw_valid_sticky, aw_ready_sticky;
-  logic w_valid_sticky, w_ready_sticky, w_last_sticky;
+  logic aw_ready_sticky;
+  logic w_valid_sticky, w_ready_sticky;
   logic b_valid_sticky, b_ready_sticky;
-
-  sticky_bit i_awvalid_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.aw_valid),
-    .sticky_o(aw_valid_sticky)
-  );
 
   sticky_bit i_awready_sticky (
     .clk_i(clk_i),
@@ -328,14 +319,6 @@ module write_guard #(
     .release_i(prescaled_en),
     .sticky_i(slv_rsp_i.w_ready),
     .sticky_o(w_ready_sticky)
-  );
-
-  sticky_bit i_wlast_sticky (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .release_i(prescaled_en),
-    .sticky_i(mst_req_i.w.last),
-    .sticky_o(w_last_sticky)
   );
 
   sticky_bit i_bvalid_sticky (
@@ -366,7 +349,6 @@ module write_guard #(
     oup_ht_popped       = 1'b0;
     oup_req             = 1'b0;
     oup_id              = '0;
-    irq                 = '0; 
     timeout             = '0;
     reset_req           = reset_req_q;
     wr_ptr_d            = wr_ptr_q;
@@ -405,7 +387,8 @@ module write_guard #(
             end 
             if( linked_data_q[i].counters.cnt_awvalid_wfirst >  linked_data_q[i].w1_budget) begin
               timeout = 1'b1;
-              hw2reg_o.irq.w1.d = 1'b1;      
+              hw2reg_o.irq.w1.d = 1'b1;     
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
             end
             // to enter write_data state, last txn has done one w channel
             // w_valid comes and next active transaction on w channel points to current one
@@ -438,7 +421,7 @@ module write_guard #(
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
               linked_data_d[i].write_state = WRITE_RESPONSE;
               rd_ptr_d = (rd_ptr_q + 1)% MaxWrTxns;  // Update read pointer after last W data
-              fifo_empty_d = (rd_ptr_q == wr_ptr_q); 
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q) && ( wr_ptr_q != 0); 
             end
           end
 
@@ -478,26 +461,25 @@ module write_guard #(
               linked_data_d[i].free     = 1'b1;
             end
           end
-
           default:
             linked_data_d[i].write_state = IDLE;
         endcase
-        // timeout and reset_req do not necessarily happen at the same time
-        // but we need to abort all txns if any of them happens
-        if (timeout || reset_req) begin
-          // Specific handling for reset_req
-          for (int i = 0; i < MaxWrTxns; i++ ) begin
-            linked_data_d[i]          = '0;
-            linked_data_d[i].counters     = '0;
-            linked_data_d[i].write_state     = IDLE;
-            linked_data_d[i].free     = 1'b1;
-            oup_req = 1;
-            oup_id = linked_data_q[i].metadata.id;
-            irq = 1'b1;
-          end
-        end  
       end
     end
+
+    if (irq || reset_req) begin
+      // Specific handling for reset_req
+      for (int i = 0; i < MaxWrTxns; i++ ) begin
+        if (!linked_data_q[i].free) begin
+          oup_req = 1;
+          oup_id = linked_data_q[i].metadata.id;
+          linked_data_d[i]          = '0;
+          linked_data_d[i].counters     = '0;
+          linked_data_d[i].write_state     = IDLE;
+          linked_data_d[i].free     = 1'b1;
+        end
+      end
+    end 
     
     // Dequeue 
     if (oup_req) begin : proc_txn_dequeue
@@ -526,8 +508,8 @@ module write_guard #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;
-      awvld_wfirst_budget = budget_awvld_wvld * ( accum_burst_length + mst_req_i.aw.len + 1); // to-do: if not the first txn in ld, use w_fifo
-      wfirst_wlast_budget = budget_wvld_wlast * ( mst_req_i.aw.len + 1 );
+      awvld_wfirst_budget = budget_awvld_wvld *  accum_burst_length + 1; // to-do: if not the first txn in ld, use w_fifo
+      wfirst_wlast_budget = budget_wvld_wlast * ( mst_req_i.aw.len + 1 )/PrescalerDiv + 1;
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       // When an AW request is accepted, index it into the FIFO. 
@@ -677,7 +659,6 @@ module write_guard #(
               if ( prescaled_en)
                 linked_data_q[i].counters.cnt_awvalid_wfirst <= linked_data_q[i].counters.cnt_awvalid_wfirst + 1;
             end
-
             WRITE_DATA: begin
               // Counter 2: W Phase - W_VALID to W_READY (first data), handshake of first data is checked
               if (w_valid_sticky && !w_ready_sticky && prescaled_en ) 
@@ -687,7 +668,6 @@ module write_guard #(
               if ( prescaled_en )
                 linked_data_q[i].counters.cnt_wfirst_wlast  <= linked_data_q[i].counters.cnt_wfirst_wlast + 1;
             end
-
             WRITE_RESPONSE: begin
               // B_valid comes the cycle after w_last. 
               // Counter 4: B Phase - W_LAST to B_VALID
@@ -706,25 +686,28 @@ module write_guard #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       reset_req_q <= 1'b0;
-      wr_ptr_q <= '0;
-      rd_ptr_q <= '0;
-      fifo_full_q <= '0;
-      fifo_empty_q <= '0;
+      wr_ptr_q <= 1'b0;
+      rd_ptr_q <= 1'b0;
+      fifo_full_q <= 1'b0;
+      fifo_empty_q <= 1'b0;
+      irq <= 1'b0;
     end else begin
       wr_ptr_q <= wr_ptr_d;
       rd_ptr_q <= rd_ptr_d;
       fifo_empty_q <= fifo_empty_d;
       fifo_full_q <= fifo_full_d;
       if (reset_req) begin
-        reset_req_q <= reset_req;
+        reset_req_q <= 1'b1;
+        irq <= 1'b1;  
+      end else if (timeout) begin
+        irq <= 1'b1;  
       end else if (reset_clear_i) begin
-        reset_req_q <= 1'b0;
+        reset_req_q <= 1'b0; 
       end
     end
   end
-
-  assign   reset_req_o = reset_req_q;
-
+  assign   reset_req_o = reset_req_q; 
+  assign   irq_o = irq;
 // Validate parameters.
 `ifndef SYNTHESIS
 `ifndef COMMON_CELLS_ASSERTS_OFF

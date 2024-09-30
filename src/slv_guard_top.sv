@@ -61,7 +61,6 @@ module slv_guard_top #(
   output logic               rst_req_o,
   /// Reset status
   input  logic               rst_stat_i
-  /// TBD: Reset configuration
 );
 
   // register signals
@@ -83,7 +82,6 @@ module slv_guard_top #(
 
   logic rst_req_rd, rst_req_wr;
   logic write_irq, read_irq;
-  logic rst_req;
   logic wr_enqueue, rd_enqueue;
 
   assign hw2reg.reset    = hw2reg_w.reset | hw2reg_r.reset;
@@ -101,10 +99,7 @@ module slv_guard_top #(
   assign reg2hw_r.budget_unit_r       = reg2hw.budget_unit_r;
   
   // min internal width
-  // localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
-  localparam int unsigned IntIdWidth = 6; 
-
-  //localparam int unsigned IntIdWidth = 2; 
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
   
   typedef logic [AddrWidth-1:0] addr_t;
   typedef logic [DataWidth-1:0] data_t;
@@ -113,7 +108,7 @@ module slv_guard_top #(
   typedef logic [IntIdWidth-1:0] int_id_t;
   typedef logic [AxiUserWidth-1:0] user_t;
 
- /// Intermediate AXI types
+  /// Intermediate AXI types
   `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
   `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
@@ -174,11 +169,12 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds   ),
     .MaxWrTxns  ( MaxTxns      ), 
     .CntWidth   ( CntWidth     ),
+    .HsCntWidth ( HsCntWidth   ),
     .PrescalerDiv(PrescalerDiv ),
     .req_t      ( int_req_t    ),
     .rsp_t      ( int_rsp_t    ),
     .id_t       ( int_id_t     ),
-    .aw_chan_t  ( int_aw_t     ),
+    .meta_t     ( int_aw_t     ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
@@ -187,9 +183,9 @@ module slv_guard_top #(
     .wr_en_i      ( wr_enqueue ),
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
+    .reset_clear_i( rst_stat_i   ),
     .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
-    .reset_clear_i( rst_stat_i   ),
     .reg2hw_i     ( reg2hw_w     ),
     .hw2reg_o     ( hw2reg_w     )
   );
@@ -198,11 +194,12 @@ module slv_guard_top #(
     .MaxUniqIds ( MaxUniqIds   ),
     .MaxRdTxns  ( MaxTxns      ), 
     .CntWidth   ( CntWidth     ),
+    .HsCntWidth ( HsCntWidth   ),
     .PrescalerDiv( PrescalerDiv),
     .req_t      ( int_req_t    ),
     .rsp_t      ( int_rsp_t    ),
     .id_t       ( int_id_t     ),
-    .ar_chan_t  ( int_ar_t     ),
+    .meta_t     ( int_ar_t     ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_read_monitor_unit (
@@ -210,26 +207,24 @@ module slv_guard_top #(
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
     .mst_req_i    ( int_req_rd   ),  
-    .slv_rsp_i    ( rd_rsp       ),                                                                                
+    .slv_rsp_i    ( rd_rsp       ),
+    .reset_clear_i( rst_stat_i   ),                                                                                
     .reset_req_o  ( rst_req_rd   ),
     .irq_o        ( read_irq     ),
-    .reset_clear_i( rst_stat_i   ),
     .reg2hw_i     ( reg2hw_r     ),
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  //assign rst_req = rst_req_wr | rst_req_rd;
-  assign rst_req = rst_req_wr ;
+  assign rst_req_o = rst_req_wr | rst_req_rd;
   assign irq_o   =  read_irq  | write_irq;
-  assign rst_req_o = rst_req;
 
   always_comb begin: proc_output_txn
     // pass through when there is no timeout
     req_o = int_req;
     int_rsp = rsp_i;
-    rd_enqueue = int_req.ar_valid && !rst_req && guard_ena_i;
-    wr_enqueue = int_req.aw_valid && !rst_req && guard_ena_i;
-    if (guard_ena_i && rst_req) begin
+    rd_enqueue = int_req.ar_valid && !rst_req_o && guard_ena_i;
+    wr_enqueue = int_req.aw_valid && !rst_req_o && guard_ena_i;
+    if (guard_ena_i && (rst_req_o || irq_o)) begin
       req_o = 'b0;
       int_rsp = 'b0;
       wr_enqueue = 'b0;
