@@ -18,7 +18,7 @@ module tb_slv_guard #(
  
   /// Slave Monitoring unit parameters
   localparam int unsigned MaxTxnsPerId = 32'd1; 
-  localparam int unsigned MaxUniqIds = 32'd32;
+  localparam int unsigned MaxUniqIds = 32'd64;
   localparam int unsigned CntWidth = 32'd10;
   localparam int unsigned HsCntWidth = 32'd4;
   localparam int unsigned PrescalerDiv = 32'd16;
@@ -236,7 +236,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/full-with/axi_monitor/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/full-with/axi_monitor/test/stimuli/32_wr.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/full-with/axi_monitor/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/full-with/axi_monitor/test/stimuli/64_wr.txt"));
 
     // wait for config
     @(posedge rst_n);

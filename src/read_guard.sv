@@ -392,7 +392,7 @@ module read_guard #(
               hw2reg_o.latency_rvld_rrdy.d = linked_data_q[i].counters.cnt_rvalid_rready_first;
               hw2reg_o.latency_rvld_rlast.d = linked_data_q[i].r3_budget - linked_data_q[i].counters.cnt_rfirst_rlast;
               rd_ptr_d = (rd_ptr_q + 1)% MaxRdTxns;  // Update read pointer after last W data
-              fifo_empty_d = (rd_ptr_q == wr_ptr_q);
+              fifo_empty_d = (rd_ptr_q == wr_ptr_q) && ( wr_ptr_q != 0);
             end
           end
           default: begin
