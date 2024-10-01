@@ -122,14 +122,15 @@ module read_guard #(
   logic                           id_exists,
                                   reset_req, reset_req_q,
                                   irq, timeout;
-
+  //generate: transaction_table
   // Find the index in the head-tail table that matches a given ID.
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_match
     assign idx_matches_in_id[i] = match_in_id_valid && (head_tail_q[i].id == match_in_id) && !head_tail_q[i].free;
     assign idx_matches_out_id[i] = match_out_id_valid && (head_tail_q[i].id == match_out_id) && !head_tail_q[i].free;
     assign idx_rsp_id[i] = (head_tail_q[i].id == slv_rsp_i.r.id) && !head_tail_q[i].free;
   end
-    
+  //endgenerate
+
   assign no_in_id_match = !(|idx_matches_in_id);
   assign no_out_id_match = !(|idx_matches_out_id);
   assign id_exists =  (|idx_rsp_id);

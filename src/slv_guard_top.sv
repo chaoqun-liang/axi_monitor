@@ -204,11 +204,8 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  //assign rst_req_o = rst_req_wr | rst_req_rd;
-  assign rst_req_o = rst_req_wr ;
-
-  //assign irq_o   =  read_irq  | write_irq;
-  assign irq_o   =  write_irq;
+  assign rst_req_o = rst_req_wr | rst_req_rd;
+  assign irq_o   =  read_irq  | write_irq;
  
   always_comb begin: proc_output_txn
     req_o = int_req;

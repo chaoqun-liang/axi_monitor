@@ -18,9 +18,9 @@ module tb_slv_guard #(
   
   /// Slave Monitoring unit parameters
   localparam int unsigned MaxTxnsPerId = 32'd1; 
-  localparam int unsigned MaxUniqIds = 32'd64;
+  localparam int unsigned MaxUniqIds = 32'd32;
   localparam int unsigned CntWidth = 32'd10;
-  localparam int unsigned PrescalerDiv = 32'd16;
+  localparam int unsigned PrescalerDiv = 32'd32;
 
   localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
   localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
@@ -232,7 +232,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/64_wr.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/32_wr.txt"));
     // tb metrics
     // total_num_reads [i] = axi_file_master.num_reads;
     // total_num_writes[i] = axi_file_master.num_writes;
