@@ -13,7 +13,7 @@ module write_guard #(
   /// Prescaler division value 
   parameter int unsigned PrescalerDiv = 0,
   // Prescaled accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv),
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) + 1,
   //parameter int unsigned AccuCntWidth = 2,
   /// AXI request type
   parameter type req_t                = logic,
@@ -237,95 +237,146 @@ endgenerate
     .sticky_o(b_ready_sticky)
   );
   
-  txn_track #(
-    .MaxWrTxns     ( MaxWrTxns      ), 
-    .HtCapacity    ( HtCapacity     ),
-    .linked_data_t ( linked_data_t  ),
-    .head_tail_t   ( head_tail_t    ),
-    .ht_idx_t      ( ht_idx_t       ),
-    .id_t          ( id_t           ),
-    .ld_idx_t      ( ld_idx_t       ),
-    .hw2reg_t      ( hw2reg_t       ),
-    .reg2hw_t      ( reg2hw_t       )
-  ) i_txn_track(
-    .linked_data_q_i      ( linked_data_q     ),
-    .slv_b_valid_i        ( slv_rsp_i.b_valid ),
-    .mst_b_ready_i        ( mst_req_i.b_ready ),
-    .id_exists            ( id_exists         ),
-    .slv_b_id_i           ( slv_rsp_i.b.id    ),
-    .head_tail_q_i        ( head_tail_q       ),
-    .rsp_idx_i            ( rsp_idx           ),
-    .reset_req_q_i        ( reset_req_q       ),
-    .prescaled_en         ( prescaled_en      ),
-    .b_valid_sticky       ( b_valid_sticky    ),
-    .b_ready_sticky       ( b_ready_sticky    ),
-    .linked_data_d_o      ( linked_data_d     ),
-    .timeout_o            ( timeout           ),
-    .reset_req_o          ( reset_req         ),
-    .hw2reg_o             ( hw2reg_o          ),
-    .reg2hw_i             ( reg2hw_i          ),
-    .oup_req_o            ( oup_req           ),
-    .oup_id_o             ( oup_id            )
-  );
+  // txn_track #(
+  //   .MaxWrTxns     ( MaxWrTxns      ), 
+  //   .HtCapacity    ( HtCapacity     ),
+  //   .linked_data_t ( linked_data_t  ),
+  //   .head_tail_t   ( head_tail_t    ),
+  //   .ht_idx_t      ( ht_idx_t       ),
+  //   .id_t          ( id_t           ),
+  //   .ld_idx_t      ( ld_idx_t       ),
+  //   .hw2reg_t      ( hw2reg_t       ),
+  //   .reg2hw_t      ( reg2hw_t       )
+  // ) i_txn_track(
+  //   .linked_data_q_i      ( linked_data_q     ),
+  //   .slv_b_valid_i        ( slv_rsp_i.b_valid ),
+  //   .mst_b_ready_i        ( mst_req_i.b_ready ),
+  //   .id_exists            ( id_exists         ),
+  //   .slv_b_id_i           ( slv_rsp_i.b.id    ),
+  //   .head_tail_q_i        ( head_tail_q       ),
+  //   .rsp_idx_i            ( rsp_idx           ),
+  //   .reset_req_q_i        ( reset_req_q       ),
+  //   .prescaled_en         ( prescaled_en      ),
+  //   .b_valid_sticky       ( b_valid_sticky    ),
+  //   .b_ready_sticky       ( b_ready_sticky    ),
+  //   .linked_data_d_o      ( linked_data_d     ),
+  //   .timeout_o            ( timeout           ),
+  //   .reset_req_o          ( reset_req         ),
+  //   .hw2reg_o             ( hw2reg_o          ),
+  //   .reg2hw_i             ( reg2hw_i          ),
+  //   .oup_req_o            ( oup_req           ),
+  //   .oup_id_o             ( oup_id            )
+  // );
   
-  txn_dequeue #(
-    .MaxWrTxns      ( MaxWrTxns     ),
-    .HtCapacity     ( HtCapacity    ),
-    .linked_data_t  ( linked_data_t ),
-    .head_tail_t    ( head_tail_t   ),
-    .id_t           ( id_t          ),
-    .ht_idx_t       ( ht_idx_t      )
-  ) i_dequeue (
-    .oup_req_i         ( oup_req          ),
-    .no_out_id_match_i ( no_out_id_match  ),
-    .head_tail_q_i     ( head_tail_q      ),
-    .linked_data_q_i   ( linked_data_q    ),
-    .match_out_idx_i   ( match_out_idx    ),
-    .oup_id_i          ( oup_id           ),
-    .oup_data_valid_o  ( oup_data_valid   ),
-    .oup_data_popped_o ( oup_data_popped  ),
-    .oup_ht_popped_o   ( oup_ht_popped    ),
-    .head_tail_d_o     ( head_tail_d      ),
-    .linked_data_d_o   ( linked_data_d    )
+  // txn_dequeue #(
+  //   .MaxWrTxns      ( MaxWrTxns     ),
+  //   .HtCapacity     ( HtCapacity    ),
+  //   .linked_data_t  ( linked_data_t ),
+  //   .head_tail_t    ( head_tail_t   ),
+  //   .id_t           ( id_t          ),
+  //   .ht_idx_t       ( ht_idx_t      )
+  // ) i_dequeue (
+  //   .oup_req_i         ( oup_req          ),
+  //   .no_out_id_match_i ( no_out_id_match  ),
+  //   .head_tail_q_i     ( head_tail_q      ),
+  //   .linked_data_q_i   ( linked_data_q    ),
+  //   .match_out_idx_i   ( match_out_idx    ),
+  //   .oup_id_i          ( oup_id           ),
+  //   .oup_data_valid_o  ( oup_data_valid   ),
+  //   .oup_data_popped_o ( oup_data_popped  ),
+  //   .oup_ht_popped_o   ( oup_ht_popped    ),
+  //   .head_tail_d_o     ( head_tail_d      ),
+  //   .linked_data_d_o   ( linked_data_d    )
+  // );
+
+  // txn_enqueue #(
+  //   .PrescalerDiv  ( PrescalerDiv  ), 
+  //   .MaxWrTxns     ( MaxWrTxns     ),
+  //   .HtCapacity    ( HtCapacity    ),
+  //   .ht_idx_t      ( ht_idx_t      ),
+  //   .linked_data_t ( linked_data_t ),
+  //   .accu_cnt_t    ( accu_cnt_t    ),
+  //   .int_id_t      ( id_t          ),
+  //   .head_tail_t   ( head_tail_t   ),
+  //   .ld_idx_t      ( ld_idx_t      ),
+  //   .req_t         ( req_t         )
+  // ) i_txn_enqueue (
+  //   .wr_en_i               ( wr_en_i                ),  // Write enable input
+  //   .inp_gnt_i             ( inp_gnt                ),  // Input grant signal
+  //   .match_in_idx_i        ( match_in_idx           ),  // Index of matching ID
+  //   .match_out_idx_i       ( match_out_idx          ),
+  //   .oup_data_free_idx_i   ( oup_data_free_idx      ),
+  //   .linked_data_free_idx_i( linked_data_free_idx   ),
+  //   .mst_req_i             ( mst_req_i              ),
+  //   .head_tail_free_idx_i  ( head_tail_free_idx     ),
+  //   .oup_id_i              ( oup_id                 ),
+  //   .oup_ht_popped_i       ( oup_data_popped        ),  // Flag indicating if head tail popped
+  //   .no_in_id_match_i      ( no_in_id_match         ),  // No matching ID in head tail
+  //   .oup_data_popped_i     ( oup_data_popped        ),  // Flag indicating if output data popped
+  //   .budget_write_i        ( budget_write           ),  // Unit budget write value
+  //   .accum_burst_length_i  ( accum_burst_length     ),  // Accumulated burst length
+  //   .mst_aw_id_i           ( mst_req_i.aw.id        ),  // Request ID for AW channel
+  //   .mst_aw_len_i          ( mst_req_i.aw.len       ),  // Request length for AW channel
+  //   .head_tail_q_i         ( head_tail_q            ),
+  //   .head_tail_d_o         ( head_tail_d            ),  // Head-tail data
+  //   .linked_data_d_o       ( linked_data_d          )   // Linked data
+  // );
+  
+  txn_manager #(
+    .MaxWrTxns         ( MaxWrTxns          ),
+    .HtCapacity        ( HtCapacity         ),
+    .PrescalerDiv      ( PrescalerDiv       ),
+    .linked_data_t     ( linked_data_t      ),
+    .head_tail_t       ( head_tail_t        ),
+    .ht_idx_t          ( ht_idx_t           ),
+    .ld_idx_t          ( ld_idx_t           ),
+    .req_t             ( req_t              ),
+    .rsp_t             ( rsp_t              ),
+    .id_t              ( id_t               ),
+    .accu_cnt_t        ( accu_cnt_t         ),
+    .hw2reg_t          ( hw2reg_t           ),
+    .reg2hw_t          ( reg2hw_t           )
+  ) i_txn_manager (
+    .wr_en_i            ( wr_en_i            ),
+    .inp_gnt            ( inp_gnt            ),
+    .budget_write       ( budget_write       ),
+    .accum_burst_length ( accum_burst_length ),
+    .reset_req_q        ( reset_req_q        ),
+    .id_exists_i        ( id_exists          ),
+    .rsp_idx_i          ( rsp_idx            ),
+    .mst_req_i          ( mst_req_i          ),
+    .slv_rsp_i          ( slv_rsp_i          ),
+    .no_out_id_match_i  ( no_out_id_match    ),
+    .match_out_idx_i    ( match_out_idx      ),
+    .head_tail_free_idx_i(head_tail_free_idx ),
+    .match_in_idx_i     ( match_in_idx       ),
+    .oup_data_free_idx_i( oup_data_free_idx  ),
+    .linked_data_free_idx_i(linked_data_free_idx),
+    .no_in_id_match_i   ( no_in_id_match     ),
+    .timeout            ( timeout            ),
+    .reset_req          ( reset_req          ),
+    .oup_req            ( oup_req            ),
+    .oup_id             ( oup_id             ),
+    .match_out_id       ( match_out_id       ),
+    .match_in_id        ( match_in_id        ),
+    .match_in_id_valid  ( match_in_id_valid  ),
+    .match_out_id_valid ( match_out_id_valid ),
+    .oup_data_valid     ( oup_data_valid     ),
+    .oup_data_popped    ( oup_data_popped    ),
+    .oup_ht_popped      ( oup_ht_popped      ),
+    .head_tail_q        ( head_tail_q        ),
+    .head_tail_d        ( head_tail_d        ),
+    .linked_data_q      ( linked_data_q      ),
+    .linked_data_d      ( linked_data_d      ),
+    .hw2reg_o           ( hw2reg_o           ),
+    .reg2hw_i           ( reg2hw_i           )
   );
 
-  txn_enqueue #(
-    .PrescalerDiv  ( PrescalerDiv  ), 
-    .MaxWrTxns     ( MaxWrTxns     ),
-    .HtCapacity    ( HtCapacity    ),
-    .ht_idx_t      ( ht_idx_t      ),
-    .linked_data_t ( linked_data_t ),
-    .accu_cnt_t    ( accu_cnt_t    ),
-    .int_id_t      ( id_t          ),
-    .head_tail_t   ( head_tail_t   ),
-    .ld_idx_t      ( ld_idx_t      ),
-    .req_t         ( req_t         )
-  ) i_txn_enqueue (
-    .wr_en_i               ( wr_en_i                ),  // Write enable input
-    .inp_gnt_i             ( inp_gnt                ),  // Input grant signal
-    .match_in_idx_i        ( match_in_idx           ),  // Index of matching ID
-    .match_out_idx_i       ( match_out_idx          ),
-    .oup_data_free_idx_i   ( oup_data_free_idx      ),
-    .linked_data_free_idx_i( linked_data_free_idx   ),
-    .mst_req_i             ( mst_req_i              ),
-    .head_tail_free_idx_i  ( head_tail_free_idx     ),
-    .oup_id_i              ( oup_id                 ),
-    .oup_ht_popped_i       ( oup_data_popped        ),  // Flag indicating if head tail popped
-    .no_in_id_match_i      ( no_in_id_match         ),  // No matching ID in head tail
-    .oup_data_popped_i     ( oup_data_popped        ),  // Flag indicating if output data popped
-    .budget_write_i        ( budget_write           ),  // Unit budget write value
-    .accum_burst_length_i  ( accum_burst_length     ), // Accumulated burst length
-    .mst_aw_id_i           ( mst_req_i.aw.id        ), // Request ID for AW channel
-    .mst_aw_len_i          ( mst_req_i.aw.len       ), // Request length for AW channel
-    .head_tail_q_i         ( head_tail_q            ),
-    .head_tail_d_o         ( head_tail_d            ),    // Head-tail data
-    .linked_data_d_o       ( linked_data_d          )// Linked data
-  );
-  
   generate
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
-    ht_ff #(.head_tail_t(head_tail_t)
+    ht_ff #(
+      .head_tail_t(head_tail_t)
     ) i_ht_ff (
       .clk_i        (clk_i),
       .rst_ni       (rst_ni),
@@ -368,8 +419,8 @@ endgenerate
  `ifndef SYNTHESIS
  `ifndef COMMON_CELLS_ASSERTS_OFF
     initial begin: validate_params
-        // assert (ID_WIDTH >= 1)
-        //     else $fatal(1, "The ID must at least be one bit wide!");
+        assert (CntWidth-$clog2(PrescalerDiv) >= 0)
+           else $fatal(1, "AccuCntWidth must be non-zero!");
         assert (MaxWrTxns >= 1)
             else $fatal(1, "The queue must have capacity of at least one entry!");
     end

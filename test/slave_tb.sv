@@ -174,7 +174,7 @@ module tb_slv_guard #(
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
-    .axi_req_i          ( slave_req     ), // 
+    .axi_req_i          ( slave_req     ),  
     .axi_rsp_o          ( slave_rsp     ),
     .mon_r_last_o       ( /* NOT CONNECTED */ ),
     .mon_r_beat_count_o ( /* NOT CONNECTED */ ),

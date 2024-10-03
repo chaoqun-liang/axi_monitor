@@ -27,11 +27,12 @@ sources:
       - src/prescaler.sv 
       - src/sticky_bit.sv
       - src/wr_counter.sv
-      - src/txn_enqueue.sv 
-      - src/txn_dequeue.sv 
+      #- src/txn_enqueue.sv 
+      #- src/txn_dequeue.sv 
       - src/id_lookup.sv 
-      - src/txn_track.sv
+      #- src/txn_track.sv
       - src/ht_ff.sv 
+      - src/txn_manager.sv
       - src/reset_handler.sv
       - src/write_guard.sv
       - src/read_guard.sv
