@@ -2,8 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 //
-// Authors:
-// - Thomas Benz <tbenz@iis.ee.ethz.ch>
+
 
 `include "axi/typedef.svh"
 `include "common_cells/registers.svh"
@@ -110,6 +109,11 @@ module slv_guard_top #(
   int_req_t  int_req, int_req_wr, int_req_rd;
   int_rsp_t  int_rsp, rd_rsp, wr_rsp;
   
+  // typedef struct packed {                      
+  //   int_id_t   id;                             
+  //   axi_pkg::len_t  len; // 8 bits
+  // } meta_t;
+
   /// Remap wider ID to narrower ID
   axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
