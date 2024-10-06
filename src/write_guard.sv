@@ -5,16 +5,15 @@
 
 module write_guard #(
   /// Maximum number of unique IDs
-  parameter int unsigned MaxUniqIds   = 0,
+  parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
-  parameter int unsigned MaxWrTxns    = 0,
+  parameter int unsigned MaxWrTxns    = 32,
   /// Counter width 
-  parameter int unsigned CntWidth     = 0,
+  parameter int unsigned CntWidth     = 2,
   /// Prescaler division value 
-  parameter int unsigned PrescalerDiv = 0,
+  parameter int unsigned PrescalerDiv = 1,
   // Prescaled accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) + 1,
-  //parameter int unsigned AccuCntWidth = 2,
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) +1 ,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -324,7 +323,7 @@ endgenerate
   
   txn_manager #(
     .MaxWrTxns         ( MaxWrTxns          ),
-    .HtCapacity        ( HtCapacity         ),
+    .HtCapacity        ( HtCapacity         ), // this single line can change from 70+ to 18
     .PrescalerDiv      ( PrescalerDiv       ),
     .linked_data_t     ( linked_data_t      ),
     .head_tail_t       ( head_tail_t        ),
@@ -337,39 +336,39 @@ endgenerate
     .hw2reg_t          ( hw2reg_t           ),
     .reg2hw_t          ( reg2hw_t           )
   ) i_txn_manager (
-    .wr_en_i            ( wr_en_i            ),
-    .inp_gnt            ( inp_gnt            ),
-    .budget_write       ( budget_write       ),
-    .accum_burst_length ( accum_burst_length ),
-    .reset_req_q        ( reset_req_q        ),
-    .id_exists_i        ( id_exists          ),
-    .rsp_idx_i          ( rsp_idx            ),
-    .mst_req_i          ( mst_req_i          ),
-    .slv_rsp_i          ( slv_rsp_i          ),
-    .no_out_id_match_i  ( no_out_id_match    ),
-    .match_out_idx_i    ( match_out_idx      ),
-    .head_tail_free_idx_i(head_tail_free_idx ),
-    .match_in_idx_i     ( match_in_idx       ),
-    .oup_data_free_idx_i( oup_data_free_idx  ),
+    .wr_en_i               ( wr_en_i            ),
+    .inp_gnt               ( inp_gnt            ),
+    .budget_write          ( budget_write       ),
+    .accum_burst_length    ( accum_burst_length ),
+    .reset_req_q           ( reset_req_q        ),
+    .id_exists_i           ( id_exists          ),
+    .rsp_idx_i             ( rsp_idx            ),
+    .mst_req_i             ( mst_req_i          ),
+    .slv_rsp_i             ( slv_rsp_i          ),
+    .no_out_id_match_i     ( no_out_id_match    ),
+    .match_out_idx_i       ( match_out_idx      ),
+    .head_tail_free_idx_i  (head_tail_free_idx  ),
+    .match_in_idx_i        ( match_in_idx       ),
+    .oup_data_free_idx_i   ( oup_data_free_idx  ),
     .linked_data_free_idx_i(linked_data_free_idx),
-    .no_in_id_match_i   ( no_in_id_match     ),
-    .timeout            ( timeout            ),
-    .reset_req          ( reset_req          ),
-    .oup_req            ( oup_req            ),
-    .oup_id             ( oup_id             ),
-    .match_out_id       ( match_out_id       ),
-    .match_in_id        ( match_in_id        ),
-    .match_in_id_valid  ( match_in_id_valid  ),
-    .match_out_id_valid ( match_out_id_valid ),
-    .oup_data_valid     ( oup_data_valid     ),
-    .oup_data_popped    ( oup_data_popped    ),
-    .oup_ht_popped      ( oup_ht_popped      ),
-    .head_tail_q        ( head_tail_q        ),
-    .head_tail_d        ( head_tail_d        ),
-    .linked_data_q      ( linked_data_q      ),
-    .linked_data_d      ( linked_data_d      ),
-    .hw2reg_o           ( hw2reg_o           ),
-    .reg2hw_i           ( reg2hw_i           )
+    .no_in_id_match_i      ( no_in_id_match     ),
+    .timeout               ( timeout            ),
+    .reset_req             ( reset_req          ),
+    .oup_req               ( oup_req            ),
+    .oup_id                ( oup_id             ),
+    .match_out_id          ( match_out_id       ),
+    .match_in_id           ( match_in_id        ),
+    .match_in_id_valid     ( match_in_id_valid  ),
+    .match_out_id_valid    ( match_out_id_valid ),
+    .oup_data_valid        ( oup_data_valid     ),
+    .oup_data_popped       ( oup_data_popped    ),
+    .oup_ht_popped         ( oup_ht_popped      ),
+    .head_tail_q           ( head_tail_q        ),
+    .head_tail_d           ( head_tail_d        ),
+    .linked_data_q         ( linked_data_q      ),
+    .linked_data_d         ( linked_data_d      ),
+    .hw2reg_o              ( hw2reg_o           ),
+    .reg2hw_i              ( reg2hw_i           )
   );
 
   generate
@@ -386,19 +385,20 @@ endgenerate
   end
   endgenerate
 
+  // number of counters are not accurate here
   generate
   for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_wr_counter
     wr_counter #(
-      .linked_data_t(linked_data_t),
-      .CntWidth(AccuCntWidth )  // Set the width of the counter
+      .linked_data_t ( linked_data_t ),
+      .CntWidth      ( AccuCntWidth  )  // Set the width of the counter
     ) i_wr_counter (
-      .clk_i           (clk_i),             // Clock input
-      .rst_ni          (rst_ni),            // Reset input (active low)
-      .prescaled_en    (prescaled_en),      // Enable signal for prescaler (specific to each transaction)
-      .b_valid_sticky  (b_valid_sticky),    // Valid sticky signal for each transaction
-      .b_ready_sticky  (b_ready_sticky),    // Ready sticky signal for each transaction
-      .linked_data_d_i (linked_data_d[i]),  // Input data specific to this instance
-      .linked_data_q_o (linked_data_q[i])   // Output data specific to this instance
+      .clk_i           ( clk_i            ),             
+      .rst_ni          ( rst_ni           ),          
+      .prescaled_en    ( prescaled_en     ),    
+      .b_valid_sticky  ( b_valid_sticky   ),   
+      .b_ready_sticky  ( b_ready_sticky   ),    
+      .linked_data_d_i ( linked_data_d[i] ), 
+      .linked_data_q_o ( linked_data_q[i] )  
     );
   end
   endgenerate

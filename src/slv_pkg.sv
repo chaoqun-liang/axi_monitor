@@ -14,7 +14,6 @@ package slv_pkg;
   parameter int unsigned AxiDataWidth  = 64;
   parameter int unsigned AxiIdWidth    = 6;
   parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1;
-  //parameter int unsigned AxiIntIdWidth = 1;
   parameter int unsigned AxiUserWidth  = 1;
   parameter int unsigned AxiLogDepth   = 1;
   // Regbus parameters
@@ -34,6 +33,6 @@ package slv_pkg;
 
   `AXI_TYPEDEF_ALL(mst, addr_t, id_t, data_t, strb_t, user_t);
   `AXI_TYPEDEF_ALL(slv, addr_t, intid_t, data_t, strb_t, user_t);
-  `REG_BUS_TYPEDEF_ALL(reg, reg_addr_t, reg_data_t, reg_strb_t);
+  `REG_BUS_TYPEDEF_ALL(cfg, reg_addr_t, reg_data_t, reg_strb_t);
 
 endpackage

@@ -11,7 +11,7 @@ module read_guard #(
   // Counter width 
   parameter int unsigned CntWidth      = 0,
   // Prescaler divsion value
-  parameter int unsigned PrescalerDiv  = 0, 
+  parameter int unsigned PrescalerDiv  = 1, 
   // Prescaled accumulative Counterwidth. Don't Override. 
   parameter int unsigned AccuCntWidth  = CntWidth-$clog2(PrescalerDiv), 
   // AXI request type

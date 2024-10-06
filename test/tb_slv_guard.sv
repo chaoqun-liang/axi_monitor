@@ -1,9 +1,13 @@
 
+// `include "assign.svh"
+// `include "axi_typedef.svh"
+// `include "typedef.svh"
+
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-/// Testbench for the slave monitring unit aaaaaaaa
+/// Testbench for the slave monitring unit 
 module tb_slv_guard #(
   /// Testbench timing
   parameter time CyclTime                = 10000ps,
@@ -11,9 +15,9 @@ module tb_slv_guard #(
   parameter time TestTime                = 500ps,
   /// AXI configuration
   parameter int unsigned TbAxiIdWidth    = 32'd6,
-  parameter int unsigned TbAxiAddrWidth  = 32'd32,
+  parameter int unsigned TbAxiAddrWidth  = 32'd48,
   parameter int unsigned TbAxiDataWidth  = 32'd32,
-  parameter int unsigned TbAxiUserWidth  = 32'd2 
+  parameter int unsigned TbAxiUserWidth  = 32'd1 
 );
   
   /// Slave Monitoring unit parameters
@@ -39,8 +43,8 @@ module tb_slv_guard #(
   `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
   `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
   `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t);
-  `AXI_TYPEDEF_RESP_T(axi_rsp_t, b_chan_t, r_chan_t );
+  `AXI_TYPEDEF_REQ_T(mst_req_t, aw_chan_t, w_chan_t, ar_chan_t);
+  `AXI_TYPEDEF_RESP_T(mst_rsp_t, b_chan_t, r_chan_t );
   
   /// Intermediate AXI types
   `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
@@ -89,6 +93,7 @@ module tb_slv_guard #(
   logic         reg_error;
   logic [31:0]  reg_data;
   logic guard_configured;
+  logic irq, rst_stat;
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( TbAxiAddrWidth ),
@@ -118,8 +123,8 @@ module tb_slv_guard #(
     .AXI_USER_WIDTH ( TbAxiUserWidth  )
   ) slave_dv(clk);
 
-  axi_req_t   master_req;
-  axi_rsp_t   master_rsp;
+  mst_req_t   master_req;
+  mst_rsp_t   master_rsp;
 
   slv_req_t   slave_req;
   slv_rsp_t   slave_rsp;
@@ -195,7 +200,9 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  slv_guard_top #(
+  slv_guard_top
+  // `ifndef TARGET_NETLIST_SIM
+   #(
     .AddrWidth    ( TbAxiAddrWidth ),
     .DataWidth    ( TbAxiDataWidth ),
     .StrbWidth    ( AxiStrbWidth   ),
@@ -205,25 +212,28 @@ module tb_slv_guard #(
     .MaxUniqIds   ( MaxUniqIds     ),
     .CntWidth     ( CntWidth       ),
     .PrescalerDiv ( PrescalerDiv   ),
-    .req_t        ( axi_req_t      ), 
-    .rsp_t        ( axi_rsp_t      ),
+    .req_t        ( mst_req_t      ), 
+    .rsp_t        ( mst_rsp_t      ),
     .int_req_t    ( slv_req_t      ),
     .int_rsp_t    ( slv_rsp_t      ),
     .reg_req_t    ( cfg_req_t      ), 
     .reg_rsp_t    ( cfg_rsp_t      )
-) i_slv_guard_top (
+  )
+  //`endif
+  //monitor_wrap
+    i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
-    .guard_ena_i (   1'b1         ),
+    .guard_ena_i (   1'b1         ), // can also do sw write
     .req_i       (   master_req   ), 
     .rsp_o       (   master_rsp   ),
     .req_o       (   slave_req    ),
     .rsp_i       (   slave_rsp    ),
     .reg_req_i   (   cfg_req      ),
     .reg_rsp_o   (   cfg_rsp      ),
-    .irq_o       (                ),
-    .rst_req_o   (                )
-);
+    .irq_o       (   irq          ),
+    .rst_req_o   (   rst_stat     )
+  );
 
 //-----------------------------------
 // TB

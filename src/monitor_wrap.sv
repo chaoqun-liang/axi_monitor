@@ -26,9 +26,9 @@ module monitor_wrap
   /// Response from slave
   input  slv_resp_t          rsp_i,
   /// Register bus request
-  input  reg_req_t           reg_req_i,
+  input  cfg_req_t           reg_req_i,
   /// Register bus response
-  output reg_rsp_t           reg_rsp_o,
+  output cfg_rsp_t           reg_rsp_o,
   /// Interrupt line
   output logic               irq_o,
   /// Reset request
@@ -52,8 +52,8 @@ slv_guard_top #(
   .rsp_t        ( mst_resp_t     ),
   .int_req_t    ( slv_req_t      ),
   .int_rsp_t    ( slv_resp_t     ),
-  .reg_req_t    ( reg_req_t      ), 
-  .reg_rsp_t    ( reg_rsp_t      )
+  .reg_req_t    ( cfg_req_t      ), 
+  .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
   .*
 );

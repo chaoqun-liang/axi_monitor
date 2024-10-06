@@ -4,7 +4,7 @@
 
 module wr_counter #(
   parameter type linked_data_t    = logic,
-  parameter int unsigned CntWidth = 0  // Define the width of the counter/data
+  parameter int unsigned CntWidth = 2  // Define the width of the counter/data
 ) (
   input  logic         clk_i,           // Clock input
   input  logic         rst_ni,          // Asynchronous reset (active low)
