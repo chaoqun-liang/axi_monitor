@@ -160,27 +160,27 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  // slv_guard_top
-  // // `ifndef TARGET_NETLIST_SIM
-  //  #(
-  //   .AddrWidth    ( slv_pkg::AxiAddrWidth ),
-  //   .DataWidth    ( slv_pkg::AxiDataWidth ),
-  //   .StrbWidth    ( slv_pkg::AxiDataWidth/8  ),
-  //   .AxiIdWidth   ( slv_pkg::AxiIdWidth   ),
-  //   .AxiUserWidth ( slv_pkg::AxiUserWidth ),
-  //   .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId ),
-  //   .MaxUniqIds   ( slv_pkg::MaxUniqIds   ),
-  //   .CntWidth     ( slv_pkg::CntWidth     ),
-  //   .PrescalerDiv ( slv_pkg::PrescalerDiv ),
-  //   .req_t        ( slv_pkg::mst_req_t    ), 
-  //   .rsp_t        ( slv_pkg::mst_resp_t   ),
-  //   .slv_req_t    ( slv_pkg::slv_req_t    ),
-  //   .slv_rsp_t    ( slv_pkg::slv_resp_t   ),
-  //   .reg_req_t    ( slv_pkg::cfg_req_t    ), 
-  //   .reg_rsp_t    ( slv_pkg::cfg_rsp_t    )
-  // )
-  // //`endif
-  monitor_wrap
+  slv_guard_top
+  // `ifndef TARGET_NETLIST_SIM
+   #(
+    .AddrWidth    ( slv_pkg::AxiAddrWidth ),
+    .DataWidth    ( slv_pkg::AxiDataWidth ),
+    .StrbWidth    ( slv_pkg::AxiDataWidth/8  ),
+    .AxiIdWidth   ( slv_pkg::AxiIdWidth   ),
+    .AxiUserWidth ( slv_pkg::AxiUserWidth ),
+    .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId ),
+    .MaxUniqIds   ( slv_pkg::MaxUniqIds   ),
+    .CntWidth     ( slv_pkg::CntWidth     ),
+    .PrescalerDiv ( slv_pkg::PrescalerDiv ),
+    .req_t        ( slv_pkg::mst_req_t    ), 
+    .rsp_t        ( slv_pkg::mst_resp_t   ),
+    .slv_req_t    ( slv_pkg::slv_req_t    ),
+    .slv_rsp_t    ( slv_pkg::slv_resp_t   ),
+    .reg_req_t    ( slv_pkg::cfg_req_t    ), 
+    .reg_rsp_t    ( slv_pkg::cfg_rsp_t    )
+  )
+  //`endif
+  //monitor_wrap
     i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),

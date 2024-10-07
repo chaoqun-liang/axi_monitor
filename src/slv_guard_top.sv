@@ -9,18 +9,18 @@
 `include "common_cells/registers.svh"
 
 module slv_guard_top #(
-  parameter int unsigned AddrWidth     = 0,
-  parameter int unsigned DataWidth     = 0,
-  parameter int unsigned StrbWidth     = 0,
-  parameter int unsigned AxiIdWidth    = 0,
-  parameter int unsigned AxiUserWidth  = 0,
+  parameter int unsigned AddrWidth     = 32,
+  parameter int unsigned DataWidth     = 32,
+  parameter int unsigned StrbWidth     = 4,
+  parameter int unsigned AxiIdWidth    = 2,
+  parameter int unsigned AxiUserWidth  = 1,
 
-  parameter int unsigned MaxUniqIds    = 0,
-  parameter int unsigned MaxTxnsPerId  = 0,
+  parameter int unsigned MaxUniqIds    = 2,
+  parameter int unsigned MaxTxnsPerId  = 2,
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 0,
+  parameter int unsigned CntWidth      = 2,
   parameter int unsigned PrescalerDiv  = 1, 
   /// Master request type
   parameter type req_t                 = logic, 
@@ -109,10 +109,10 @@ module slv_guard_top #(
   slv_req_t  int_req, int_req_wr, int_req_rd;
   slv_rsp_t  int_rsp, rd_rsp, wr_rsp;
 
-  // typedef struct packed {                      
-  //   int_id_t   id;                             
-  //   axi_pkg::len_t  len; // 8 bits
-  // } meta_t;
+  typedef struct packed {                      
+    int_id_t   id;                             
+    axi_pkg::len_t  len; // 8 bits
+  } meta_t;
   
   /// Remap wider ID to narrower ID
   axi_id_remap #(
@@ -174,7 +174,7 @@ module slv_guard_top #(
     .req_t      ( slv_req_t  ),
     .rsp_t      ( slv_rsp_t  ),
     .id_t       ( int_id_t   ),
-    .meta_t     ( int_aw_t   ),
+    .meta_t     ( meta_t     ),
     .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (

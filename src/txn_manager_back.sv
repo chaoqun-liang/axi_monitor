@@ -1,7 +1,3 @@
-// Copyright 2024 ETH Zurich and University of Bologna.
-// Solderpad Hardware License, Version 0.51, see LICENSE for details.
-// SPDX-License-Identifier: SHL-0.51
-//
 
 module txn_manager #(
   parameter int unsigned MaxWrTxns  = 1,
@@ -82,7 +78,7 @@ module txn_manager #(
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
       if (!linked_data_q[i].free ) begin 
         if (linked_data_q[i].counter == 0 ) begin 
-          timeout = 1'b1;
+          timeout = 1'b1; 
           hw2reg_o.irq.wr_timeout.d = 1'b1;
           reset_req = 1'b1;
           hw2reg_o.reset.d = 1'b1;
@@ -92,8 +88,9 @@ module txn_manager #(
         end
         if( slv_rsp_i.b_valid && mst_req_i.b_ready && !timeout ) begin 
           if( id_exists_i ) begin
-            // if no match yet, determine if there's a match and update status
-            linked_data_d[i].found_match = ((linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx_i].head == i) )? 1'b1 : 1'b0;
+             //if no match yet, determine if there's a match and update status
+            linked_data_d[ i].found_match = (linked_data_q[i].metadata.id == slv_rsp_i.b.id) && (head_tail_q[rsp_idx_i].head == i);
+            //linked_data_d[ID] = 1;
           end else begin 
             hw2reg_o.irq.unwanted_wr_resp.d = 1'b1;
             hw2reg_o.reset.d = 1'b1;
@@ -101,9 +98,12 @@ module txn_manager #(
             hw2reg_o.irq.irq.d = 1'b1;
           end
         end 
-        if ( linked_data_q[i].found_match) begin
+
+       if ( linked_data_q[i].found_match) begin
+       // if ( found_match_q ) begin
           oup_req = 1; 
           oup_id = linked_data_q[i].metadata.id;
+          //oup_id = linked_data_q[found_id_q].metadata.id;
           hw2reg_o.latency_write.d = linked_data_q[i].counter;
           linked_data_d[i] = '0;
           linked_data_d[i].counter = '0;
@@ -114,9 +114,9 @@ module txn_manager #(
 
     if (reset_req) begin 
       for (int i = 0; i < MaxWrTxns; i++) begin
-        if (!linked_data_q[i].free) begin 
+        if (!linked_data_q[i].free) begin // remove check and force all to 0
           oup_req = 1;
-          oup_id = linked_data_q[i].metadata.id;
+          oup_id = linked_data_q[i].metadata.id; // remove
           linked_data_d[i] = '0;
           linked_data_d[i].counter = '0;
           linked_data_d[i].free = 1'b1;
@@ -129,7 +129,7 @@ module txn_manager #(
       match_out_id = oup_id;
       match_out_id_valid = 1'b1;
       // only if oup_id exists in ht table
-      if (!no_out_id_match_i) begin
+      if (!no_out_id_match_i) begin // nonsense!!!!!!
         oup_data_valid = 1'b1;
         oup_data_popped = 1;
         // Set free bit of linked data entry, all other bits are don't care.
@@ -149,10 +149,10 @@ module txn_manager #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
-      txn_budget = accum_burst_length + ( mst_req_i.aw.len +1) >> $clog2(PrescalerDiv) + 1; // need to count itself
+      txn_budget =  accum_burst_length + (mst_req_i.aw.len +1) >> $clog2(PrescalerDiv) + 1; // need to count itself
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
-      if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
+      if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin // Remove second condition
         head_tail_d[match_out_idx_i] = '{
           id: mst_req_i.aw.id,
           head: oup_data_free_idx_i,
@@ -160,8 +160,8 @@ module txn_manager #(
           free: 1'b0
         };
         linked_data_d[oup_data_free_idx_i] = '{
-          //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-          metadata:mst_req_i.aw,
+          metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+          //metadata:mst_req_i.aw,
           counter: txn_budget,
           found_match: 0,
           next: '0,
@@ -178,8 +178,8 @@ module txn_manager #(
             free: 1'b0
           };
           linked_data_d[oup_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
@@ -194,8 +194,8 @@ module txn_manager #(
               free: 1'b0
             };
             linked_data_d[oup_data_free_idx_i] = '{
-              //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              metadata:mst_req_i.aw,
+              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+              //metadata:mst_req_i.aw,
               counter: txn_budget,
               found_match: 0,
               next: '0,
@@ -209,8 +209,8 @@ module txn_manager #(
               free: 1'b0
             };
             linked_data_d[linked_data_free_idx_i] = '{
-              //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              metadata:mst_req_i.aw,
+              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+              //metadata:mst_req_i.aw,
               counter: txn_budget,
               found_match: 0,
               next: '0,
@@ -224,8 +224,8 @@ module txn_manager #(
           linked_data_d[head_tail_q[match_in_idx_i].tail].next = oup_data_free_idx_i;
           head_tail_d[match_in_idx_i].tail = oup_data_free_idx_i;
           linked_data_d[oup_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
@@ -235,8 +235,8 @@ module txn_manager #(
           linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
           head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
           linked_data_d[linked_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
@@ -247,4 +247,8 @@ module txn_manager #(
     end
   end
 
+  // assign POPPED = ....;
+  // assign PNT_TO_POP = ....;
+
+  // assign linked_data_pnt = (POPPED) ? PNT_TO_POP : FIRST_FREE;
 endmodule

@@ -5,11 +5,11 @@
 
 module read_guard #(
   // Maximum number of unique IDs
-  parameter int unsigned MaxUniqIds    = 0,
+  parameter int unsigned MaxUniqIds    = 4,
   // Maximum read transactions
-  parameter int unsigned MaxRdTxns     = 0, 
+  parameter int unsigned MaxRdTxns     = 4, 
   // Counter width 
-  parameter int unsigned CntWidth      = 0,
+  parameter int unsigned CntWidth      = 4,
   // Prescaler divsion value
   parameter int unsigned PrescalerDiv  = 1, 
   // Prescaled accumulative Counterwidth. Don't Override. 

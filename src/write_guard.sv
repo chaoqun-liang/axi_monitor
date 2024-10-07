@@ -13,7 +13,7 @@ module write_guard #(
   /// Prescaler division value 
   parameter int unsigned PrescalerDiv = 1,
   // Prescaled accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) +2 ,
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv),
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -204,7 +204,7 @@ endgenerate
     accum_burst_length = 0;
     for (int i = 0; i < MaxWrTxns; i++) begin
       if (!linked_data_q[i].free) begin
-        accum_burst_length += ((linked_data_q[i].metadata.len + 1)/PrescalerDiv + 1);
+        accum_burst_length += ((linked_data_q[i].metadata.len + 1) >> $clog2(PrescalerDiv) + 1);
       end
     end
   end
