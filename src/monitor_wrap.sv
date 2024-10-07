@@ -7,9 +7,10 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module monitor_wrap 
-  import axi_pkg::*;
-  import slv_pkg::*;
+import axi_pkg::*;
+import slv_pkg::*;
+
+ module monitor_wrap 
 (
   /// Clock
   input  logic               clk_i,
@@ -50,12 +51,23 @@ slv_guard_top #(
   .PrescalerDiv ( PrescalerDiv   ),
   .req_t        ( mst_req_t      ), 
   .rsp_t        ( mst_resp_t     ),
-  .int_req_t    ( slv_req_t      ),
-  .int_rsp_t    ( slv_resp_t     ),
+  .slv_req_t    ( slv_req_t      ),
+  .slv_rsp_t    ( slv_resp_t     ),
   .reg_req_t    ( cfg_req_t      ), 
   .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
-  .*
+  .clk_i      (clk_i),
+  .rst_ni     (rst_ni),
+  .guard_ena_i(guard_ena_i),
+  .req_i      (req_i),
+  .rsp_o      (rsp_o),
+  .req_o      (req_o),
+  .rsp_i      (rsp_i),
+  .reg_req_i  (reg_req_i),
+  .reg_rsp_o  (reg_rsp_o),
+  .irq_o      (irq_o),
+  .rst_req_o  (rst_req_o),
+  .rst_stat_i (rst_stat_i)
 );
 
 endmodule: monitor_wrap

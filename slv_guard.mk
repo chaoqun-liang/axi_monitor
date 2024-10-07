@@ -57,6 +57,7 @@ $(SLV_ROOT)/target/sim/vsim/compile.slv.tcl: Bender.yml
 	$(BENDER) script vsim -t rtl -t test -t sim $(NETLIST) \
 	--vlog-arg="-svinputport=compat" \
 	--vlog-arg="-override_timescale 1ns/1ps" \
+    --vlog-arg="+notimingchecks +nospecify" \
 	--vlog-arg="-suppress 2583" > $@
 	echo 'vopt $(VOPT_FLAGS) $(TBENCH) -o $(TBENCH)_opt' >> $@
 

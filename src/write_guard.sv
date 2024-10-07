@@ -13,7 +13,7 @@ module write_guard #(
   /// Prescaler division value 
   parameter int unsigned PrescalerDiv = 1,
   // Prescaled accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) +1 ,
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv) +2 ,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type

@@ -7,80 +7,40 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
+import slv_pkg::*;
+
 /// Testbench for the slave monitring unit 
 module tb_slv_guard #(
   /// Testbench timing
   parameter time CyclTime                = 10000ps,
   parameter time ApplTime                = 100ps,
-  parameter time TestTime                = 500ps,
-  /// AXI configuration
-  parameter int unsigned TbAxiIdWidth    = 32'd6,
-  parameter int unsigned TbAxiAddrWidth  = 32'd48,
-  parameter int unsigned TbAxiDataWidth  = 32'd32,
-  parameter int unsigned TbAxiUserWidth  = 32'd1 
+  parameter time TestTime                = 500ps
 );
   
-  /// Slave Monitoring unit parameters
-  localparam int unsigned MaxTxnsPerId = 32'd1; 
-  localparam int unsigned MaxUniqIds = 32'd32;
-  localparam int unsigned CntWidth = 32'd10;
-  localparam int unsigned PrescalerDiv = 32'd32;
-
-  localparam int unsigned AxiStrbWidth = TbAxiDataWidth/8;
-  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
-
-  /// AXI4+ATOP typedefs
-  typedef logic [TbAxiIdWidth-1    :0] id_t;
-  typedef logic [TbAxiAddrWidth-1  :0] addr_t;
-  typedef logic [TbAxiDataWidth-1  :0] data_t;
-  typedef logic [AxiStrbWidth-1    :0] strb_t;
-  typedef logic [TbAxiUserWidth-1  :0] user_t;
-
-  typedef logic [IntIdWidth-1:0] int_id_t;
-
-  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(b_chan_t, id_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t);
-  `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(mst_req_t, aw_chan_t, w_chan_t, ar_chan_t);
-  `AXI_TYPEDEF_RESP_T(mst_rsp_t, b_chan_t, r_chan_t );
-  
-  /// Intermediate AXI types
-  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
-  `AXI_TYPEDEF_R_CHAN_T(int_r_t, data_t, int_id_t, user_t);
-  `AXI_TYPEDEF_REQ_T(slv_req_t, int_aw_t, w_t, int_ar_t);
-  `AXI_TYPEDEF_RESP_T(slv_rsp_t, int_b_t, int_r_t );
-
-  `REG_BUS_TYPEDEF_ALL(cfg, addr_t, logic[31:0], logic[3:0]) 
-
-  cfg_req_t cfg_req;
-  cfg_rsp_t cfg_rsp;
+  slv_pkg::cfg_req_t cfg_req;
+  slv_pkg::cfg_rsp_t cfg_rsp;
 
   typedef reg_test::reg_driver #(
-    .AW ( TbAxiAddrWidth ),
+    .AW ( slv_pkg::AxiAddrWidth ),
     .DW ( 32             ),
     .TA ( ApplTime       ),
     .TT ( TestTime       )
   ) reg_drv_t;
 
   typedef axi_test::axi_file_master#(
-    .AW                   ( TbAxiAddrWidth ),
-    .DW                   ( TbAxiDataWidth ),
-    .IW                   ( TbAxiIdWidth   ),
-    .UW                   ( TbAxiUserWidth ),
+    .AW                   ( slv_pkg::AxiAddrWidth ),
+    .DW                   ( slv_pkg::AxiDataWidth ),
+    .IW                   ( slv_pkg::AxiIdWidth   ),
+    .UW                   ( slv_pkg::AxiUserWidth ),
     .TA                   ( ApplTime       ),
     .TT                   ( TestTime       )
   ) axi_file_master_t;
 
   typedef axi_test::axi_driver #(
-    .AW( TbAxiAddrWidth ),
-    .DW( TbAxiDataWidth ),
-    .IW( TbAxiIdWidth   ),
-    .UW( TbAxiUserWidth ),
+    .AW( slv_pkg::AxiAddrWidth ),
+    .DW( slv_pkg::AxiDataWidth ),
+    .IW( slv_pkg::AxiIdWidth   ),
+    .UW( slv_pkg::AxiUserWidth ),
     .TA( ApplTime       ),
     .TT( TestTime       )
   ) axi_drv_t;
@@ -96,38 +56,38 @@ module tb_slv_guard #(
   logic irq, rst_stat;
 
   AXI_BUS #(
-    .AXI_ADDR_WIDTH ( TbAxiAddrWidth ),
-    .AXI_DATA_WIDTH ( TbAxiDataWidth ),
-    .AXI_ID_WIDTH   ( TbAxiIdWidth   ),
-    .AXI_USER_WIDTH ( TbAxiUserWidth )
+    .AXI_ADDR_WIDTH ( slv_pkg::AxiAddrWidth ),
+    .AXI_DATA_WIDTH ( slv_pkg::AxiDataWidth ),
+    .AXI_ID_WIDTH   ( slv_pkg::AxiIdWidth   ),
+    .AXI_USER_WIDTH ( slv_pkg::AxiUserWidth )
   ) master();
 
   AXI_BUS #(
-    .AXI_ADDR_WIDTH ( TbAxiAddrWidth  ),
-    .AXI_DATA_WIDTH ( TbAxiDataWidth  ),
-    .AXI_ID_WIDTH   ( TbAxiIdWidth    ),
-    .AXI_USER_WIDTH ( TbAxiUserWidth  )
+    .AXI_ADDR_WIDTH ( slv_pkg::AxiAddrWidth ),
+    .AXI_DATA_WIDTH ( slv_pkg::AxiDataWidth ),
+    .AXI_ID_WIDTH   ( slv_pkg::AxiIdWidth   ),
+    .AXI_USER_WIDTH ( slv_pkg::AxiUserWidth )
   ) slave();
 
   AXI_BUS_DV #(
-      .AXI_ADDR_WIDTH ( TbAxiAddrWidth ),
-      .AXI_DATA_WIDTH ( TbAxiDataWidth ),
-      .AXI_ID_WIDTH   ( TbAxiIdWidth   ),
-      .AXI_USER_WIDTH ( TbAxiUserWidth )
+    .AXI_ADDR_WIDTH ( slv_pkg::AxiAddrWidth ),
+    .AXI_DATA_WIDTH ( slv_pkg::AxiDataWidth ),
+    .AXI_ID_WIDTH   ( slv_pkg::AxiIdWidth   ),
+    .AXI_USER_WIDTH ( slv_pkg::AxiUserWidth )
   ) master_dv(clk);
 
   AXI_BUS_DV #(
-    .AXI_ADDR_WIDTH ( TbAxiAddrWidth  ),
-    .AXI_DATA_WIDTH ( TbAxiDataWidth  ),
-    .AXI_ID_WIDTH   ( TbAxiIdWidth    ),
-    .AXI_USER_WIDTH ( TbAxiUserWidth  )
+    .AXI_ADDR_WIDTH ( slv_pkg::AxiAddrWidth ),
+    .AXI_DATA_WIDTH ( slv_pkg::AxiDataWidth ),
+    .AXI_ID_WIDTH   ( slv_pkg::AxiIdWidth   ),
+    .AXI_USER_WIDTH ( slv_pkg::AxiUserWidth )
   ) slave_dv(clk);
 
-  mst_req_t   master_req;
-  mst_rsp_t   master_rsp;
+  slv_pkg::mst_req_t   master_req;
+  slv_pkg::mst_resp_t   master_rsp;
 
-  slv_req_t   slave_req;
-  slv_rsp_t   slave_rsp;
+  slv_pkg::slv_req_t   slave_req;
+  slv_pkg::slv_resp_t   slave_rsp;
 
   `AXI_ASSIGN (master,           master_dv)
   `AXI_ASSIGN_TO_REQ(master_req, master)
@@ -138,8 +98,8 @@ module tb_slv_guard #(
   `AXI_ASSIGN_TO_RESP(slave_rsp, slave)
 
   REG_BUS #(
-    .ADDR_WIDTH ( TbAxiAddrWidth ),
-    .DATA_WIDTH ( TbAxiDataWidth )
+    .ADDR_WIDTH ( slv_pkg::AxiAddrWidth ),
+    .DATA_WIDTH ( slv_pkg::AxiDataWidth )
   ) reg_bus (clk);
 
   assign cfg_req.addr  = reg_bus.addr;
@@ -166,12 +126,12 @@ module tb_slv_guard #(
   // AXI Simulation Memory 
   //-----------------------------------
    axi_sim_mem #(
-    .AddrWidth         ( TbAxiAddrWidth  ),
-    .DataWidth         ( TbAxiDataWidth  ),
-    .IdWidth           ( TbAxiIdWidth    ),
-    .UserWidth         ( TbAxiUserWidth  ),
-    .axi_req_t         ( slv_req_t       ),
-    .axi_rsp_t         ( slv_rsp_t       ),
+    .AddrWidth         ( slv_pkg::AxiAddrWidth  ),
+    .DataWidth         ( slv_pkg::AxiDataWidth  ),
+    .IdWidth           ( slv_pkg::AxiIdWidth    ),
+    .UserWidth         ( slv_pkg::AxiUserWidth  ),
+    .axi_req_t         ( slv_pkg::slv_req_t     ),
+    .axi_rsp_t         ( slv_pkg::slv_resp_t    ),
     .WarnUninitialized ( 1'b0            ),
     .ClearErrOnAccess  ( 1'b1            ),
     .ApplDelay         ( ApplTime        ),
@@ -200,27 +160,27 @@ module tb_slv_guard #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  slv_guard_top
-  // `ifndef TARGET_NETLIST_SIM
-   #(
-    .AddrWidth    ( TbAxiAddrWidth ),
-    .DataWidth    ( TbAxiDataWidth ),
-    .StrbWidth    ( AxiStrbWidth   ),
-    .AxiIdWidth   ( TbAxiIdWidth   ),
-    .AxiUserWidth ( TbAxiUserWidth ),
-    .MaxTxnsPerId ( MaxTxnsPerId   ),
-    .MaxUniqIds   ( MaxUniqIds     ),
-    .CntWidth     ( CntWidth       ),
-    .PrescalerDiv ( PrescalerDiv   ),
-    .req_t        ( mst_req_t      ), 
-    .rsp_t        ( mst_rsp_t      ),
-    .int_req_t    ( slv_req_t      ),
-    .int_rsp_t    ( slv_rsp_t      ),
-    .reg_req_t    ( cfg_req_t      ), 
-    .reg_rsp_t    ( cfg_rsp_t      )
-  )
-  //`endif
-  //monitor_wrap
+  // slv_guard_top
+  // // `ifndef TARGET_NETLIST_SIM
+  //  #(
+  //   .AddrWidth    ( slv_pkg::AxiAddrWidth ),
+  //   .DataWidth    ( slv_pkg::AxiDataWidth ),
+  //   .StrbWidth    ( slv_pkg::AxiDataWidth/8  ),
+  //   .AxiIdWidth   ( slv_pkg::AxiIdWidth   ),
+  //   .AxiUserWidth ( slv_pkg::AxiUserWidth ),
+  //   .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId ),
+  //   .MaxUniqIds   ( slv_pkg::MaxUniqIds   ),
+  //   .CntWidth     ( slv_pkg::CntWidth     ),
+  //   .PrescalerDiv ( slv_pkg::PrescalerDiv ),
+  //   .req_t        ( slv_pkg::mst_req_t    ), 
+  //   .rsp_t        ( slv_pkg::mst_resp_t   ),
+  //   .slv_req_t    ( slv_pkg::slv_req_t    ),
+  //   .slv_rsp_t    ( slv_pkg::slv_resp_t   ),
+  //   .reg_req_t    ( slv_pkg::cfg_req_t    ), 
+  //   .reg_rsp_t    ( slv_pkg::cfg_rsp_t    )
+  // )
+  // //`endif
+  monitor_wrap
     i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
@@ -232,7 +192,8 @@ module tb_slv_guard #(
     .reg_req_i   (   cfg_req      ),
     .reg_rsp_o   (   cfg_rsp      ),
     .irq_o       (   irq          ),
-    .rst_req_o   (   rst_stat     )
+    .rst_req_o   (   rst_stat     ),
+    .rst_stat_i  (   1'b1         )
   );
 
 //-----------------------------------
