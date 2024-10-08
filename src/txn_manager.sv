@@ -26,21 +26,16 @@ module txn_manager #(
   input  ht_idx_t                   rsp_idx_i,
   input  req_t                      mst_req_i,
   input  rsp_t                      slv_rsp_i,
-  input  logic                      no_out_id_match_i,
   input  logic                      no_in_id_match_i,
-  input  ht_idx_t                   match_out_idx_i,
   input  ht_idx_t                   head_tail_free_idx_i,
   input  ht_idx_t                   match_in_idx_i,
-  input  ld_idx_t                   oup_data_free_idx_i,
   input  ld_idx_t                   linked_data_free_idx_i,
   output logic                      timeout,
   output logic                      reset_req,
   output logic                      oup_req,
   output id_t                       oup_id,
   output id_t                       match_in_id,
-  output id_t                       match_out_id,
   output logic                      match_in_id_valid, 
-  output logic                      match_out_id_valid,
   output logic                      oup_data_valid,
   output logic                      oup_data_popped,
   output logic                      oup_ht_popped,
@@ -57,9 +52,7 @@ module txn_manager #(
   // Transaction states handling
   always_comb begin
     match_in_id         = '0;
-    match_out_id        = '0;
     match_in_id_valid   = 1'b0;
-    match_out_id_valid  = 1'b0;
     head_tail_d         = head_tail_q;
     linked_data_d       = linked_data_q;
     oup_data_valid      = 1'b0;
@@ -126,21 +119,21 @@ module txn_manager #(
 
     // Dequeue 
     if (oup_req) begin : proc_txn_dequeue
-      match_out_id = oup_id;
-      match_out_id_valid = 1'b1;
+      match_in_id = oup_id;
+      match_in_id_valid = 1'b1;
       // only if oup_id exists in ht table
-      if (!no_out_id_match_i) begin
+      if (!no_in_id_match_i) begin
         oup_data_valid = 1'b1;
         oup_data_popped = 1;
         // Set free bit of linked data entry, all other bits are don't care.
-        linked_data_d[head_tail_q[match_out_idx_i].head]          = '0;
-        linked_data_d[head_tail_q[match_out_idx_i].head].free     = 1'b1;
+        linked_data_d[head_tail_q[match_in_idx_i].head]          = '0;
+        linked_data_d[head_tail_q[match_in_idx_i].head].free     = 1'b1;
         // If it is the last cell of this ID
-        if (head_tail_q[match_out_idx_i].head == head_tail_q[match_out_idx_i].tail) begin
+        if (head_tail_q[match_in_idx_i].head == head_tail_q[match_in_idx_i].tail) begin
           oup_ht_popped = 1'b1;
-          head_tail_d[match_out_idx_i] = '{free: 1'b1, default: '0};
+          head_tail_d[match_in_idx_i] = '{free: 1'b1, default: '0};
         end else begin
-          head_tail_d[match_out_idx_i].head = linked_data_q[head_tail_q[match_out_idx_i].head].next;
+          head_tail_d[match_in_idx_i].head = linked_data_q[head_tail_q[match_in_idx_i].head].next;
         end
       end 
     end
