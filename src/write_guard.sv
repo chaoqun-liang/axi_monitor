@@ -75,7 +75,6 @@ module write_guard #(
   typedef struct packed {
     meta_t          metadata;
     accu_cnt_t      counter;
-    logic           found_match;
     ld_idx_t        next;
     logic           free;
   } linked_data_t;
