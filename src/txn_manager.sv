@@ -19,7 +19,7 @@ module txn_manager #(
   parameter type reg2hw_t       = logic
 )(
   input  logic                      wr_en_i,
-  input  logic                      inp_gnt,
+  input  logic                      full_i,
   input  logic [2:0]                budget_write,
   input  accu_cnt_t                 accum_burst_length,
   input  logic                      id_exists_i,
@@ -49,11 +49,10 @@ module txn_manager #(
   input  linked_data_t [MaxWrTxns-1:0] linked_data_q,
   output linked_data_t [MaxWrTxns-1:0] linked_data_d,
   output hw2reg_t                   hw2reg_o,
-  input  reg2hw_t                   reg2hw_i,
-  output accu_cnt_t                 txn_budget
+  input  reg2hw_t                   reg2hw_i
 );
 
-  //accu_cnt_t txn_budget;
+  accu_cnt_t txn_budget;
   
   // Transaction states handling
   always_comb begin
@@ -147,104 +146,28 @@ module txn_manager #(
     end
 
     // Enqueue
-    if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
+    if (wr_en_i && !full_i) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
       txn_budget = accum_burst_length + ((mst_req_i.aw.len) >> $clog2(PrescalerDiv)) + 2;
-      // If output data was popped for this ID, which lead the head_tail to be popped,
-      // then repopulate this head_tail immediately.
-      if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
-        head_tail_d[match_out_idx_i] = '{
+      if (no_in_id_match_i) begin
+        head_tail_d[head_tail_free_idx_i] = '{
           id: mst_req_i.aw.id,
-          head: oup_data_free_idx_i,
-          tail: oup_data_free_idx_i,
+          head: linked_data_free_idx_i,
+          tail: linked_data_free_idx_i,
           free: 1'b0
         };
-        linked_data_d[oup_data_free_idx_i] = '{
-          metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-          //metadata:mst_req_i.aw,
-          counter: txn_budget,
-          found_match: 0,
-          next: '0,
-          free: 1'b0
-        };
-      end else if (no_in_id_match_i) begin
-        // Else, if no head_tail corresponds to the input id, and no same ID just popped.
-        // 3 cases
-        if (oup_ht_popped) begin
-          head_tail_d[match_out_idx_i] = '{
-            id: mst_req_i.aw.id,
-            head: oup_data_free_idx_i,
-            tail: oup_data_free_idx_i,
-            free: 1'b0
-          };
-          linked_data_d[oup_data_free_idx_i] = '{
-            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            //metadata:mst_req_i.aw,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end else begin
-          if (oup_data_popped) begin
-            head_tail_d[head_tail_free_idx_i] = '{
-              id: mst_req_i.aw.id,
-              head: oup_data_free_idx_i,
-              tail: oup_data_free_idx_i,
-              free: 1'b0
-            };
-            linked_data_d[oup_data_free_idx_i] = '{
-              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              //metadata:mst_req_i.aw,
-              counter: txn_budget,
-              found_match: 0,
-              next: '0,
-              free: 1'b0
-            };
-          end else begin
-            head_tail_d[head_tail_free_idx_i] = '{
-              id: mst_req_i.aw.id,
-              head: linked_data_free_idx_i,
-              tail: linked_data_free_idx_i,
-              free: 1'b0
-            };
-            linked_data_d[linked_data_free_idx_i] = '{
-              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              //metadata:mst_req_i.aw,
-              counter: txn_budget,
-              found_match: 0,
-              next: '0,
-              free: 1'b0
-            };
-          end
-        end
-      end else begin
-        // Otherwise append it to the existing ID subqueue.
-        if (oup_data_popped) begin
-          linked_data_d[head_tail_q[match_in_idx_i].tail].next = oup_data_free_idx_i;
-          head_tail_d[match_in_idx_i].tail = oup_data_free_idx_i;
-          linked_data_d[oup_data_free_idx_i] = '{
-            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            //metadata:mst_req_i.aw,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end else begin
-          linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
-          head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
-          linked_data_d[linked_data_free_idx_i] = '{
-            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            //metadata:mst_req_i.aw,
-            counter: txn_budget,
-            found_match: 0,
-            next: '0,
-            free: 1'b0
-          };
-        end
+      end else begin 
+        linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
+        head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
       end
+      linked_data_d[linked_data_free_idx_i] = '{
+        metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+        counter: txn_budget,
+        found_match: 0,
+        next: '0,
+        free: 1'b0
+      };
     end
   end
 

@@ -195,9 +195,6 @@ endgenerate
   // Data potentially freed by the output.
   assign oup_data_free_idx = head_tail_q[match_out_idx].head;
   
-  // Data can be accepted if the linked list pool is not full
-  assign inp_gnt = ~full || oup_data_popped;
-
   // To calculate the total burst lengths at time of request acce
   accu_cnt_t  accum_burst_length, txn_budget;
   always_comb begin: proc_accum_length
@@ -337,7 +334,7 @@ endgenerate
     .reg2hw_t          ( reg2hw_t           )
   ) i_txn_manager (
     .wr_en_i               ( wr_en_i            ),
-    .inp_gnt               ( inp_gnt            ),
+    .full_i                ( full               ),
     .budget_write          ( budget_write       ),
     .accum_burst_length    ( accum_burst_length ),
     .id_exists_i           ( id_exists          ),
