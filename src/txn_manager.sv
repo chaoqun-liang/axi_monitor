@@ -18,42 +18,42 @@ module txn_manager #(
   parameter type hw2reg_t       = logic,
   parameter type reg2hw_t       = logic
 )(
-  input  logic                  wr_en_i,
-  input  logic                  inp_gnt,
-  input  logic [2:0]            budget_write,
-  input  accu_cnt_t             accum_burst_length,
-  input  logic                  reset_req_q,
-  input  logic                  id_exists_i,
-  input  ht_idx_t               rsp_idx_i,
-  input  req_t                  mst_req_i,
-  input  rsp_t                  slv_rsp_i,
-  input  logic                  no_out_id_match_i,
-  input  logic                  no_in_id_match_i,
-  input  ht_idx_t               match_out_idx_i,
-  input  ht_idx_t               head_tail_free_idx_i,
-  input  ht_idx_t               match_in_idx_i,
-  input  ld_idx_t               oup_data_free_idx_i,
-  input  ld_idx_t               linked_data_free_idx_i,
-  output logic                  timeout,
-  output logic                  reset_req,
-  output logic                  oup_req,
-  output id_t                   oup_id,
-  output id_t                   match_in_id,
-  output id_t                   match_out_id,
-  output logic                  match_in_id_valid, 
-  output logic                  match_out_id_valid,
-  output logic                  oup_data_valid,
-  output logic                  oup_data_popped,
-  output logic                  oup_ht_popped,
+  input  logic                      wr_en_i,
+  input  logic                      inp_gnt,
+  input  logic [2:0]                budget_write,
+  input  accu_cnt_t                 accum_burst_length,
+  input  logic                      id_exists_i,
+  input  ht_idx_t                   rsp_idx_i,
+  input  req_t                      mst_req_i,
+  input  rsp_t                      slv_rsp_i,
+  input  logic                      no_out_id_match_i,
+  input  logic                      no_in_id_match_i,
+  input  ht_idx_t                   match_out_idx_i,
+  input  ht_idx_t                   head_tail_free_idx_i,
+  input  ht_idx_t                   match_in_idx_i,
+  input  ld_idx_t                   oup_data_free_idx_i,
+  input  ld_idx_t                   linked_data_free_idx_i,
+  output logic                      timeout,
+  output logic                      reset_req,
+  output logic                      oup_req,
+  output id_t                       oup_id,
+  output id_t                       match_in_id,
+  output id_t                       match_out_id,
+  output logic                      match_in_id_valid, 
+  output logic                      match_out_id_valid,
+  output logic                      oup_data_valid,
+  output logic                      oup_data_popped,
+  output logic                      oup_ht_popped,
   input  head_tail_t [HtCapacity-1:0] head_tail_q,
   output head_tail_t [HtCapacity-1:0] head_tail_d,
   input  linked_data_t [MaxWrTxns-1:0] linked_data_q,
   output linked_data_t [MaxWrTxns-1:0] linked_data_d,
-  output hw2reg_t                        hw2reg_o,
-  input  reg2hw_t                        reg2hw_i
+  output hw2reg_t                   hw2reg_o,
+  input  reg2hw_t                   reg2hw_i,
+  output accu_cnt_t                 txn_budget
 );
 
-  accu_cnt_t txn_budget;
+  //accu_cnt_t txn_budget;
   
   // Transaction states handling
   always_comb begin
@@ -68,8 +68,9 @@ module txn_manager #(
     oup_ht_popped       = 1'b0;
     oup_id              = '0;
     oup_req             = 1'b0;
-    timeout             = '0;
-    reset_req           = reset_req_q;
+    timeout             = 1'b0;
+    reset_req           = 1'b0;
+    txn_budget          = '0;
     hw2reg_o.irq.unwanted_wr_resp.d = reg2hw_i.irq.unwanted_wr_resp.q;
     hw2reg_o.irq.txn_id.d       = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq.wr_timeout.d   = reg2hw_i.irq.wr_timeout.q;
@@ -149,7 +150,7 @@ module txn_manager #(
     if (wr_en_i && inp_gnt ) begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
-      txn_budget = accum_burst_length + ( mst_req_i.aw.len +1) >> $clog2(PrescalerDiv) + 1; // need to count itself
+      txn_budget = accum_burst_length + ((mst_req_i.aw.len) >> $clog2(PrescalerDiv)) + 2;
       // If output data was popped for this ID, which lead the head_tail to be popped,
       // then repopulate this head_tail immediately.
       if (oup_ht_popped && (oup_id == mst_req_i.aw.id)) begin
@@ -160,8 +161,8 @@ module txn_manager #(
           free: 1'b0
         };
         linked_data_d[oup_data_free_idx_i] = '{
-          //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-          metadata:mst_req_i.aw,
+          metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+          //metadata:mst_req_i.aw,
           counter: txn_budget,
           found_match: 0,
           next: '0,
@@ -178,8 +179,8 @@ module txn_manager #(
             free: 1'b0
           };
           linked_data_d[oup_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
@@ -194,8 +195,8 @@ module txn_manager #(
               free: 1'b0
             };
             linked_data_d[oup_data_free_idx_i] = '{
-              //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              metadata:mst_req_i.aw,
+              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+              //metadata:mst_req_i.aw,
               counter: txn_budget,
               found_match: 0,
               next: '0,
@@ -209,8 +210,8 @@ module txn_manager #(
               free: 1'b0
             };
             linked_data_d[linked_data_free_idx_i] = '{
-              //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-              metadata:mst_req_i.aw,
+              metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+              //metadata:mst_req_i.aw,
               counter: txn_budget,
               found_match: 0,
               next: '0,
@@ -224,8 +225,8 @@ module txn_manager #(
           linked_data_d[head_tail_q[match_in_idx_i].tail].next = oup_data_free_idx_i;
           head_tail_d[match_in_idx_i].tail = oup_data_free_idx_i;
           linked_data_d[oup_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
@@ -235,8 +236,8 @@ module txn_manager #(
           linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
           head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
           linked_data_d[linked_data_free_idx_i] = '{
-            //metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
-            metadata:mst_req_i.aw,
+            metadata: '{id: mst_req_i.aw.id, len: mst_req_i.aw.len},
+            //metadata:mst_req_i.aw,
             counter: txn_budget,
             found_match: 0,
             next: '0,
