@@ -47,9 +47,7 @@ module txn_manager #(
   input  reg2hw_t                       reg2hw_i
 );
 
-  accu_cnt_t txn_budget;
-  logic      found_match;
-  
+  accu_cnt_t txn_budget;  
   // Transaction states handling
   always_comb begin
     match_in_id         = '0;
@@ -89,9 +87,9 @@ module txn_manager #(
     if( slv_rsp_i.b_valid && mst_req_i.b_ready && !timeout ) begin 
       if( id_exists_i ) begin
         //linked_data_d[head_tail_q[rsp_idx_i].head].found_match = 1;
-        found_match = 1'b1;
+        //found_match = 1'b1;
         oup_req = 1; 
-        oup_id = linked_data_q[head_tail_q[rsp_idx_i].head].metadata.id;
+        oup_id = slv_rsp_i.b.id; // Just use transaction ID
         hw2reg_o.latency_write.d = linked_data_q[head_tail_q[rsp_idx_i].head].counter;
       end else begin 
         hw2reg_o.irq.unwanted_wr_resp.d = 1'b1;

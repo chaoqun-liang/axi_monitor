@@ -114,24 +114,26 @@ module write_guard #(
   
   logic                           reset_req, reset_req_q,
                                   id_exists,
-                                  irq, timeout;                                
+                                  irq, timeout; 
+
+  accu_cnt_t                      accum_burst_length;                               
   
   // Find the index in the head-tail table that matches a given ID.
-generate
+  generate
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_lookup
     id_lookup #(
-        .id_t        ( id_t         ),
-        .head_tail_t ( head_tail_t  )
+      .id_t        ( id_t         ),
+      .head_tail_t ( head_tail_t  )
     ) i_id_lookup (
-        .match_in_id_valid   ( match_in_id_valid    ),
-        .match_in_id         ( match_in_id          ),
-        .rsp_id              ( slv_rsp_i.b.id       ),
-        .head_tail_q_i       ( head_tail_q[i]       ),
-        .idx_matches_in_id_o ( idx_matches_in_id[i] ),
-        .idx_rsp_id_o        ( idx_rsp_id[i]        )
+      .match_in_id_valid   ( match_in_id_valid    ),
+      .match_in_id         ( match_in_id          ),
+      .rsp_id              ( slv_rsp_i.b.id       ),
+      .head_tail_q_i       ( head_tail_q[i]       ),
+      .idx_matches_in_id_o ( idx_matches_in_id[i] ),
+      .idx_rsp_id_o        ( idx_rsp_id[i]        )
     );
   end
-endgenerate
+  endgenerate
 
   assign no_in_id_match = !(|idx_matches_in_id);
   assign id_exists =  (|idx_rsp_id);
@@ -150,47 +152,52 @@ endgenerate
     .bin    ( rsp_idx       )
   );
 
-  // Find the first free index in the head-tail table.
-  for (genvar i = 0; i < HtCapacity; i++) begin: gen_head_tail_free
-    assign head_tail_free[i] = head_tail_q[i].free;
-  end
+  ht_free #(
+    .HtCapacity ( HtCapacity  ),
+    .head_tail_t( head_tail_t )
+  ) i_ht_free (
+    .head_tail_q      ( head_tail_q    ),
+    .head_tail_free_o ( head_tail_free ) 
+  );
 
   lzc #(
     .WIDTH ( HtCapacity ),
-    .MODE  ( 0          ) // Start at index 0.
+    .MODE  ( 0          ) // Start at index 0
   ) i_ht_free_lzc (
     .in_i    ( head_tail_free     ),
     .cnt_o   ( head_tail_free_idx ),
     .empty_o (                    )
   );
 
-  // Find the first free index in the linked data table.
-  for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_linked_data_free
-    assign linked_data_free[i] = linked_data_q[i].free;
-  end
+  ld_free #(
+    .MaxWrTxns     ( MaxWrTxns     ),
+    .linked_data_t ( linked_data_t )
+  ) i_ld_free (
+    .linked_data_q_i    ( linked_data_q    ),
+    .linked_data_free_o ( linked_data_free )
+  );
 
   lzc #(
     .WIDTH ( MaxWrTxns ),
     .MODE  ( 0        ) // Start at index 0.
   ) i_ld_free_lzc (
-        .in_i    ( linked_data_free     ),
-        .cnt_o   ( linked_data_free_idx ),
-        .empty_o (                      )
+    .in_i    ( linked_data_free     ),
+    .cnt_o   ( linked_data_free_idx ),
+    .empty_o (                      )
   );
  
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
-  
-  // To calculate the total burst lengths at time of request acce
-  accu_cnt_t  accum_burst_length, txn_budget;
-  always_comb begin: proc_accum_length
-    accum_burst_length = 0;
-    for (int i = 0; i < MaxWrTxns; i++) begin
-      if (!linked_data_q[i].free) begin
-        accum_burst_length += (((linked_data_q[i].metadata.len + 1) >> $clog2(PrescalerDiv)) + 1);
-      end
-    end
-  end
+
+  dynamic_budget #(
+    .MaxWrTxns    ( MaxWrTxns     ),     // Maximum number of transactions
+    .PrescalerDiv ( PrescalerDiv  ),     // Prescaler divisor
+    .accu_cnt_t   ( accu_cnt_t    ),
+    .linked_data_t( linked_data_t )
+  ) i_dynamic_budget (
+    .linked_data_q_i ( linked_data_q      ),
+    .accum_burst_len ( accum_burst_length ) // Total accumulated burst length
+  );
 
   logic prescaled_en;
   prescaler #(
@@ -234,45 +241,45 @@ endgenerate
     .hw2reg_t          ( hw2reg_t           ),
     .reg2hw_t          ( reg2hw_t           )
   ) i_txn_manager (
-    .wr_en_i               ( wr_en_i            ),
-    .full_i                ( full               ),
-    .budget_write          ( budget_write       ),
-    .accum_burst_length    ( accum_burst_length ),
-    .id_exists_i           ( id_exists          ),
-    .rsp_idx_i             ( rsp_idx            ),
-    .mst_req_i             ( mst_req_i          ),
-    .slv_rsp_i             ( slv_rsp_i          ),
-    .head_tail_free_idx_i  (head_tail_free_idx  ),
-    .match_in_idx_i        ( match_in_idx       ),
-    .linked_data_free_idx_i(linked_data_free_idx),
-    .no_in_id_match_i      ( no_in_id_match     ),
-    .timeout               ( timeout            ),
-    .reset_req             ( reset_req          ),
-    .oup_req               ( oup_req            ),
-    .oup_id                ( oup_id             ),
-    .match_in_id           ( match_in_id        ),
-    .match_in_id_valid     ( match_in_id_valid  ),
-    .oup_data_valid        ( oup_data_valid     ),
-    .oup_data_popped       ( oup_data_popped    ),
-    .oup_ht_popped         ( oup_ht_popped      ),
-    .head_tail_q           ( head_tail_q        ),
-    .head_tail_d           ( head_tail_d        ),
-    .linked_data_q         ( linked_data_q      ),
-    .linked_data_d         ( linked_data_d      ),
-    .hw2reg_o              ( hw2reg_o           ),
-    .reg2hw_i              ( reg2hw_i           )
+    .wr_en_i               ( wr_en_i              ),
+    .full_i                ( full                 ),
+    .budget_write          ( budget_write         ),
+    .accum_burst_length    ( accum_burst_length   ),
+    .id_exists_i           ( id_exists            ),
+    .rsp_idx_i             ( rsp_idx              ),
+    .mst_req_i             ( mst_req_i            ),
+    .slv_rsp_i             ( slv_rsp_i            ),
+    .head_tail_free_idx_i  ( head_tail_free_idx   ),
+    .match_in_idx_i        ( match_in_idx         ),
+    .linked_data_free_idx_i( linked_data_free_idx ),
+    .no_in_id_match_i      ( no_in_id_match       ),
+    .timeout               ( timeout              ),
+    .reset_req             ( reset_req            ),
+    .oup_req               ( oup_req              ),
+    .oup_id                ( oup_id               ),
+    .match_in_id           ( match_in_id          ),
+    .match_in_id_valid     ( match_in_id_valid    ),
+    .oup_data_valid        ( oup_data_valid       ),
+    .oup_data_popped       ( oup_data_popped      ),
+    .oup_ht_popped         ( oup_ht_popped        ),
+    .head_tail_q           ( head_tail_q          ),
+    .head_tail_d           ( head_tail_d          ),
+    .linked_data_q         ( linked_data_q        ),
+    .linked_data_d         ( linked_data_d        ),
+    .hw2reg_o              ( hw2reg_o             ),
+    .reg2hw_i              ( reg2hw_i             )
   );
 
   generate
   // HT table registers
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     ht_ff #(
-      .head_tail_t(head_tail_t)
+      .head_tail_t  ( head_tail_t )
     ) i_ht_ff (
-      .clk_i        (clk_i),
-      .rst_ni       (rst_ni),
-      .head_tail_d_i(head_tail_d[i]),
-      .head_tail_q_o(head_tail_q[i])
+      .clk_i        ( clk_i          ),
+      .rst_ni       ( rst_ni         ),
+      .head_tail_d_i( head_tail_d[i] ),
+      .head_tail_q_o( head_tail_q[i] )
     );
   end
   endgenerate
@@ -305,7 +312,7 @@ endgenerate
   );
 
   assign  reset_req_o = reset_req_q;
-  assign irq_o = irq;
+  assign  irq_o = irq;
 
  // Validate parameters.
  `ifndef SYNTHESIS
