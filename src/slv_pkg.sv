@@ -12,7 +12,7 @@ package slv_pkg;
   parameter int unsigned MaxUniqIds    = 32;
   parameter int unsigned MaxTxnsPerId  = 1; 
   parameter int unsigned CntWidth      = 10;
-  parameter int unsigned PrescalerDiv  = 64;
+  parameter int unsigned PrescalerDiv  = 1;
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 48;
   parameter int unsigned AxiDataWidth  = 32;

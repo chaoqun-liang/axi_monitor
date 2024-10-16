@@ -110,7 +110,7 @@ module slv_guard_top #(
   slv_rsp_t  int_rsp, rd_rsp, wr_rsp;
 
   typedef struct packed {                      
-    int_id_t   id;                             
+    int_id_t        id;                             
     axi_pkg::len_t  len; // 8 bits
   } meta_t;
   
@@ -133,53 +133,48 @@ module slv_guard_top #(
     .mst_resp_i ( int_rsp  )
   );
 
-  // // Write
-  // always_comb begin
-  //   int_req_wr          = int_req;
-  //   int_req_wr.ar       = 'b0;
-  //   int_req_wr.ar_valid = 'b0;
-  //   int_req_wr.r_ready  = 'b0;
-  //   wr_rsp              = rsp_i;
-  //   wr_rsp.ar_ready     = 'b0;
-  //   wr_rsp.r            = 'b0;
-  //   wr_rsp.r_valid      = 'b0;
-  // end
+  // Write
+  always_comb begin
+    int_req_wr          = int_req;
+    int_req_wr.ar       = 'b0;
+    int_req_wr.ar_valid = 'b0;
+    int_req_wr.r_ready  = 'b0;
+    wr_rsp              = rsp_i;
+    wr_rsp.ar_ready     = 'b0;
+    wr_rsp.r            = 'b0;
+    wr_rsp.r_valid      = 'b0;
+  end
 
-  // // Read
-  // always_comb begin
-  //   int_req_rd          = int_req;
-  //   int_req_rd.aw       = 'b0;
-  //   int_req_rd.aw_valid = 'b0;
-  //   int_req_rd.w        = 'b0;
-  //   int_req_rd.w_valid  = 'b0;
-  //   int_req_rd.b_ready  = 'b0;
-  //   rd_rsp              = rsp_i;
-  //   rd_rsp.aw_ready     = 'b0;
-  //   rd_rsp.w_ready      = 'b0;
-  //   rd_rsp.b            = 'b0;
-  //   rd_rsp.b_valid      = 'b0;
-  // end
-
-
-  assign int_req_wr          = int_req;
-  assign int_req_rd          = int_req;
-  assign wr_rsp              = rsp_i;
-  assign rd_rsp              = rsp_i;
+  // Read
+  always_comb begin
+    int_req_rd          = int_req;
+    int_req_rd.aw       = 'b0;
+    int_req_rd.aw_valid = 'b0;
+    int_req_rd.w        = 'b0;
+    int_req_rd.w_valid  = 'b0;
+    int_req_rd.b_ready  = 'b0;
+    rd_rsp              = rsp_i;
+    rd_rsp.aw_ready     = 'b0;
+    rd_rsp.w_ready      = 'b0;
+    rd_rsp.b            = 'b0;
+    rd_rsp.b_valid      = 'b0;
+  end
 
   write_guard #(
-    .MaxUniqIds ( MaxUniqIds ),
-    .MaxWrTxns  ( MaxTxns    ), // total writes
-    .CntWidth   ( CntWidth   ),
-    .PrescalerDiv (PrescalerDiv),
-    .req_t      ( slv_req_t  ),
-    .rsp_t      ( slv_rsp_t  ),
-    .id_t       ( int_id_t   ),
-    .meta_t     ( meta_t     ),
-    .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
-    .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
+    .MaxUniqIds   ( MaxUniqIds   ),
+    .MaxWrTxns    ( MaxTxns      ), // total writes
+    .CntWidth     ( CntWidth     ),
+    .PrescalerDiv ( PrescalerDiv ),
+    .req_t        ( slv_req_t    ),
+    .rsp_t        ( slv_rsp_t    ),
+    .id_t         ( int_id_t     ),
+    .meta_t       ( meta_t       ),
+    .reg2hw_t     ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
+    .hw2reg_t     ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_write_monitor_unit (
     .clk_i,
     .rst_ni,
+    //.rd_rst_i
     .wr_en_i      ( wr_enqueue   ),
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
@@ -191,20 +186,21 @@ module slv_guard_top #(
   );
 
   read_guard #(
-    .MaxUniqIds ( MaxUniqIds ),
-    .MaxRdTxns  ( MaxTxns    ), 
-    .CntWidth   ( CntWidth   ),
-    .PrescalerDiv(PrescalerDiv),
-    .req_t      ( slv_req_t  ),
-    .rsp_t      ( slv_rsp_t  ),
-    .id_t       ( int_id_t   ),
-    .meta_t     ( int_ar_t   ),
-    .reg2hw_t   ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
-    .hw2reg_t   ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
+    .MaxUniqIds   ( MaxUniqIds   ),
+    .MaxRdTxns    ( MaxTxns      ), 
+    .CntWidth     ( CntWidth     ),
+    .PrescalerDiv ( PrescalerDiv ),
+    .req_t        ( slv_req_t    ),
+    .rsp_t        ( slv_rsp_t    ),
+    .id_t         ( int_id_t     ),
+    .meta_t       ( meta_t       ),
+    .reg2hw_t     ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
+    .hw2reg_t     ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
   ) i_read_monitor_unit (
     .clk_i,
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
+    //.wr_rst_i     
     .mst_req_i    ( int_req_rd   ),  
     .slv_rsp_i    ( rd_rsp       ),                                                                               
     .reset_req_o  ( rst_req_rd   ),
@@ -214,8 +210,11 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-  assign rst_req_o = rst_req_wr | rst_req_rd;
-  assign irq_o   =  read_irq  | write_irq;
+assign rst_req_o = rst_req_wr | rst_req_rd;
+assign irq_o     =  read_irq  | write_irq;
+
+// assign rst_req_o = rst_req_rd ;
+// assign irq_o     = read_irq;
 
 always_comb begin
     // Default behavior for req_o and int_rsp

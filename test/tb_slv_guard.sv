@@ -139,7 +139,7 @@ module tb_slv_guard #(
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
-    .axi_req_i          ( slave_req     ),  
+    .axi_req_i          ( slave_req     ),  //
     .axi_rsp_o          ( slave_rsp     ),
     .mon_r_last_o       ( /* NOT CONNECTED */ ),
     .mon_r_beat_count_o ( /* NOT CONNECTED */ ),
@@ -184,16 +184,16 @@ module tb_slv_guard #(
     i_slv_guard_top (
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
-    .guard_ena_i (   1'b1         ), // can also do sw write
+    .guard_ena_i (   1'b1         ),
     .req_i       (   master_req   ), 
     .rsp_o       (   master_rsp   ),
-    .req_o       (   slave_req    ),
+    .req_o       (   slave_req    ), // 
     .rsp_i       (   slave_rsp    ),
     .reg_req_i   (   cfg_req      ),
     .reg_rsp_o   (   cfg_rsp      ),
     .irq_o       (   irq          ),
     .rst_req_o   (   rst_stat     ),
-    .rst_stat_i  (   1'b1         )
+    .rst_stat_i  (   1'b0         )
   );
 
 //-----------------------------------
@@ -203,7 +203,7 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-sim/slv_guard/test/stimuli/32_wr.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-synth/slv_guard/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/single-with/single-counter/single-synth/slv_guard/test/stimuli/32_wr.txt"));
     // tb metrics
     // total_num_reads [i] = axi_file_master.num_reads;
     // total_num_writes[i] = axi_file_master.num_writes;

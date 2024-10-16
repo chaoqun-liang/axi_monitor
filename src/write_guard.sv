@@ -3,17 +3,20 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 
+// Authors:
+// - Chaoqun Liang <chaoqun.liang@unibo.it>
+
 module write_guard #(
   /// Maximum number of unique IDs
   parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
   parameter int unsigned MaxWrTxns    = 32,
   /// Counter width 
-  parameter int unsigned CntWidth     = 2,
+  parameter int unsigned CntWidth     = 8,
   /// Prescaler division value 
   parameter int unsigned PrescalerDiv = 1,
   // Prescaled accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+2,
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -34,12 +37,12 @@ module write_guard #(
   input  req_t       mst_req_i,
   /// Response from slave
   input  rsp_t       slv_rsp_i, 
+  /// Reset state 
+  input  logic       reset_clear_i,
   /// Reset request 
   output logic       reset_req_o,
   /// Interrupt line
   output logic       irq_o,
-  /// Reset state 
-  input  logic       reset_clear_i,
   /// Register bus
   input  reg2hw_t    reg2hw_i,
   output hw2reg_t    hw2reg_o
@@ -49,7 +52,7 @@ module write_guard #(
   typedef logic [AccuCntWidth-1:0] accu_cnt_t;
 
   /// Budget time from aw_valid to aw_ready
-  logic [2:0] budget_write; 
+  logic [1:0] budget_write; 
   assign budget_write = reg2hw_i.budget_write.q;
  
   /// Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
@@ -124,7 +127,7 @@ module write_guard #(
     id_lookup #(
       .id_t        ( id_t         ),
       .head_tail_t ( head_tail_t  )
-    ) i_id_lookup (
+    ) i_wr_id_lookup (
       .match_in_id_valid   ( match_in_id_valid    ),
       .match_in_id         ( match_in_id          ),
       .rsp_id              ( slv_rsp_i.b.id       ),
@@ -140,14 +143,14 @@ module write_guard #(
 
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
-  ) i_id_ohb_in (
+  ) i_wr_id_ohb_in (
     .onehot ( idx_matches_in_id ),
     .bin    ( match_in_idx      )
   );
  
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
-  ) i_id_ohb_rsp (
+  ) i_wr_id_ohb_rsp (
     .onehot ( idx_rsp_id    ),
     .bin    ( rsp_idx       )
   );
@@ -155,7 +158,7 @@ module write_guard #(
   ht_free #(
     .HtCapacity ( HtCapacity  ),
     .head_tail_t( head_tail_t )
-  ) i_ht_free (
+  ) i_wr_ht_free (
     .head_tail_q      ( head_tail_q    ),
     .head_tail_free_o ( head_tail_free ) 
   );
@@ -163,16 +166,16 @@ module write_guard #(
   lzc #(
     .WIDTH ( HtCapacity ),
     .MODE  ( 0          ) // Start at index 0
-  ) i_ht_free_lzc (
+  ) i_wr_ht_free_lzc (
     .in_i    ( head_tail_free     ),
     .cnt_o   ( head_tail_free_idx ),
     .empty_o (                    )
   );
 
   ld_free #(
-    .MaxWrTxns     ( MaxWrTxns     ),
+    .MaxTxns       ( MaxWrTxns     ),
     .linked_data_t ( linked_data_t )
-  ) i_ld_free (
+  ) i_wr_ld_free (
     .linked_data_q_i    ( linked_data_q    ),
     .linked_data_free_o ( linked_data_free )
   );
@@ -180,7 +183,7 @@ module write_guard #(
   lzc #(
     .WIDTH ( MaxWrTxns ),
     .MODE  ( 0        ) // Start at index 0.
-  ) i_ld_free_lzc (
+  ) i_wr_ld_free_lzc (
     .in_i    ( linked_data_free     ),
     .cnt_o   ( linked_data_free_idx ),
     .empty_o (                      )
@@ -190,27 +193,27 @@ module write_guard #(
   assign full = !(|linked_data_free);
 
   dynamic_budget #(
-    .MaxWrTxns    ( MaxWrTxns     ),     // Maximum number of transactions
-    .PrescalerDiv ( PrescalerDiv  ),     // Prescaler divisor
+    .MaxTxns      ( MaxWrTxns     ),     // Maximum number of transactions
+    .PrescalerDiv ( PrescalerDiv  ),    
     .accu_cnt_t   ( accu_cnt_t    ),
     .linked_data_t( linked_data_t )
-  ) i_dynamic_budget (
+  ) i_wr_dynamic_budget (
     .linked_data_q_i ( linked_data_q      ),
     .accum_burst_len ( accum_burst_length ) // Total accumulated burst length
   );
 
   logic prescaled_en;
   prescaler #(
-    .DivFactor(PrescalerDiv)
+    .DivFactor  ( PrescalerDiv )
     )i_wr_prescaler(
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .prescaled_o(prescaled_en)
+    .clk_i      ( clk_i        ),
+    .rst_ni     ( rst_ni       ),
+    .prescaled_o( prescaled_en )
   ); 
 
   logic b_valid_sticky, b_ready_sticky;
 
-  sticky_bit i_bvalid_sticky (
+  sticky_bit i_wr_bvalid_sticky (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .release_i(prescaled_en),
@@ -218,7 +221,7 @@ module write_guard #(
     .sticky_o(b_valid_sticky)
   );
 
-  sticky_bit i_bready_sticky (
+  sticky_bit i_wr_bready_sticky (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .release_i(prescaled_en),
@@ -226,7 +229,7 @@ module write_guard #(
     .sticky_o(b_ready_sticky)
   );
   
-  txn_manager #(
+  wr_txn_manager #(
     .MaxWrTxns         ( MaxWrTxns          ),
     .HtCapacity        ( HtCapacity         ), // this single line can change from 70+ to 18
     .PrescalerDiv      ( PrescalerDiv       ),
@@ -240,7 +243,7 @@ module write_guard #(
     .accu_cnt_t        ( accu_cnt_t         ),
     .hw2reg_t          ( hw2reg_t           ),
     .reg2hw_t          ( reg2hw_t           )
-  ) i_txn_manager (
+  ) i_wr_txn_manager (
     .wr_en_i               ( wr_en_i              ),
     .full_i                ( full                 ),
     .budget_write          ( budget_write         ),
@@ -275,7 +278,7 @@ module write_guard #(
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_ht_ffs
     ht_ff #(
       .head_tail_t  ( head_tail_t )
-    ) i_ht_ff (
+    ) i_wr_ht_ff (
       .clk_i        ( clk_i          ),
       .rst_ni       ( rst_ni         ),
       .head_tail_d_i( head_tail_d[i] ),
@@ -284,25 +287,29 @@ module write_guard #(
   end
   endgenerate
 
-  // number of counters are not accurate here
   generate
   for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_wr_counter
     wr_counter #(
       .linked_data_t ( linked_data_t ),
-      .CntWidth      ( AccuCntWidth  )  // Set the width of the counter
+      .CntWidth      ( AccuCntWidth  ), 
+      .id_t          ( id_t          ),
+      .head_tail_t   ( head_tail_t   )
     ) i_wr_counter (
-      .clk_i           ( clk_i            ),             
-      .rst_ni          ( rst_ni           ),          
-      .prescaled_en    ( prescaled_en     ),    
-      .b_valid_sticky  ( b_valid_sticky   ),   
-      .b_ready_sticky  ( b_ready_sticky   ),    
-      .linked_data_d_i ( linked_data_d[i] ), 
-      .linked_data_q_o ( linked_data_q[i] )  
+      .clk_i           ( clk_i                 ),             
+      .rst_ni          ( rst_ni                ), 
+      .i               ( i                     ), 
+      .slv_b_id_i      ( slv_rsp_i.b.id        ),
+      .head_tail_q_i   ( head_tail_q[rsp_idx]  ),        
+      .prescaled_en    ( prescaled_en          ),    
+      .b_valid_sticky  ( b_valid_sticky        ),   
+      .b_ready_sticky  ( b_ready_sticky        ),    
+      .linked_data_d_i ( linked_data_d[i]      ), 
+      .linked_data_q_o ( linked_data_q[i]      )  
     );
   end
   endgenerate
 
-  reset_handler i_reset_handler(
+  reset_handler i_wr_reset_handler(
     .clk_i         ( clk_i         ),
     .rst_ni        ( rst_ni        ),
     .reset_req_i   ( reset_req     ),

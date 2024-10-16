@@ -98,7 +98,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "9:0", name: "latency_write", desc: "latency of one write" }
+      { bits: "7:0", name: "latency_write", desc: "latency of one write" }
     ]
   },
   
@@ -108,7 +108,7 @@
     hwaccess: "hrw"
     resval:   "0"
     fields: [
-      { bits: "9:0", name: "latency_read", desc: "latency of one read" }
+      { bits: "7:0", name: "latency_read", desc: "latency of one read" }
     ]
   },
 

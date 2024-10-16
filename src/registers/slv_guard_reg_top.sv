@@ -82,8 +82,8 @@ module slv_guard_reg_top #(
   logic irq_unwanted_rd_resp_qs;
   logic [4:0] irq_txn_id_qs;
   logic [31:0] irq_addr_qs;
-  logic [9:0] latency_write_qs;
-  logic [9:0] latency_read_qs;
+  logic [7:0] latency_write_qs;
+  logic [7:0] latency_read_qs;
 
   // Register instances
   // R[guard_enable]: V(False)
@@ -371,9 +371,9 @@ module slv_guard_reg_top #(
   // R[latency_write]: V(False)
 
   prim_subreg #(
-    .DW      (10),
+    .DW      (8),
     .SWACCESS("RO"),
-    .RESVAL  (10'h0)
+    .RESVAL  (8'h0)
   ) u_latency_write (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -397,9 +397,9 @@ module slv_guard_reg_top #(
   // R[latency_read]: V(False)
 
   prim_subreg #(
-    .DW      (10),
+    .DW      (8),
     .SWACCESS("RO"),
-    .RESVAL  (10'h0)
+    .RESVAL  (8'h0)
   ) u_latency_read (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -493,11 +493,11 @@ module slv_guard_reg_top #(
       end
 
       addr_hit[6]: begin
-        reg_rdata_next[9:0] = latency_write_qs;
+        reg_rdata_next[7:0] = latency_write_qs;
       end
 
       addr_hit[7]: begin
-        reg_rdata_next[9:0] = latency_read_qs;
+        reg_rdata_next[7:0] = latency_read_qs;
       end
 
       default: begin
