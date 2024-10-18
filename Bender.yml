@@ -1,0 +1,54 @@
+# Copyright 2024 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
+package:
+  name: slv_guard
+  
+export_include_dirs:
+  - include
+
+dependencies:
+  common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.32.0 }
+  axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1 }
+  register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: 0.4.2  }
+
+  
+sources:
+  # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+  # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+  # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+
+  - target: rtl
+    files:
+      # Level 0
+      - source/registers/slv_guard_reg_pkg.sv
+      - source/registers/slv_guard_reg_top.sv
+      - source/wr_counter.sv
+      - source/rd_counter.sv
+      - source/id_lookup.sv 
+      - source/id_free.sv
+      - source/wr_txn_manager.sv
+      - source/rd_txn_manager.sv
+      - source/reset_handler.sv
+      - source/write_guard.sv
+      - source/read_guard.sv
+      - source/slv_guard_top.sv 
+  
+  - target: monitor_synth
+    files:
+      - source/slv_pkg.sv
+      - source/monitor_wrap.sv
+
+  - target: netlist_sim
+    files:
+      - /usr/pack/gf-12-kgf/arm/gf/12lpplus/sc7p5mcpp84_base_lvt_c14/r5p0/verilog/sc7p5mcpp84_12lpplus_base_lvt_c14.v
+      - monitor-synth/synopsys/out/monitor_sspg_0p72v_125c_1ns/netlist_monitor.v
+      - source/slv_pkg.sv
+      - test/tb_slv_guard.sv
+
+  - target: test
+    files:
+       # Level 0
+      - source/slv_pkg.sv
+      - test/tb_slv_guard.sv

@@ -1,0 +1,117 @@
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+// Licensed under Solderpad Hardware License, Version 0.51, see LICENSE for details.
+
+
+{
+  name: "slv_guard"
+  clock_primary: "clk_i"
+  bus_interfaces: [
+    { protocol: "reg_iface", direction: "device" }
+  ]
+  regwidth: "32",
+  registers: [
+  { name:     "guard_enable"
+    desc:     "Enable slave guard feature"
+    swaccess: "wo"
+    hwaccess: "hrw"
+    resval:   "0"
+    fields: [
+      { bits: "0", name: "enable", desc: "Enable slave guard feature" }
+    ]
+  },
+    
+  { name:     "budget_write"
+    desc:     "time budget for one write transaction"
+    swaccess: "wo"
+    hwaccess: "hrw"
+    resval:   "0"
+    fields: [
+      { bits: "3:0", name: "budget_write", desc: "time budget for one write transaction" }
+    ]
+  },
+  
+  { name:     "budget_read"
+    desc:     "time budget for one read transaction"
+    swaccess: "wo"
+    hwaccess: "hrw"
+    resval:   "0"
+    fields: [
+      { bits: "3:0", name: "budget_read", desc: "time budget for one read transaction" }
+    ]
+  },
+
+  { name:     "reset"
+    desc:     "Is the slave requested to be reset?"
+    swaccess: "ro"
+    hwaccess: "hrw"
+    fields: [
+      { bits: "0:0", name: "reset", desc: "Is the slave requested to be reset?" }
+    ]
+  },
+
+  { name: "irq",
+          desc: "interrupt information",
+          swaccess: "ro",
+          hwaccess: "hrw",
+          fields: [
+              { bits: "0", name: "irq",
+                desc: "interrupt line"
+                resval: "0"
+              },
+              { bits: "1", name: "wr_timeout",
+                desc: "write timeout"
+                resval: "0"
+              },
+              { bits: "2", name: "rd_timeout",
+                desc: "read timeout"
+                resval: "0"
+              },
+              { bits: "3", name: "unwanted_wr_resp",
+                desc: "  if this is unwanted write response"
+                resval: "0"
+              },
+              { bits: "4", name: "unwanted_rd_resp",
+                desc: "  if this is unwanted read response"
+                resval: "0"
+              },
+              { bits: "9:5", name: "txn_id",
+                desc: "id of the faulty transaction"
+              }
+          ]
+  },
+
+  { name:     "irq_addr"
+    desc:     "address of the faulty transaction"
+    swaccess: "ro"
+    hwaccess: "hrw"
+    fields: [
+      { bits: "31:0", name: "irq_addr", desc: "address of the faulty transaction" }
+    ]
+  },
+
+
+  { name:     "latency_write"
+    desc:     "letency of one write txn"
+    swaccess: "ro"
+    hwaccess: "hrw"
+    resval:   "0"
+    fields: [
+      { bits: "7:0", name: "latency_write", desc: "latency of one write" }
+    ]
+  },
+  
+  { name:     "latency_read"
+    desc:     "latency of one read txn"
+    swaccess: "ro"
+    hwaccess: "hrw"
+    resval:   "0"
+    fields: [
+      { bits: "7:0", name: "latency_read", desc: "latency of one read" }
+    ]
+  },
+
+  ]
+}
+

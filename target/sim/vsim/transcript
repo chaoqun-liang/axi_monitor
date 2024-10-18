@@ -1,0 +1,77 @@
+# //  Questa Sim-64
+# //  Version 2023.4 linux_x86_64 Oct  9 2023
+# //
+# //  Copyright 1991-2023 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# set TESTBENCH tb_slv_guard
+# tb_slv_guard
+#  	 set VSIM_FLAGS "-permissive -suppress 3009 -suppress 8386 -error 7 +UVM_NO_RELNOTES -voptargs=+acc"
+# -permissive -suppress 3009 -suppress 8386 -error 7 +UVM_NO_RELNOTES -voptargs=+acc
+#  	 source /scratch/chaol/slave_unit/perID/axi_monitor/target/sim/vsim/start.slv.tcl 
+# vsim tb_slv_guard_opt -coverage -t 1ns -permissive -suppress 3009 -suppress 8386 -error 7 "+UVM_NO_RELNOTES" -voptargs="+acc" 
+# Start time: 17:19:24 on Oct 18,2024
+# Loading sv_std.std
+# Loading work.AXI_BUS_DV(fast)
+# Loading work.AXI_LITE_DV(fast)
+# Loading work.rand_id_queue_pkg(fast)
+# Loading work.axi_pkg(fast)
+# Loading work.axi_test(fast)
+# Loading work.REG_BUS(fast)
+# Loading work.reg_test(fast)
+# Loading work.slv_pkg(fast)
+# Loading work.tb_slv_guard_sv_unit(fast)
+# Loading work.tb_slv_guard(fast)
+# Loading work.AXI_BUS(fast__1)
+# Loading work.AXI_BUS_DV(fast__2)
+# Loading work.REG_BUS(fast__2)
+# Loading work.clk_rst_gen(fast)
+# Loading work.axi_sim_mem(fast)
+# Loading work.slv_guard_reg_pkg(fast)
+# Loading work.slv_guard_top(fast)
+# Loading work.slv_guard_reg_top(fast)
+# Loading work.prim_subreg(fast)
+# Loading work.prim_subreg_arb(fast)
+# Loading work.prim_subreg(fast__1)
+# Loading work.prim_subreg_arb(fast__1)
+# Loading work.prim_subreg(fast__2)
+# Loading work.prim_subreg_arb(fast__2)
+# Loading work.prim_subreg(fast__3)
+# Loading work.prim_subreg_arb(fast__3)
+# Loading work.prim_subreg(fast__4)
+# Loading work.prim_subreg_arb(fast__4)
+# Loading work.prim_subreg(fast__5)
+# Loading work.prim_subreg_arb(fast__5)
+# Loading work.cf_math_pkg(fast)
+# Loading work.axi_id_remap(fast)
+# Loading work.axi_id_remap_table(fast)
+# Loading work.lzc(fast)
+# Loading work.write_guard(fast)
+# Loading work.id_lookup(fast)
+# Loading work.onehot_to_bin(fast)
+# Loading work.id_free(fast)
+# Loading work.wr_txn_manager(fast)
+# Loading work.wr_counter(fast)
+# Loading work.reset_handler(fast)
+# Loading work.read_guard(fast)
+# Loading work.id_lookup(fast__1)
+# Loading work.id_free(fast__1)
+# Loading work.rd_txn_manager(fast)
+# Loading work.rd_counter(fast)
+# ** Warning: (vsim-8634) Code was not compiled with coverage options.
+# 1
+#  	 log -r /*
+#  run -all
+# ** Info: File /scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/axi_rt_reads.txt opened successfully as -2147483645
+#    Time: 0 ns  Scope: axi_test.axi_file_master__1.load_files File: /scratch/chaol/slave_unit/perID/axi_monitor/.bender/git/checkouts/axi-cd1ad815a37e282b/src/axi_test.sv Line: 2493
+# ** Info: File /scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/64_wr.txt opened successfully as -2147483644
+#    Time: 0 ns  Scope: axi_test.axi_file_master__1.load_files File: /scratch/chaol/slave_unit/perID/axi_monitor/.bender/git/checkouts/axi-cd1ad815a37e282b/src/axi_test.sv Line: 2498
+do /scratch/chaol/slave_unit/perID/axi_monitor/target/sim/vsim/wave.do
