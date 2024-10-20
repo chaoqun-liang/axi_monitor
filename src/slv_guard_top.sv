@@ -2,8 +2,6 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 //
-// Authors:
-// - Thomas Benz <tbenz@iis.ee.ethz.ch>
 
 `include "axi/typedef.svh"
 `include "common_cells/registers.svh"
@@ -174,7 +172,7 @@ module slv_guard_top #(
   ) i_write_monitor_unit (
     .clk_i,
     .rst_ni,
-    //.rd_rst_i
+    .rd_rst_i     ( rst_req_rd   ),
     .wr_en_i      ( wr_enqueue   ),
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
@@ -200,7 +198,7 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
-    //.wr_rst_i     
+    .wr_rst_i     ( rst_req_wr   ),    
     .mst_req_i    ( int_req_rd   ),  
     .slv_rsp_i    ( rd_rsp       ),                                                                               
     .reset_req_o  ( rst_req_rd   ),
@@ -212,9 +210,6 @@ module slv_guard_top #(
   
 assign rst_req_o = rst_req_wr | rst_req_rd;
 assign irq_o     =  read_irq  | write_irq;
-
-// assign rst_req_o = rst_req_rd ;
-// assign irq_o     = read_irq;
 
 always_comb begin
     // Default behavior for req_o and int_rsp

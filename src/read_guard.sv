@@ -12,7 +12,7 @@ module read_guard #(
   /// Maximum read transactions
   parameter int unsigned MaxRdTxns     = 32, 
   /// Counter width 
-  parameter int unsigned CntWidth      = 2,
+  parameter int unsigned CntWidth      = 8,
   /// Prescaler divsion value
   parameter int unsigned PrescalerDiv  = 1, 
   /// Prescaled accumulative Counterwidth. Don't Override. 
@@ -31,6 +31,7 @@ module read_guard #(
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
+  input  logic       wr_rst_i,
   // Transaction enqueue request
   input  logic       rd_en_i,
   // Request from master
@@ -238,7 +239,7 @@ module read_guard #(
 
   rd_txn_manager #(
     .MaxRdTxns         ( MaxRdTxns          ),
-    .HtCapacity        ( HtCapacity         ), // this single line can change from 70+ to 18
+    .HtCapacity        ( HtCapacity         ), 
     .PrescalerDiv      ( PrescalerDiv       ),
     .linked_data_t     ( linked_data_t      ),
     .head_tail_t       ( head_tail_t        ),
@@ -252,6 +253,7 @@ module read_guard #(
     .reg2hw_t          ( reg2hw_t           )
   ) i_rd_txn_manager (
     .rd_en_i               ( rd_en_i              ),
+    .wr_rst_i              ( wr_rst_i             ),
     .full_i                ( full                 ),
     .budget_read           ( budget_read          ),
     .accum_burst_length    ( accum_burst_length   ),
@@ -298,16 +300,21 @@ module read_guard #(
   for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_rd_counter
     rd_counter #(
       .linked_data_t ( linked_data_t ),
-      .CntWidth      ( AccuCntWidth  )  // Set the width of the counter
+      .CntWidth      ( AccuCntWidth  ), 
+      .id_t          ( id_t          ),
+      .head_tail_t   ( head_tail_t   )
     ) i_rd_counter (
-      .clk_i           ( clk_i            ),             
-      .rst_ni          ( rst_ni           ),          
-      .prescaled_en    ( prescaled_en     ), 
-      .r_last_sticky   ( r_last_sticky    ),  
-      .r_valid_sticky  ( r_valid_sticky   ),   
-      .r_ready_sticky  ( r_ready_sticky   ),    
-      .linked_data_d_i ( linked_data_d[i] ), 
-      .linked_data_q_o ( linked_data_q[i] )  
+      .clk_i           ( clk_i                ),             
+      .rst_ni          ( rst_ni               ),  
+      .i               ( i                    ), 
+      .slv_b_id_i      ( slv_rsp_i.r.id       ),
+      .head_tail_q_i   ( head_tail_q[rsp_idx] ),        
+      .prescaled_en    ( prescaled_en         ),        
+      .r_last_sticky   ( r_last_sticky        ),  
+      .r_valid_sticky  ( r_valid_sticky       ),   
+      .r_ready_sticky  ( r_ready_sticky       ),    
+      .linked_data_d_i ( linked_data_d[i]     ), 
+      .linked_data_q_o ( linked_data_q[i]     )  
     );
   end
   endgenerate
@@ -323,6 +330,7 @@ module read_guard #(
 
   assign   reset_req_o = reset_req_q;
   assign   irq_o = irq;
+  
 // Validate parameters.
 `ifndef SYNTHESIS
 `ifndef COMMON_CELLS_ASSERTS_OFF

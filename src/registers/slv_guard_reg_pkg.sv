@@ -26,58 +26,6 @@ package slv_guard_reg_pkg;
   } slv_guard_reg2hw_budget_read_reg_t;
 
   typedef struct packed {
-    logic        q;
-  } slv_guard_reg2hw_reset_reg_t;
-
-  typedef struct packed {
-    struct packed {
-      logic        q;
-    } irq;
-    struct packed {
-      logic        q;
-    } wr_timeout;
-    struct packed {
-      logic        q;
-    } rd_timeout;
-    struct packed {
-      logic        q;
-    } unwanted_wr_resp;
-    struct packed {
-      logic        q;
-    } unwanted_rd_resp;
-    struct packed {
-      logic [4:0]  q;
-    } txn_id;
-  } slv_guard_reg2hw_irq_reg_t;
-
-  typedef struct packed {
-    logic [31:0] q;
-  } slv_guard_reg2hw_irq_addr_reg_t;
-
-  typedef struct packed {
-    logic [7:0]  q;
-  } slv_guard_reg2hw_latency_write_reg_t;
-
-  typedef struct packed {
-    logic [7:0]  q;
-  } slv_guard_reg2hw_latency_read_reg_t;
-
-  typedef struct packed {
-    logic        d;
-    logic        de;
-  } slv_guard_hw2reg_guard_enable_reg_t;
-
-  typedef struct packed {
-    logic [3:0]  d;
-    logic        de;
-  } slv_guard_hw2reg_budget_write_reg_t;
-
-  typedef struct packed {
-    logic [3:0]  d;
-    logic        de;
-  } slv_guard_hw2reg_budget_read_reg_t;
-
-  typedef struct packed {
     logic        d;
     logic        de;
   } slv_guard_hw2reg_reset_reg_t;
@@ -126,21 +74,13 @@ package slv_guard_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [67:67]
-    slv_guard_reg2hw_budget_write_reg_t budget_write; // [66:63]
-    slv_guard_reg2hw_budget_read_reg_t budget_read; // [62:59]
-    slv_guard_reg2hw_reset_reg_t reset; // [58:58]
-    slv_guard_reg2hw_irq_reg_t irq; // [57:48]
-    slv_guard_reg2hw_irq_addr_reg_t irq_addr; // [47:16]
-    slv_guard_reg2hw_latency_write_reg_t latency_write; // [15:8]
-    slv_guard_reg2hw_latency_read_reg_t latency_read; // [7:0]
+    slv_guard_reg2hw_guard_enable_reg_t guard_enable; // [8:8]
+    slv_guard_reg2hw_budget_write_reg_t budget_write; // [7:4]
+    slv_guard_reg2hw_budget_read_reg_t budget_read; // [3:0]
   } slv_guard_reg2hw_t;
 
   // HW -> register type
   typedef struct packed {
-    slv_guard_hw2reg_guard_enable_reg_t guard_enable; // [80:79]
-    slv_guard_hw2reg_budget_write_reg_t budget_write; // [78:74]
-    slv_guard_hw2reg_budget_read_reg_t budget_read; // [73:69]
     slv_guard_hw2reg_reset_reg_t reset; // [68:67]
     slv_guard_hw2reg_irq_reg_t irq; // [66:51]
     slv_guard_hw2reg_irq_addr_reg_t irq_addr; // [50:18]

@@ -9,11 +9,9 @@ module dynamic_budget #(
   parameter type linked_data_t = logic
 ) (
   input  linked_data_t [MaxTxns-1:0]       linked_data_q_i,
-  output accu_cnt_t                        accum_burst_len, // Total accumulated burst length
-  output accu_cnt_t                        temp_accum_len
+  output accu_cnt_t                        accum_burst_len // Total accumulated burst length
 );
-// Internal variable for the accumulated burst length
-  //accu_cnt_t temp_accum_len;
+  accu_cnt_t temp_accum_len;
 
   always_comb begin
     temp_accum_len = 0;

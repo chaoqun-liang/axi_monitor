@@ -10,7 +10,7 @@ package slv_pkg;
 
 // Monitor parameters
   parameter int unsigned MaxUniqIds    = 32;
-  parameter int unsigned MaxTxnsPerId  = 1; 
+  parameter int unsigned MaxTxnsPerId  = 5; 
   parameter int unsigned CntWidth      = 10;
   parameter int unsigned PrescalerDiv  = 1;
   // AXI parameters

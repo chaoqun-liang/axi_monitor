@@ -22,6 +22,7 @@ module rd_txn_manager #(
   parameter type reg2hw_t       = logic
 )(
   input  logic                          rd_en_i,
+  input  logic                          wr_rst_i,
   input  logic                          full_i,
   input  logic [1:0]                    budget_read,
   input  accu_cnt_t                     accum_burst_length,
@@ -65,13 +66,20 @@ always_comb begin : proc_rd_queue
     timeout             = 1'b0;
     reset_req           = 1'b0;
     txn_budget          = '0;
-    hw2reg_o.irq.unwanted_rd_resp.d = reg2hw_i.irq.unwanted_rd_resp.q;
-    hw2reg_o.irq.irq.d              = reg2hw_i.irq.irq.q;
-    hw2reg_o.irq.rd_timeout.d       = reg2hw_i.irq.rd_timeout.q;
-    hw2reg_o.irq.txn_id.d           = reg2hw_i.irq.txn_id.q;
-    hw2reg_o.irq_addr.d             = reg2hw_i.irq_addr.q;
-    hw2reg_o.reset.d                = reg2hw_i.reset.q;
-    hw2reg_o.latency_read.d         = reg2hw_i.latency_read.q;
+    hw2reg_o.irq.unwanted_rd_resp.de = 1'b1;
+    hw2reg_o.irq.irq.de              = 1'b1;
+    hw2reg_o.irq.rd_timeout.de       = 1'b1;
+    hw2reg_o.irq.txn_id.de           = 1'b1;
+    hw2reg_o.irq_addr.de             = 1'b1;
+    hw2reg_o.reset.de                = 1'b1;
+    hw2reg_o.latency_read.de         = 1'b1;
+    hw2reg_o.irq.unwanted_rd_resp.d  = '0;
+    hw2reg_o.irq.irq.d               = '0;
+    hw2reg_o.irq.rd_timeout.d        = '0;
+    hw2reg_o.irq.txn_id.d            = '0;
+    hw2reg_o.irq_addr.d              = '0;
+    hw2reg_o.reset.d                 = '0;
+    hw2reg_o.latency_read.d          = '0;
     
     // Transaction states handling
     for ( int i = 0; i < MaxRdTxns; i++ ) begin : proc_rd_txn_states
@@ -141,7 +149,7 @@ always_comb begin : proc_rd_queue
       end
     end
 
-    if (reset_req) begin
+    if (reset_req || wr_rst_i) begin
       for (int i = 0; i < MaxRdTxns; i++) begin
         linked_data_d[i]          = '0;
         linked_data_d[i].free     = 1'b1;

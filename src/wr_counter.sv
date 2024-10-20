@@ -11,7 +11,7 @@ module wr_counter #(
   input  logic         clk_i,           // Clock input
   input  logic         rst_ni,          // Asynchronous reset (active low)
   input  logic         prescaled_en,    // Enable for prescaler
-  input  int           i,
+  input  int unsigned  i,
   input  id_t          slv_b_id_i,
   input  logic         b_valid_sticky,  // Sticky signal for valid
   input  logic         b_ready_sticky,  // Sticky signal for ready

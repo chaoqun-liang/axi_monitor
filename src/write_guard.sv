@@ -31,6 +31,7 @@ module write_guard #(
 )(
   input  logic       clk_i,
   input  logic       rst_ni,
+  input  logic       rd_rst_i,
   /// Transaction enqueue request
   input  logic       wr_en_i,
   /// Request from master
@@ -231,7 +232,7 @@ module write_guard #(
   
   wr_txn_manager #(
     .MaxWrTxns         ( MaxWrTxns          ),
-    .HtCapacity        ( HtCapacity         ), // this single line can change from 70+ to 18
+    .HtCapacity        ( HtCapacity         ), 
     .PrescalerDiv      ( PrescalerDiv       ),
     .linked_data_t     ( linked_data_t      ),
     .head_tail_t       ( head_tail_t        ),
@@ -245,6 +246,7 @@ module write_guard #(
     .reg2hw_t          ( reg2hw_t           )
   ) i_wr_txn_manager (
     .wr_en_i               ( wr_en_i              ),
+    .rd_rst_i              ( rd_rst_i             ),
     .full_i                ( full                 ),
     .budget_write          ( budget_write         ),
     .accum_burst_length    ( accum_burst_length   ),

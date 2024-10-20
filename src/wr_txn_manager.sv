@@ -22,6 +22,7 @@ module wr_txn_manager #(
   parameter type reg2hw_t       = logic
 )(
   input  logic                          wr_en_i,
+  input  logic                          rd_rst_i,
   input  logic                          full_i,
   input  logic [1:0]                    budget_write,
   input  accu_cnt_t                     accum_burst_length,
@@ -49,7 +50,7 @@ module wr_txn_manager #(
   output hw2reg_t                       hw2reg_o,
   input  reg2hw_t                       reg2hw_i
 );
-
+  
   accu_cnt_t txn_budget;  
   // Transaction states handling
   always_comb begin
@@ -65,13 +66,20 @@ module wr_txn_manager #(
     timeout             = 1'b0;
     reset_req           = 1'b0;
     txn_budget          = '0;
-    hw2reg_o.irq.unwanted_wr_resp.d = reg2hw_i.irq.unwanted_wr_resp.q;
-    hw2reg_o.irq.txn_id.d       = reg2hw_i.irq.txn_id.q;
-    hw2reg_o.irq.wr_timeout.d   = reg2hw_i.irq.wr_timeout.q;
-    hw2reg_o.irq.irq.d          = reg2hw_i.irq.irq.q;
-    hw2reg_o.irq_addr.d         = reg2hw_i.irq_addr.q;
-    hw2reg_o.reset.d            = reg2hw_i.reset.q;
-    hw2reg_o.latency_write.d    = reg2hw_i.latency_write.q;
+    hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
+    hw2reg_o.irq.txn_id.de       = 1'b1;
+    hw2reg_o.irq.wr_timeout.de   = 1'b1;
+    hw2reg_o.irq.irq.de          = 1'b1;
+    hw2reg_o.irq_addr.de         = 1'b1;
+    hw2reg_o.reset.de            = 1'b1;
+    hw2reg_o.latency_write.de    = 1'b1;
+    hw2reg_o.irq.unwanted_wr_resp.d = '0;
+    hw2reg_o.irq.txn_id.d       = '0;
+    hw2reg_o.irq.wr_timeout.d   = '0;
+    hw2reg_o.irq.irq.d          = '0;
+    hw2reg_o.irq_addr.d         = '0;
+    hw2reg_o.reset.d            = '0;
+    hw2reg_o.latency_write.d    = '0;
 
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
@@ -142,7 +150,7 @@ module wr_txn_manager #(
       end
     end
 
-    if (reset_req) begin
+    if (reset_req || rd_rst_i) begin
       for (int i = 0; i < MaxWrTxns; i++) begin
         linked_data_d[i]          = '0;
         linked_data_d[i].free     = 1'b1;
