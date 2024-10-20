@@ -1,8 +1,4 @@
 
-// `include "assign.svh"
-// `include "axi_typedef.svh"
-// `include "typedef.svh"
-
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
