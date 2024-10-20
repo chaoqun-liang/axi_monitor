@@ -82,8 +82,8 @@ module slv_guard_reg_top #(
   logic irq_unwanted_rd_resp_qs;
   logic [4:0] irq_txn_id_qs;
   logic [31:0] irq_addr_qs;
-  logic [9:0] latency_write_qs;
-  logic [9:0] latency_read_qs;
+  logic [7:0] latency_write_qs;
+  logic [7:0] latency_read_qs;
 
   // Register instances
   // R[guard_enable]: V(False)
@@ -101,8 +101,8 @@ module slv_guard_reg_top #(
     .wd     (guard_enable_wd),
 
     // from internal hardware
-    .de     (hw2reg.guard_enable.de),
-    .d      (hw2reg.guard_enable.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -127,8 +127,8 @@ module slv_guard_reg_top #(
     .wd     (budget_write_wd),
 
     // from internal hardware
-    .de     (hw2reg.budget_write.de),
-    .d      (hw2reg.budget_write.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -153,8 +153,8 @@ module slv_guard_reg_top #(
     .wd     (budget_read_wd),
 
     // from internal hardware
-    .de     (hw2reg.budget_read.de),
-    .d      (hw2reg.budget_read.d ),
+    .de     (1'b0),
+    .d      ('0  ),
 
     // to internal hardware
     .qe     (),
@@ -183,7 +183,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.reset.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (reset_qs)
@@ -210,7 +210,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.irq.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_irq_qs)
@@ -235,7 +235,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.wr_timeout.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_wr_timeout_qs)
@@ -260,7 +260,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.rd_timeout.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_rd_timeout_qs)
@@ -285,7 +285,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.unwanted_wr_resp.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_unwanted_wr_resp_qs)
@@ -310,7 +310,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.unwanted_rd_resp.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_unwanted_rd_resp_qs)
@@ -335,7 +335,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq.txn_id.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_txn_id_qs)
@@ -361,7 +361,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.irq_addr.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (irq_addr_qs)
@@ -371,9 +371,9 @@ module slv_guard_reg_top #(
   // R[latency_write]: V(False)
 
   prim_subreg #(
-    .DW      (10),
+    .DW      (8),
     .SWACCESS("RO"),
-    .RESVAL  (10'h0)
+    .RESVAL  (8'h0)
   ) u_latency_write (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -387,7 +387,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.latency_write.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (latency_write_qs)
@@ -397,9 +397,9 @@ module slv_guard_reg_top #(
   // R[latency_read]: V(False)
 
   prim_subreg #(
-    .DW      (10),
+    .DW      (8),
     .SWACCESS("RO"),
-    .RESVAL  (10'h0)
+    .RESVAL  (8'h0)
   ) u_latency_read (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -413,7 +413,7 @@ module slv_guard_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.latency_read.q ),
+    .q      (),
 
     // to register interface (read)
     .qs     (latency_read_qs)
@@ -493,11 +493,11 @@ module slv_guard_reg_top #(
       end
 
       addr_hit[6]: begin
-        reg_rdata_next[9:0] = latency_write_qs;
+        reg_rdata_next[7:0] = latency_write_qs;
       end
 
       addr_hit[7]: begin
-        reg_rdata_next[9:0] = latency_read_qs;
+        reg_rdata_next[7:0] = latency_read_qs;
       end
 
       default: begin

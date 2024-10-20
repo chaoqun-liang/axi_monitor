@@ -7,9 +7,10 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module monitor_wrap 
-  import axi_pkg::*;
-  import slv_pkg::*;
+import axi_pkg::*;
+import slv_pkg::*;
+
+ module monitor_wrap 
 (
   /// Clock
   input  logic               clk_i,
@@ -26,9 +27,9 @@ module monitor_wrap
   /// Response from slave
   input  slv_resp_t          rsp_i,
   /// Register bus request
-  input  reg_req_t           reg_req_i,
+  input  cfg_req_t           reg_req_i,
   /// Register bus response
-  output reg_rsp_t           reg_rsp_o,
+  output cfg_rsp_t           reg_rsp_o,
   /// Interrupt line
   output logic               irq_o,
   /// Reset request
@@ -47,15 +48,25 @@ slv_guard_top #(
   .MaxTxnsPerId ( MaxTxnsPerId   ),
   .MaxUniqIds   ( MaxUniqIds     ),
   .CntWidth     ( CntWidth       ),
-  .PrescalerDiv ( PrescalerDiv   ),
   .req_t        ( mst_req_t      ), 
   .rsp_t        ( mst_resp_t     ),
-  .int_req_t    ( slv_req_t      ),
-  .int_rsp_t    ( slv_resp_t     ),
-  .reg_req_t    ( reg_req_t      ), 
-  .reg_rsp_t    ( reg_rsp_t      )
+  .slv_req_t    ( slv_req_t      ),
+  .slv_rsp_t    ( slv_resp_t     ),
+  .reg_req_t    ( cfg_req_t      ), 
+  .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
-  .*
+  .clk_i      (clk_i),
+  .rst_ni     (rst_ni),
+  .guard_ena_i(guard_ena_i),
+  .req_i      (req_i),
+  .rsp_o      (rsp_o),
+  .req_o      (req_o),
+  .rsp_i      (rsp_i),
+  .reg_req_i  (reg_req_i),
+  .reg_rsp_o  (reg_rsp_o),
+  .irq_o      (irq_o),
+  .rst_req_o  (rst_req_o),
+  .rst_stat_i (rst_stat_i)
 );
 
 endmodule: monitor_wrap
