@@ -25,6 +25,8 @@ sources:
       - src/registers/slv_guard_reg_pkg.sv
       - src/registers/slv_guard_reg_top.sv
       - src/slv_pkg.sv
+      - src/prescaler.sv
+      - src/prescaler.sv
       - src/wr_counter.sv
       - src/rd_counter.sv
       - src/id_lookup.sv 

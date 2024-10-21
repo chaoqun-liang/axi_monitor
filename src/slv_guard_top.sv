@@ -18,7 +18,8 @@ module slv_guard_top
   parameter int unsigned MaxUniqIds    = 2,
   parameter int unsigned MaxTxnsPerId  = 2,
   /// Counter width
-  parameter int unsigned CntWidth      = 2, 
+  parameter int unsigned CntWidth      = 2,
+  parameter int unsigned PrescalerDiv  = 1,  
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -163,6 +164,7 @@ module slv_guard_top
     .MaxUniqIds   ( MaxUniqIds   ),
     .MaxWrTxns    ( MaxTxns      ), // total writes
     .CntWidth     ( CntWidth     ),
+    .PrescalerDiv ( PrescalerDiv ),
     .req_t        ( slv_req_t    ),
     .rsp_t        ( slv_rsp_t    ),
     .id_t         ( int_id_t     ),
@@ -187,6 +189,7 @@ module slv_guard_top
     .MaxUniqIds   ( MaxUniqIds   ),
     .MaxRdTxns    ( MaxTxns      ), 
     .CntWidth     ( CntWidth     ),
+    .PrescalerDiv ( PrescalerDiv ),
     .req_t        ( slv_req_t    ),
     .rsp_t        ( slv_rsp_t    ),
     .id_t         ( int_id_t     ),

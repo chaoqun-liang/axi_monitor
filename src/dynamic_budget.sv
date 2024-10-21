@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: SHL-0.51
 
 module dynamic_budget #(
-  parameter int  unsigned MaxTxns = 8,     // Maximum number of transactions
+  parameter int  unsigned MaxTxns = 8,      // Maximum number of transactions
+  parameter int  unsigned PrescalerDiv = 2, // Prescaler divisor
   parameter type accu_cnt_t       = logic,
   parameter type linked_data_t    = logic
 ) (
@@ -16,7 +17,7 @@ module dynamic_budget #(
     temp_accum_len = 0;
     for (int i = 0; i < MaxTxns; i++) begin
       if (!linked_data_q_i[i].free) begin
-        temp_accum_len += (linked_data_q_i[i].metadata.len + 5);
+        temp_accum_len += (((linked_data_q_i[i].metadata.len + 1) >> $clog2(PrescalerDiv)) + 5);
       end
     end
   end

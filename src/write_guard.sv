@@ -16,8 +16,10 @@ module write_guard
   /// Counter width 
   parameter int unsigned CntWidth     = 8,
   parameter int unsigned HsCntWidth   = 8,
+  /// Prescaler division value 
+  parameter int unsigned PrescalerDiv = 1,
   // Accumulative Counterwidth. Don't Override. 
-  parameter int unsigned AccuCntWidth = CntWidth+1,
+  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -199,6 +201,7 @@ module write_guard
 
   dynamic_budget #(
     .MaxTxns      ( MaxWrTxns        ),     // Maximum number of transactions  
+    .PrescalerDiv ( PrescalerDiv     ),
     .accu_cnt_t   ( accu_cnt_t       ),
     .linked_data_t( linked_wr_data_t )
   ) i_wr_dynamic_budget (
@@ -206,11 +209,65 @@ module write_guard
     .accum_burst_len ( accum_burst_length ) // Total accumulated burst length
   );
   
+  logic prescaled_en;
+  prescaler #(
+    .DivFactor ( PrescalerDiv )
+  ) i_wr_prescaler (
+    .clk_i       ( clk_i        ),
+    .rst_ni      ( rst_ni       ),
+    .prescaled_o ( prescaled_en )
+  ); 
+
+  logic aw_ready_sticky;
+  logic w_valid_sticky, w_ready_sticky;
+  logic b_valid_sticky, b_ready_sticky;
+
+  sticky_bit i_awready_sticky (
+    .clk_i     ( clk_i              ),
+    .rst_ni    ( rst_ni             ),
+    .release_i ( prescaled_en       ),
+    .sticky_i  ( slv_rsp_i.aw_ready ),
+    .sticky_o  ( aw_ready_sticky    )
+  );
+
+  sticky_bit i_wvalid_sticky (
+    .clk_i     ( clk_i             ),
+    .rst_ni    ( rst_ni            ),
+    .release_i ( prescaled_en      ),
+    .sticky_i  ( mst_req_i.w_valid ),
+    .sticky_o  ( w_valid_sticky    )
+  );
+
+  sticky_bit i_wready_sticky (
+    .clk_i     ( clk_i             ),
+    .rst_ni    ( rst_ni            ),
+    .release_i ( prescaled_en      ),
+    .sticky_i  ( slv_rsp_i.w_ready ),
+    .sticky_o  ( w_ready_sticky    )
+  );
+
+  sticky_bit i_bvalid_sticky (
+    .clk_i     ( clk_i             ),
+    .rst_ni    ( rst_ni            ),
+    .release_i ( prescaled_en      ),
+    .sticky_i  ( slv_rsp_i.b_valid ),
+    .sticky_o  ( b_valid_sticky    )
+  );
+
+  sticky_bit i_bready_sticky (
+    .clk_i     ( clk_i             ),
+    .rst_ni    ( rst_ni            ),
+    .release_i ( prescaled_en      ),
+    .sticky_i  ( mst_req_i.b_ready ),
+    .sticky_o  ( b_ready_sticky    )
+  );
+
   wr_txn_manager #(
     .MaxWrTxns         ( MaxWrTxns          ),
     .HtCapacity        ( HtCapacity         ),
     .PtrWidth          ( PtrWidth           ),
     .LdIdxWidth        ( LdIdxWidth         ),
+    .PrescalerDiv      ( PrescalerDiv       ),
     .linked_data_t     ( linked_wr_data_t   ),
     .head_tail_t       ( head_tail_t        ),
     .ht_idx_t          ( ht_idx_t           ),
