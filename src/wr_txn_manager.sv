@@ -14,7 +14,6 @@ module wr_txn_manager
   parameter int unsigned PtrWidth   = 1,
   parameter int unsigned LdIdxWidth = 1,
   parameter type linked_data_t  = logic,
-  parameter type write_state_t  = logic,
   parameter type head_tail_t    = logic,
   parameter type ht_idx_t       = logic,
   parameter type ld_idx_t       = logic,
@@ -36,8 +35,7 @@ module wr_txn_manager
   input  hs_cnt_t                       budget_bvld_brdy_i,
   input  accu_cnt_t                     accum_burst_length,
   input  logic                          id_exists_i,
-// Instead of a packed multi-dimensional array, use an unpacked array of packed vectors
-  output logic [LdIdxWidth-1:0] [MaxWrTxns-1:0] w_fifo_o ,
+  output logic [LdIdxWidth-1:0] [MaxWrTxns-1:0] w_fifo_o,
   input  ht_idx_t                       rsp_idx_i,
   input  req_t                          mst_req_i,
   input  rsp_t                          slv_rsp_i,
@@ -137,7 +135,7 @@ module wr_txn_manager
         w_fifo_o[wr_ptr_d_o] = linked_data_free_idx_i;
         wr_ptr_d_o = (wr_ptr_q_i + 1)  % MaxWrTxns;//circular buffer
         fifo_empty_d_o = 0;
-        fifo_full_d_o = (rd_ptr_q_i == ((wr_ptr_q_i + 1) << $clog2(MaxWrTxns)));
+        fifo_full_d_o = (rd_ptr_q_i == (wr_ptr_q_i + 1) % MaxWrTxns);
       end
       if (no_in_id_match_i) begin
         head_tail_d[head_tail_free_idx_i] = '{
@@ -171,10 +169,13 @@ module wr_txn_manager
               reset_req = 1'b1;
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.w0.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end 
             if( linked_data_q[i].counters.cnt_awvalid_wfirst >  linked_data_q[i].w1_budget) begin
               timeout_o = 1'b1;
-              hw2reg_o.irq.w1.d = 1'b1;     
+              hw2reg_o.irq.w1.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1; 
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
             end
             // to enter write_data state, last txn has done one w channel
@@ -198,16 +199,20 @@ module wr_txn_manager
               reset_req = 1'b1;
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.w2.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end 
             if (linked_data_q[i].counters.cnt_wfirst_wlast > linked_data_q[i].w3_budget) begin
               timeout_o = 1'b1;
               hw2reg_o.irq.w3.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end                                                                                                                        
             if ( mst_req_i.w.last ) begin
               hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
               linked_data_d[i].write_state = WRITE_RESPONSE;
-              rd_ptr_d_o = (rd_ptr_q_i + 1)% MaxWrTxns;  // Update read pointer after last W data
+              rd_ptr_d_o = (rd_ptr_q_i + 1)% MaxWrTxns;  //  some synthesis tool can optimize the % operation
               fifo_empty_d_o = (rd_ptr_q_i == wr_ptr_q_i) && ( wr_ptr_q_i != 0); 
             end
           end
@@ -218,10 +223,14 @@ module wr_txn_manager
               reset_req = 1'b1;
               hw2reg_o.reset.d = 1'b1;
               hw2reg_o.irq.w4.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end
             if ( linked_data_q[i].counters.cnt_bvalid_bready > budget_bvld_brdy_i) begin
               timeout_o = 1'b1;
               hw2reg_o.irq.w5.d = 1'b1;
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end
           end
           default:

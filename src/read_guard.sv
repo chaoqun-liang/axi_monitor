@@ -52,12 +52,8 @@ module read_guard
 
   // Unit Budget time from ar_valid to ar_ready
   hs_cnt_t  budget_arvld_arrdy;
-  // Unit Budget time from ar_valid to r_valid
-  hs_cnt_t  budget_arvld_rvld;
   // Unit Budget time from r_valid to r_ready
   hs_cnt_t  budget_rvld_rrdy;
-  // Unit Budget time from r_valid to r_last
-  hs_cnt_t  budget_rvld_rlast;
 
   assign budget_arvld_arrdy = reg2hw_i.budget_arvld_arrdy.q;
   assign budget_rvld_rrdy   = reg2hw_i.budget_rvld_rrdy.q;
@@ -76,13 +72,11 @@ module read_guard
                 tail;
     logic       free;
   } head_tail_t;
-  
-  
-  
+
   // R fifo
   localparam int unsigned PtrWidth = $clog2(MaxRdTxns);
   // FIFO storage for transaction indices 
-  logic [LdIdxWidth-1:0] r_fifo [MaxRdTxns]; 
+  logic [LdIdxWidth-1:0] [MaxRdTxns] r_fifo; 
   // Write and read pointers
   logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals
@@ -94,24 +88,20 @@ module read_guard
   // Array of linked data
   linked_rd_data_t [MaxRdTxns-1:0]   linked_data_d,  linked_data_q;
 
-  logic                           inp_gnt,                          
-                                  full,
+  logic                           full,
                                   match_in_id_valid,
-                                  no_in_id_match,
-                                  no_out_id_match;
+                                  no_in_id_match;
 
   logic [HtCapacity-1:0]          head_tail_free,
                                   idx_matches_in_id,
-                                  idx_matches_out_id,
                                   idx_rsp_id;
 
   logic [MaxRdTxns-1:0]           linked_data_free;
  
-  id_t                            match_in_id, match_out_id, oup_id;
+  id_t                            match_in_id, oup_id;
 
   ht_idx_t                        head_tail_free_idx,
                                   match_in_idx,
-                                  match_out_idx,
                                   rsp_idx;
 
   ld_idx_t                        linked_data_free_idx,
@@ -124,8 +114,8 @@ module read_guard
                                   oup_ht_popped;
   
   logic                           reset_req, reset_req_q,
-                                  id_exists,
-                                  irq, timeout;
+                                  id_exists, irq, 
+                                  timeout, timeout_q;
 
   accu_cnt_t                      accum_burst_length;
   
@@ -199,11 +189,6 @@ module read_guard
 
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
-  // Data potentially freed by the output.
-  assign oup_data_free_idx = head_tail_q[match_out_idx].head;
-  
-  // Data can be accepted if the linked list pool is not full, or some da  ta is simultaneously.
-  assign inp_gnt = ~full || oup_data_popped;
   assign active_idx = r_fifo[rd_ptr_q];
   
   dynamic_budget #(
@@ -219,6 +204,7 @@ module read_guard
     .MaxRdTxns         ( MaxRdTxns          ),
     .HtCapacity        ( HtCapacity         ), 
     .PtrWidth          ( PtrWidth           ),
+    .LdIdxWidth        ( LdIdxWidth         ),
     .linked_data_t     ( linked_rd_data_t   ),
     .head_tail_t       ( head_tail_t        ),
     .ht_idx_t          ( ht_idx_t           ),
@@ -235,6 +221,7 @@ module read_guard
     .rd_en_i               ( rd_en_i              ),
     .wr_rst_i              ( wr_rst_i             ),
     .full_i                ( full                 ),
+    .r_fifo_o              ( r_fifo               ),
     .budget_read           ( budget_read          ),
     .accum_burst_length    ( accum_burst_length   ),
     .budget_arvld_arrdy_i  ( budget_arvld_arrdy   ),
@@ -256,7 +243,8 @@ module read_guard
     .fifo_full_d_o         ( fifo_full_d          ), 
     .fifo_empty_d_o        ( fifo_empty_d         ),
     .no_in_id_match_i      ( no_in_id_match       ),
-    .timeout               ( timeout              ),
+    .timeout_o             ( timeout              ),
+    .timeout_q_i           ( timeout_q            ),
     .reset_req             ( reset_req            ),
     .oup_req               ( oup_req              ),
     .oup_id                ( oup_id               ),
@@ -312,6 +300,8 @@ module read_guard
   )i_rd_reset_handler(
     .clk_i         ( clk_i         ),
     .rst_ni        ( rst_ni        ),
+    .timeout_i     ( timeout       ),
+    .timeout_q_o   ( timeout_q     ),
     .reset_req_i   ( reset_req     ),
     .reset_clear_i ( reset_clear_i ),
     .reset_req_q_o ( reset_req_q   ),

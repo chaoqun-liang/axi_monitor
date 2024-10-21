@@ -52,21 +52,15 @@ module write_guard
 
   // Unit Budget time from aw_valid to aw_ready
   hs_cnt_t  budget_awvld_awrdy;
-  // Unit Budget time from aw_valid to w_valid (w_first)
-  hs_cnt_t  budget_awvld_wvld;
   // Unit Budget time from w_valid to w_ready (of w_first)
   hs_cnt_t  budget_wvld_wrdy;
-  // Unit Budget time from w_valid to w_last (w_first to w_last)
-  hs_cnt_t  budget_wvld_wlast;
   // Unit Budget time from w_last to b_valid
   hs_cnt_t  budget_wlast_bvld;
   // Unit Budget time from w_last to b_ready
   hs_cnt_t  budget_bvld_brdy;
 
   assign budget_awvld_awrdy = reg2hw_i.budget_awvld_awrdy.q;
-  assign budget_awvld_wvld  = reg2hw_i.budget_unit_w.q;
   assign budget_wvld_wrdy   = reg2hw_i.budget_wvld_wrdy.q;
-  assign budget_wvld_wlast  = reg2hw_i.budget_unit_w.q;
   assign budget_wlast_bvld  = reg2hw_i.budget_wlast_bvld.q;
   assign budget_bvld_brdy   = reg2hw_i.budget_bvld_brdy.q;
  
@@ -102,12 +96,10 @@ module write_guard
 
   logic                           full,
                                   match_in_id_valid,
-                                  no_in_id_match,
-                                  no_out_id_match;
+                                  no_in_id_match;
 
   logic [HtCapacity-1:0]          head_tail_free,
                                   idx_matches_in_id,
-                                  idx_matches_out_id,
                                   idx_rsp_id;
 
   logic [MaxWrTxns-1:0]           linked_data_free;
@@ -128,8 +120,8 @@ module write_guard
                                   oup_ht_popped;
   
   logic                           reset_req, reset_req_q,
-                                  id_exists,
-                                  irq, timeout, timeout_q; 
+                                  id_exists, irq, 
+                                  timeout, timeout_q; 
 
   accu_cnt_t                      accum_burst_length;                            
   
@@ -203,7 +195,6 @@ module write_guard
  
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
-  
   assign active_idx = w_fifo[rd_ptr_q];
 
   dynamic_budget #(
@@ -318,7 +309,7 @@ module write_guard
     .clk_i         ( clk_i         ),
     .rst_ni        ( rst_ni        ),
     .timeout_i     ( timeout       ),
-    .timeout_q_o   ( timeout_q    ),
+    .timeout_q_o   ( timeout_q     ),
     .reset_req_i   ( reset_req     ),
     .reset_clear_i ( reset_clear_i ),
     .reset_req_q_o ( reset_req_q   ),
