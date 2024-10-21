@@ -19,6 +19,7 @@ module slv_guard_top
   parameter int unsigned MaxTxnsPerId  = 2,
   /// Counter width
   parameter int unsigned CntWidth      = 2,
+  parameter int unsigned HsCntWidth    = 8,
   parameter int unsigned PrescalerDiv  = 1,  
   /// Master request type
   parameter type req_t                 = logic, 

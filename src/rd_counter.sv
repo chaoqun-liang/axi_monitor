@@ -11,11 +11,12 @@ module rd_counter
 ) (
   input  logic         clk_i,           // Clock input
   input  logic         rst_ni,          // Asynchronous reset (active low)
-  input  id_t          slv_b_id_i,
-  input  logic         ar_ready_i,
-  input  logic         r_valid_i,
-  input  logic         r_ready_i, 
-  input  logic         r_last_i,
+  input  logic         prescaled_en_i,
+  input  id_t          slv_r_id_i,
+  input  logic         ar_ready_sticky_i,
+  input  logic         r_valid_sticky_i,
+  input  logic         r_ready_sticky_i, 
+  input  logic         r_last_sticky_i,
   input  linked_data_t linked_data_d_i, // Input data for the linked_data_q
   output linked_data_t linked_data_q_o  // Output data after processing
 );
@@ -38,18 +39,20 @@ module rd_counter
         case (linked_data_q.read_state) 
           1: begin
             // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
-            if (!ar_ready_i) begin
+            if (!ar_ready_sticky_i && prescaled_en_i) begin
               linked_data_q.counters.cnt_arvalid_arready <= linked_data_q.counters.cnt_arvalid_arready + 1 ; // note: cannot do auto-increment
             end
             // Counter 1: AR Phase - AR_VALID to R_VALID (first data)
-            linked_data_q.counters.cnt_arvalid_rfirst <= linked_data_q.counters.cnt_arvalid_rfirst + 1;
+            if (prescaled_en_i)
+             linked_data_q.counters.cnt_arvalid_rfirst <= linked_data_q.counters.cnt_arvalid_rfirst + 1;
           end
           2: begin
-            if( r_valid_i && !r_ready_i )
+            if(!(r_valid_sticky_i && r_ready_sticky_i) && prescaled_en_i)
             // Counter 2: R Phase - R_VALID to R_READY (first data), handshake of first data is checked
               linked_data_q.counters.cnt_rvalid_rready_first  <= linked_data_q.counters.cnt_rvalid_rready_first + 1;
             // Counter 3: R Phase - R_VALID to R_LAST
-            linked_data_q.counters.cnt_rfirst_rlast  <= linked_data_q.counters.cnt_rfirst_rlast + 1;
+            if (!(r_valid_sticky_i && r_ready_sticky_i && r_last_sticky_i) && prescaled_en_i)
+              linked_data_q.counters.cnt_rfirst_rlast  <= linked_data_q.counters.cnt_rfirst_rlast + 1;
           end
         endcase
       end

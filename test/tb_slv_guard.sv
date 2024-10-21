@@ -166,6 +166,7 @@ module tb_slv_guard #(
     .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId    ),
     .MaxUniqIds   ( slv_pkg::MaxUniqIds      ),
     .CntWidth     ( slv_pkg::CntWidth        ),
+    .PrescalerDiv ( slv_pkg::PrescalerDiv    ),
     .req_t        ( slv_pkg::mst_req_t       ), 
     .rsp_t        ( slv_pkg::mst_resp_t      ),
     .slv_req_t    ( slv_pkg::slv_req_t       ),

@@ -346,16 +346,17 @@ module write_guard
       .CntWidth      ( AccuCntWidth     ), 
       .id_t          ( id_t             )
     ) i_wr_counter (
-      .clk_i           ( clk_i                 ),             
-      .rst_ni          ( rst_ni                ), 
-      .slv_b_id_i      ( slv_rsp_i.b.id        ),
-      .aw_ready_i      ( slv_rsp_i.aw_ready    ),
-      .w_ready_i       ( slv_rsp_i.w_ready     ),
-      .w_valid_i       ( mst_req_i.w_valid     ),
-      .b_valid_i       ( slv_rsp_i.b_valid     ),   
-      .b_ready_i       ( mst_req_i.b_ready     ),    
-      .linked_data_d_i ( linked_data_d[i]      ), 
-      .linked_data_q_o ( linked_data_q[i]      )  
+      .clk_i             ( clk_i                 ),             
+      .rst_ni            ( rst_ni                ), 
+      .prescaled_en_i    ( prescaled_en          ),
+      .slv_b_id_i        ( slv_rsp_i.b.id        ),
+      .aw_ready_sticky_i ( aw_ready_sticky       ),
+      .w_ready_sticky_i  ( w_ready_sticky        ),
+      .w_valid_sticky_i  ( w_valid_sticky        ),
+      .b_valid_sticky_i  ( b_valid_sticky        ),   
+      .b_ready_sticky_i  ( b_ready_sticky        ),    
+      .linked_data_d_i   ( linked_data_d[i]      ), 
+      .linked_data_q_o   ( linked_data_q[i]      )  
     );
   end
   endgenerate

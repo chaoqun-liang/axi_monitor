@@ -131,7 +131,7 @@ module wr_txn_manager
       match_in_id = mst_req_i.aw.id;
       match_in_id_valid = 1'b1;  
       awvld_wfirst_budget = accum_burst_length + 2; // to-do: if not the first txn in ld, use w_fifo
-      wfirst_wlast_budget = (mst_req_i.aw.len + 1) >> $clog2(PrescalerDiv) + 2;
+      wfirst_wlast_budget = (mst_req_i.aw.len + 1) << $clog2(PrescalerDiv) + 2;
       if (mst_req_i.aw_valid && !fifo_full_q_i) begin: proc_w_fifo
         w_fifo_o[wr_ptr_d_o] = linked_data_free_idx_i;
         wr_ptr_d_o = (wr_ptr_q_i + 1)  % MaxWrTxns;//circular buffer
