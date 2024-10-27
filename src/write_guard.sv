@@ -6,19 +6,19 @@
 // Authors:
 // - Chaoqun Liang <chaoqun.liang@unibo.it>
 
-module write_guard 
+module write_guard
   import slv_pkg::*;
 #(
   /// Maximum number of unique IDs
   parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
   parameter int unsigned MaxWrTxns    = 32,
-  /// Counter width 
+  /// Counter width
   parameter int unsigned CntWidth     = 8,
   parameter int unsigned HsCntWidth   = 8,
-  /// Prescaler division value 
+  /// Prescaler division value
   parameter int unsigned PrescalerDiv = 1,
-  // Accumulative Counterwidth. Don't Override. 
+  // Accumulative Counterwidth. Don't Override.
   parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
   /// AXI request type
   parameter type req_t                = logic,
@@ -40,10 +40,10 @@ module write_guard
   /// Request from master
   input  req_t       mst_req_i,
   /// Response from slave
-  input  rsp_t       slv_rsp_i, 
-  /// Reset state 
+  input  rsp_t       slv_rsp_i,
+  /// Reset state
   input  logic       reset_clear_i,
-  /// Reset request 
+  /// Reset request
   output logic       reset_req_o,
   /// Interrupt line
   output logic       irq_o,
@@ -65,7 +65,7 @@ module write_guard
   assign budget_wvld_wrdy   = reg2hw_i.budget_wvld_wrdy.q;
   assign budget_wlast_bvld  = reg2hw_i.budget_wlast_bvld.q;
   assign budget_bvld_brdy   = reg2hw_i.budget_bvld_brdy.q;
- 
+
   /// Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxWrTxns) ? MaxUniqIds : MaxWrTxns;
   localparam int unsigned HtIdxWidth = cf_math_pkg::idx_width(HtCapacity);
@@ -83,16 +83,16 @@ module write_guard
 
   // W fifo
   localparam int unsigned PtrWidth = $clog2(MaxWrTxns);
-  // FIFO storage for transaction indices 
-  logic [LdIdxWidth-1:0] [MaxWrTxns-1:0] w_fifo; 
+  // FIFO storage for transaction indices
+  logic [LdIdxWidth-1:0] w_fifo [MaxWrTxns-1:0] ;
   // Write and read pointers
   logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals
-  logic fifo_full_d, fifo_full_q, fifo_empty_d, fifo_empty_q; 
- 
-  // Head tail table entry 
+  logic fifo_full_d, fifo_full_q, fifo_empty_d, fifo_empty_q;
+
+  // Head tail table entry
   head_tail_t [HtCapacity-1:0]    head_tail_d,    head_tail_q;
-    
+
   // Array of linked data
   linked_wr_data_t [MaxWrTxns-1:0]   linked_data_d,  linked_data_q;
 
@@ -105,7 +105,7 @@ module write_guard
                                   idx_rsp_id;
 
   logic [MaxWrTxns-1:0]           linked_data_free;
- 
+
   id_t                            match_in_id, oup_id;
 
   ht_idx_t                        head_tail_free_idx,
@@ -116,17 +116,17 @@ module write_guard
                                   oup_data_free_idx,
                                   active_idx;
 
-  logic                           oup_data_valid,                           
+  logic                           oup_data_valid,
                                   oup_data_popped,
                                   oup_req,
                                   oup_ht_popped;
-  
-  logic                           reset_req, reset_req_q,
-                                  id_exists, irq, 
-                                  timeout, timeout_q; 
 
-  accu_cnt_t                      accum_burst_length;                            
-  
+  logic                           reset_req, reset_req_q,
+                                  id_exists, irq,
+                                  timeout, timeout_q;
+
+  accu_cnt_t                      accum_burst_length;
+
   // Find the index in the head-tail table that matches a given ID.
   generate
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_lookup
@@ -153,7 +153,7 @@ module write_guard
     .onehot ( idx_matches_in_id ),
     .bin    ( match_in_idx      )
   );
- 
+
   onehot_to_bin #(
     .ONEHOT_WIDTH ( HtCapacity )
   ) i_wr_id_ohb_rsp (
@@ -166,7 +166,7 @@ module write_guard
     .head_tail_t( head_tail_t )
   ) i_wr_ht_free (
     .head_tail_q      ( head_tail_q    ),
-    .head_tail_free_o ( head_tail_free ) 
+    .head_tail_free_o ( head_tail_free )
   );
 
   lzc #(
@@ -194,13 +194,13 @@ module write_guard
     .cnt_o   ( linked_data_free_idx ),
     .empty_o (                      )
   );
- 
+
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
   assign active_idx = w_fifo[rd_ptr_q];
 
   dynamic_budget #(
-    .MaxTxns      ( MaxWrTxns        ),     // Maximum number of transactions  
+    .MaxTxns      ( MaxWrTxns        ),     // Maximum number of transactions
     .PrescalerDiv ( PrescalerDiv     ),
     .accu_cnt_t   ( accu_cnt_t       ),
     .linked_data_t( linked_wr_data_t )
@@ -208,7 +208,7 @@ module write_guard
     .linked_data_q_i ( linked_data_q      ),
     .accum_burst_len ( accum_burst_length ) // Total accumulated burst length
   );
-  
+
   logic prescaled_en;
   prescaler #(
     .DivFactor ( PrescalerDiv )
@@ -216,7 +216,7 @@ module write_guard
     .clk_i       ( clk_i        ),
     .rst_ni      ( rst_ni       ),
     .prescaled_o ( prescaled_en )
-  ); 
+  );
 
   logic aw_ready_sticky;
   logic w_valid_sticky, w_ready_sticky;
@@ -303,8 +303,8 @@ module write_guard
     .fifo_full_q_i         ( fifo_full_q          ),
     .fifo_empty_q_i        ( fifo_empty_q         ),
     .wr_ptr_d_o            ( wr_ptr_d             ),
-    .rd_ptr_d_o            ( rd_ptr_d             ), 
-    .fifo_full_d_o         ( fifo_full_d          ), 
+    .rd_ptr_d_o            ( rd_ptr_d             ),
+    .fifo_full_d_o         ( fifo_full_d          ),
     .fifo_empty_d_o        ( fifo_empty_d         ),
     .no_in_id_match_i      ( no_in_id_match       ),
     .timeout_o             ( timeout              ),
@@ -343,20 +343,20 @@ module write_guard
   for (genvar i = 0; i < MaxWrTxns; i++) begin: gen_wr_counter
     wr_counter #(
       .linked_data_t ( linked_wr_data_t ),
-      .CntWidth      ( AccuCntWidth     ), 
+      .CntWidth      ( AccuCntWidth     ),
       .id_t          ( id_t             )
     ) i_wr_counter (
-      .clk_i             ( clk_i                 ),             
-      .rst_ni            ( rst_ni                ), 
+      .clk_i             ( clk_i                 ),
+      .rst_ni            ( rst_ni                ),
       .prescaled_en_i    ( prescaled_en          ),
       .slv_b_id_i        ( slv_rsp_i.b.id        ),
       .aw_ready_sticky_i ( aw_ready_sticky       ),
       .w_ready_sticky_i  ( w_ready_sticky        ),
       .w_valid_sticky_i  ( w_valid_sticky        ),
-      .b_valid_sticky_i  ( b_valid_sticky        ),   
-      .b_ready_sticky_i  ( b_ready_sticky        ),    
-      .linked_data_d_i   ( linked_data_d[i]      ), 
-      .linked_data_q_o   ( linked_data_q[i]      )  
+      .b_valid_sticky_i  ( b_valid_sticky        ),
+      .b_ready_sticky_i  ( b_ready_sticky        ),
+      .linked_data_d_i   ( linked_data_d[i]      ),
+      .linked_data_q_o   ( linked_data_q[i]      )
     );
   end
   endgenerate

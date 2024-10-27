@@ -86,7 +86,7 @@ module tb_slv_guard #(
   `AXI_ASSIGN (master,           master_dv)
   `AXI_ASSIGN_TO_REQ(master_req, master)
   `AXI_ASSIGN_FROM_RESP(master,  master_rsp)
-  
+
   `AXI_ASSIGN (slave_dv,         slave)
   `AXI_ASSIGN_FROM_REQ(slave,    slave_req)
   `AXI_ASSIGN_TO_RESP(slave_rsp, slave)
@@ -117,7 +117,7 @@ module tb_slv_guard #(
   );
 
   //-----------------------------------
-  // AXI Simulation Memory 
+  // AXI Simulation Memory
   //-----------------------------------
    axi_sim_mem #(
     .AddrWidth         ( slv_pkg::AxiAddrWidth  ),
@@ -130,7 +130,7 @@ module tb_slv_guard #(
     .ClearErrOnAccess  ( 1'b1                   ),
     .ApplDelay         ( ApplTime               ),
     .AcqDelay          ( TestTime               ),
-    .UninitializedData ( "zeros"                )   
+    .UninitializedData ( "zeros"                )
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
@@ -158,20 +158,11 @@ module tb_slv_guard #(
   slv_guard_top
   // `ifndef TARGET_NETLIST_SIM
    #(
-    .AddrWidth    ( slv_pkg::AxiAddrWidth    ),
-    .DataWidth    ( slv_pkg::AxiDataWidth    ),
-    .StrbWidth    ( slv_pkg::AxiDataWidth/8  ),
-    .AxiIdWidth   ( slv_pkg::AxiIdWidth      ),
-    .AxiUserWidth ( slv_pkg::AxiUserWidth    ),
-    .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId    ),
-    .MaxUniqIds   ( slv_pkg::MaxUniqIds      ),
-    .CntWidth     ( slv_pkg::CntWidth        ),
-    .PrescalerDiv ( slv_pkg::PrescalerDiv    ),
-    .req_t        ( slv_pkg::mst_req_t       ), 
+    .req_t        ( slv_pkg::mst_req_t       ),
     .rsp_t        ( slv_pkg::mst_resp_t      ),
     .slv_req_t    ( slv_pkg::slv_req_t       ),
     .slv_rsp_t    ( slv_pkg::slv_resp_t      ),
-    .reg_req_t    ( slv_pkg::cfg_req_t       ), 
+    .reg_req_t    ( slv_pkg::cfg_req_t       ),
     .reg_rsp_t    ( slv_pkg::cfg_rsp_t       )
   )
   //`endif
@@ -180,9 +171,9 @@ module tb_slv_guard #(
     .clk_i       (   clk          ),
     .rst_ni      (   rst_n        ),
     .guard_ena_i (   1'b1         ),
-    .req_i       (   master_req   ), 
+    .req_i       (   master_req   ),
     .rsp_o       (   master_rsp   ),
-    .req_o       (   slave_req    ), // 
+    .req_o       (   slave_req    ), //
     .rsp_i       (   slave_rsp    ),
     .reg_req_i   (   cfg_req      ),
     .reg_rsp_o   (   cfg_rsp      ),
@@ -197,16 +188,16 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/rd.txt"), $sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/64_wr.txt"));
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/rd.txt"), $sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/32_wr.txt"));
 
     @(posedge rst_n);
     @(posedge clk);
-  
+
     $readmemh("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/read.vmem", i_tx_axi_sim_mem.mem);
     repeat (5) @(posedge clk);
     axi_file_master.run();
   end
-  
+
   // configure slv units
   initial begin
     // register bus
@@ -219,23 +210,23 @@ module tb_slv_guard #(
     reg_drv.send_write(32'h0000_0000, 32'h0000_0100, 4'hf, reg_error);
 
     // budget from aw_valid to aw_ready
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 4'hf, reg_error);
     // time budget for unit length on w channel
     reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
     // budget from w_valid to w_ready
-    reg_drv.send_write(32'h0000_000c, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_000c, 32'h0000_0001, 4'hf, reg_error);
     // budget from w_last to b_valid
     reg_drv.send_write(32'h0000_0010, 32'h0000_0001, 4'hf, reg_error);
     // budget from b_valid to b_ready
-    reg_drv.send_write(32'h0000_0014, 32'h0000_0001, 4'hf, reg_error); 
-    
+    reg_drv.send_write(32'h0000_0014, 32'h0000_0001, 4'hf, reg_error);
+
     // budget from ar_valid to ar_ready
     reg_drv.send_write(32'h0000_0018, 32'h0000_0001, 4'hf, reg_error);
     // time budget for unit length on r channel
-    reg_drv.send_write(32'h0000_001c, 32'h0000_0001, 4'hf, reg_error); 
+    reg_drv.send_write(32'h0000_001c, 32'h0000_0001, 4'hf, reg_error);
     // budget from rvld to rrdy
-    reg_drv.send_write(32'h0000_0020, 32'h0000_0001, 4'hf, reg_error); 
-   
+    reg_drv.send_write(32'h0000_0020, 32'h0000_0001, 4'hf, reg_error);
+
     repeat (1000) @(posedge clk);
     $stop();
   end

@@ -11,7 +11,7 @@ module reset_handler #(
   input  logic                reset_req_i,      // Reset request signal
   input  logic                reset_clear_i,    // Reset clear signal
   output logic                reset_req_q_o,    // Latched reset request output
-  output logic                irq_o,  
+  output logic                irq_o,
   input  logic                timeout_i,
   output logic                timeout_q_o,
   input  logic [PtrWidth-1:0] wr_ptr_d_i,
@@ -24,7 +24,6 @@ module reset_handler #(
   output logic                fifo_full_q_o
 );
 
-  // Always block for clocked process
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       reset_req_q_o  <= 1'b0;
@@ -39,12 +38,18 @@ module reset_handler #(
       rd_ptr_q_o <= rd_ptr_d_i;
       fifo_empty_q_o <= fifo_empty_d_i;
       fifo_full_q_o <= fifo_full_d_i;
-      timeout_q_o  <=  timeout_i;
-      // Latch reset request
-      if (reset_req_i | timeout_i) begin
+
+      // Set reset request and irq when reset_req_i or timeout_i is high
+      if (reset_req_i) begin
         reset_req_q_o <= 1'b1;
         irq_o <= 1'b1;
-      end else if (reset_clear_i) begin
+      end else if (timeout_i) begin
+        timeout_q_o <= 1'b1;
+        irq_o <= 1'b1;
+      end
+
+      // Clear reset request based on reset_clear_i
+      if (reset_clear_i) begin
         reset_req_q_o <= 1'b0;
       end
     end

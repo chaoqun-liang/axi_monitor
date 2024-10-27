@@ -10,23 +10,22 @@ package slv_pkg;
 
 // Monitor parameters
   parameter int unsigned MaxUniqIds    = 32;
-  parameter int unsigned MaxTxnsPerId  = 1; 
+  parameter int unsigned MaxTxnsPerId  = 1;
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId;
-  parameter int unsigned CntWidth      = 10;
-  parameter int unsigned HsCntWidth    = 3;
+  parameter int unsigned CounterWidth  = 10;
+  parameter int unsigned HsCntWidth    = 2;
   parameter int unsigned PrescalerDiv  = 8;
-  parameter int unsigned AccuCntWidth = CntWidth+1;
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 48;
   parameter int unsigned AxiDataWidth  = 32;
-  parameter int unsigned AxiIdWidth    = 6; 
+  parameter int unsigned AxiIdWidth    = 6;
   parameter int unsigned AxiIntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1;
   parameter int unsigned AxiUserWidth  = 1;
   parameter int unsigned AxiLogDepth   = 1;
   // Regbus parameters
   parameter int unsigned  RegAddrWidth = 32;
   parameter int unsigned  RegDataWidth = 32;
-  
+
   // AXI type dependent parameters; do not override!
   parameter type addr_t   = logic [AxiAddrWidth-1:0];
   parameter type data_t   = logic [AxiDataWidth-1:0];
@@ -47,7 +46,7 @@ package slv_pkg;
   `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t);
   `AXI_TYPEDEF_REQ_T(mst_req_t, aw_chan_t, w_chan_t, ar_chan_t);
   `AXI_TYPEDEF_RESP_T(mst_resp_t, b_chan_t, r_chan_t );
-  
+
   /// Intermediate AXI types
   `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, intid_t, user_t);
   `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
@@ -58,9 +57,13 @@ package slv_pkg;
   `AXI_TYPEDEF_RESP_T(slv_resp_t, int_b_t, int_r_t );
 
   `REG_BUS_TYPEDEF_ALL(cfg, reg_addr_t, reg_data_t, reg_strb_t);
-  
+
   localparam int unsigned LdIdxWidth = cf_math_pkg::idx_width(MaxTxns);
-  
+
+  // Accumulative Counterwidth. Don't Override.
+  parameter int unsigned AccuCntWidth = CounterWidth-$clog2(PrescalerDiv)+1;
+  parameter int unsigned CntWidth = CounterWidth-$clog2(PrescalerDiv);
+
   typedef logic [AxiIntIdWidth-1:0] int_id_t;
   typedef logic [AccuCntWidth-1:0] accu_cnt_t;
   typedef logic [CntWidth-1:0] cnt_t;
@@ -69,19 +72,19 @@ package slv_pkg;
   // Transaction counter type def
   typedef struct packed {
     // AWVALID to AWREADY
-    hs_cnt_t cnt_awvalid_awready; 
+    hs_cnt_t cnt_awvalid_awready;
     // AWVALID to WFIRST
-    accu_cnt_t cnt_awvalid_wfirst; 
-    // WVALID to WREADY of WFIRST 
-    hs_cnt_t cnt_wvalid_wready_first; 
+    accu_cnt_t cnt_awvalid_wfirst;
+    // WVALID to WREADY of WFIRST
+    hs_cnt_t cnt_wvalid_wready_first;
     // WFIRST to WLAST
-    cnt_t    cnt_wfirst_wlast;  
-    // WLAST to BVALID  
-    hs_cnt_t cnt_wlast_bvalid;  
-    // WLAST to BREADY  
-    hs_cnt_t cnt_bvalid_bready;   
+    cnt_t    cnt_wfirst_wlast;
+    // WLAST to BVALID
+    hs_cnt_t cnt_wlast_bvalid;
+    // WLAST to BREADY
+    hs_cnt_t cnt_bvalid_bready;
   } write_cnters_t;
-  
+
   // FSM per each transaction
   typedef enum logic [1:0] {
     WRITE_IDLE,// for idle LD entries retired from aw-w-b lifecycle
@@ -89,23 +92,23 @@ package slv_pkg;
     WRITE_DATA,
     WRITE_RESPONSE
   } write_state_t;
-  
-  typedef struct packed {                      
-    int_id_t        id;                             
+
+  typedef struct packed {
+    int_id_t        id;
     axi_pkg::len_t  len; // 8 bits
   } meta_t;
 
   // LD entry for each txn
   typedef struct packed {
-    // Txn meta info, put AW channel info  
+    // Txn meta info, put AW channel info
     meta_t          metadata;
     // AW, W, B or IDLE(after dequeue)
     write_state_t   write_state;
     // Six counters per each write txn
-    write_cnters_t  counters; 
+    write_cnters_t  counters;
     // W1 and w3 are dynamic budget determined by unit_budget given in sw and accum length in hw
     // AW_VALID to W_VALID (W_FIRST)
-    accu_cnt_t      w1_budget; 
+    accu_cnt_t      w1_budget;
     // W_VALID to W_LAST (W_FIRST to W_LAST)
     cnt_t           w3_budget;
     // Next pointer in LD table
@@ -113,17 +116,17 @@ package slv_pkg;
     // Is this LD entry occupied by any txn?
     logic           free;
   } linked_wr_data_t;
-  
+
   // Transaction counter type def
   typedef struct packed {
     // ARVALID to ARREADY
-    hs_cnt_t cnt_arvalid_arready; 
+    hs_cnt_t cnt_arvalid_arready;
     // ARVALID to RVALID
-    accu_cnt_t cnt_arvalid_rfirst;  
+    accu_cnt_t cnt_arvalid_rfirst;
     // RVALID to RREADY
-    hs_cnt_t cnt_rvalid_rready_first; 
+    hs_cnt_t cnt_rvalid_rready_first;
     // RVALID to RLAST
-    cnt_t cnt_rfirst_rlast;   
+    cnt_t cnt_rfirst_rlast;
   } read_cnters_t;
 
   // FSM state of each transaction

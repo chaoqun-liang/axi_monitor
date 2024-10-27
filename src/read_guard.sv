@@ -6,19 +6,19 @@
 // Authors:
 // - Chaoqun Liang <chaoqun.liang@unibo.it>
 
-module read_guard 
+module read_guard
   import slv_pkg::*;
 #(
   /// Maximum number of unique IDs
   parameter int unsigned MaxUniqIds    = 32,
   /// Maximum read transactions
-  parameter int unsigned MaxRdTxns     = 32, 
-  /// Counter width 
+  parameter int unsigned MaxRdTxns     = 32,
+  /// Counter width
   parameter int unsigned CntWidth      = 8,
   parameter int unsigned HsCntWidth    = 8,
-  /// Prescaler division value 
+  /// Prescaler division value
   parameter int unsigned PrescalerDiv = 1,
-  /// Accumulative Counterwidth. Don't Override. 
+  /// Accumulative Counterwidth. Don't Override.
   parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
   /// AXI request type
   parameter type req_t                 = logic,
@@ -38,7 +38,7 @@ module read_guard
   // Transaction enqueue request
   input  logic       rd_en_i,
   // Request from master
-  input  req_t       mst_req_i,  
+  input  req_t       mst_req_i,
   // Response from slave
   input  rsp_t       slv_rsp_i,
   // Reset state
@@ -77,8 +77,8 @@ module read_guard
 
   // R fifo
   localparam int unsigned PtrWidth = $clog2(MaxRdTxns);
-  // FIFO storage for transaction indices 
-  logic [LdIdxWidth-1:0] [MaxRdTxns] r_fifo; 
+  // FIFO storage for transaction indices
+  logic [LdIdxWidth-1:0] [MaxRdTxns] r_fifo;
   // Write and read pointers
   logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals
@@ -86,7 +86,7 @@ module read_guard
 
   // Head tail table entry
   head_tail_t [HtCapacity-1:0]    head_tail_d,    head_tail_q;
-    
+
   // Array of linked data
   linked_rd_data_t [MaxRdTxns-1:0]   linked_data_d,  linked_data_q;
 
@@ -99,7 +99,7 @@ module read_guard
                                   idx_rsp_id;
 
   logic [MaxRdTxns-1:0]           linked_data_free;
- 
+
   id_t                            match_in_id, oup_id;
 
   ht_idx_t                        head_tail_free_idx,
@@ -110,17 +110,17 @@ module read_guard
                                   oup_data_free_idx,
                                   active_idx;
 
-  logic                           oup_data_valid,                    
+  logic                           oup_data_valid,
                                   oup_data_popped,
                                   oup_req,
                                   oup_ht_popped;
-  
+
   logic                           reset_req, reset_req_q,
-                                  id_exists, irq, 
+                                  id_exists, irq,
                                   timeout, timeout_q;
 
   accu_cnt_t                      accum_burst_length;
-  
+
   // Find the index in the head-tail table that matches a given ID.
   generate
   for (genvar i = 0; i < HtCapacity; i++) begin: gen_idx_lookup
@@ -160,7 +160,7 @@ module read_guard
     .head_tail_t( head_tail_t )
   ) i_rd_ht_free (
     .head_tail_q      ( head_tail_q    ),
-    .head_tail_free_o ( head_tail_free ) 
+    .head_tail_free_o ( head_tail_free )
   );
 
   lzc #(
@@ -192,7 +192,7 @@ module read_guard
   // The queue is full if and only if there are no free items in the linked data structure.
   assign full = !(|linked_data_free);
   assign active_idx = r_fifo[rd_ptr_q];
-  
+
   dynamic_budget #(
     .MaxTxns      ( MaxRdTxns        ),     // Maximum number of transactions
     .PrescalerDiv ( PrescalerDiv     ),
@@ -215,7 +215,7 @@ module read_guard
   logic ar_ready_sticky;
   logic r_valid_sticky, r_ready_sticky;
   logic r_last_sticky;
-  
+
   sticky_bit i_arready_sticky (
     .clk_i      ( clk_i              ),
     .rst_ni     ( rst_ni             ),
@@ -250,7 +250,7 @@ module read_guard
 
   rd_txn_manager #(
     .MaxRdTxns         ( MaxRdTxns          ),
-    .HtCapacity        ( HtCapacity         ), 
+    .HtCapacity        ( HtCapacity         ),
     .PtrWidth          ( PtrWidth           ),
     .LdIdxWidth        ( LdIdxWidth         ),
     .PrescalerDiv      ( PrescalerDiv       ),
@@ -271,7 +271,6 @@ module read_guard
     .wr_rst_i              ( wr_rst_i             ),
     .full_i                ( full                 ),
     .r_fifo_o              ( r_fifo               ),
-    .budget_read           ( budget_read          ),
     .accum_burst_length    ( accum_burst_length   ),
     .budget_arvld_arrdy_i  ( budget_arvld_arrdy   ),
     .budget_rvld_rrdy_i    ( budget_rvld_rrdy     ),
@@ -288,8 +287,8 @@ module read_guard
     .fifo_full_q_i         ( fifo_full_q          ),
     .fifo_empty_q_i        ( fifo_empty_q         ),
     .wr_ptr_d_o            ( wr_ptr_d             ),
-    .rd_ptr_d_o            ( rd_ptr_d             ), 
-    .fifo_full_d_o         ( fifo_full_d          ), 
+    .rd_ptr_d_o            ( rd_ptr_d             ),
+    .fifo_full_d_o         ( fifo_full_d          ),
     .fifo_empty_d_o        ( fifo_empty_d         ),
     .no_in_id_match_i      ( no_in_id_match       ),
     .timeout_o             ( timeout              ),
@@ -328,19 +327,19 @@ module read_guard
   for (genvar i = 0; i < MaxRdTxns; i++) begin: gen_rd_counter
     rd_counter #(
       .linked_data_t ( linked_rd_data_t ),
-      .CntWidth      ( AccuCntWidth     ), 
+      .CntWidth      ( AccuCntWidth     ),
       .id_t          ( id_t             )
     ) i_rd_counter (
-      .clk_i             ( clk_i                ),             
-      .rst_ni            ( rst_ni               ), 
+      .clk_i             ( clk_i                ),
+      .rst_ni            ( rst_ni               ),
       .prescaled_en_i    ( prescaled_en         ),
       .slv_r_id_i        ( slv_rsp_i.r.id       ),
       .ar_ready_sticky_i ( ar_ready_sticky      ),
-      .r_last_sticky_i   ( r_last_sticky        ),  
-      .r_valid_sticky_i  ( r_valid_sticky       ),   
-      .r_ready_sticky_i  ( r_ready_sticky       ),    
-      .linked_data_d_i   ( linked_data_d[i]     ), 
-      .linked_data_q_o   ( linked_data_q[i]     )  
+      .r_last_sticky_i   ( r_last_sticky        ),
+      .r_valid_sticky_i  ( r_valid_sticky       ),
+      .r_ready_sticky_i  ( r_ready_sticky       ),
+      .linked_data_d_i   ( linked_data_d[i]     ),
+      .linked_data_q_o   ( linked_data_q[i]     )
     );
   end
   endgenerate
@@ -368,7 +367,7 @@ module read_guard
 
   assign   reset_req_o = reset_req_q;
   assign   irq_o = irq;
-  
+
 // Validate parameters.
 `ifndef SYNTHESIS
 `ifndef COMMON_CELLS_ASSERTS_OFF

@@ -6,7 +6,7 @@
 // Authors:
 // - Chaoqun Liang <chaoqun.liang@unibo.it>
 
-module wr_txn_manager 
+module wr_txn_manager
   import slv_pkg::*;
 #(
   parameter int unsigned MaxWrTxns  = 1,
@@ -36,7 +36,7 @@ module wr_txn_manager
   input  hs_cnt_t                       budget_bvld_brdy_i,
   input  accu_cnt_t                     accum_burst_length,
   input  logic                          id_exists_i,
-  output logic [LdIdxWidth-1:0] [MaxWrTxns-1:0] w_fifo_o,
+  output logic [LdIdxWidth-1:0]  w_fifo_o [MaxWrTxns-1:0],
   input  ht_idx_t                       rsp_idx_i,
   input  req_t                          mst_req_i,
   input  rsp_t                          slv_rsp_i,
@@ -59,7 +59,7 @@ module wr_txn_manager
   output logic                          oup_req,
   output id_t                           oup_id,
   output id_t                           match_in_id,
-  output logic                          match_in_id_valid, 
+  output logic                          match_in_id_valid,
   output logic                          oup_data_valid,
   output logic                          oup_data_popped,
   output logic                          oup_ht_popped,
@@ -70,7 +70,7 @@ module wr_txn_manager
   output hw2reg_t                       hw2reg_o,
   input  reg2hw_t                       reg2hw_i
 );
-  
+
   accu_cnt_t awvld_wfirst_budget;
   cnt_t      wfirst_wlast_budget;
   // Transaction states handling
@@ -86,6 +86,7 @@ module wr_txn_manager
     oup_req             = 1'b0;
     timeout_o           = 1'b0;
     reset_req           = 1'b0;
+    //w_fifo_o            = '0;
     wr_ptr_d_o            = wr_ptr_q_i;
     rd_ptr_d_o            = rd_ptr_q_i;
     fifo_full_d_o         = fifo_full_q_i;
@@ -98,12 +99,12 @@ module wr_txn_manager
     hw2reg_o.irq.w5.de = 1'b1;
     hw2reg_o.irq_addr.de = 1'b1;
     hw2reg_o.irq.txn_id.de = 1'b1;
-    hw2reg_o.reset.de = 1'b1; 
+    hw2reg_o.reset.de = 1'b1;
     hw2reg_o.irq.irq.de = 1'b1;
     hw2reg_o.irq.unwanted_wr_resp.de = 1'b1;
     hw2reg_o.latency_awvld_awrdy.de = 1'b1;
     hw2reg_o.latency_awvld_wfirst.de = 1'b1;
-    hw2reg_o.latency_wvld_wrdy.de = 1'b1; 
+    hw2reg_o.latency_wvld_wrdy.de = 1'b1;
     hw2reg_o.latency_wvld_wlast.de = 1'b1;
     hw2reg_o.latency_wlast_bvld.de = 1'b1;
     hw2reg_o.latency_bvld_brdy.de = 1'b1;
@@ -123,15 +124,15 @@ module wr_txn_manager
     hw2reg_o.irq.txn_id.d           = reg2hw_i.irq.txn_id.q;
     hw2reg_o.irq_addr.d             = reg2hw_i.irq_addr.q;
     hw2reg_o.irq.irq.d              = reg2hw_i.irq.irq.q;
-    hw2reg_o.reset.d                = reg2hw_i.reset.q; 
+    hw2reg_o.reset.d                = reg2hw_i.reset.q;
     hw2reg_o.irq.unwanted_wr_resp.d = reg2hw_i.irq.unwanted_wr_resp.q;
-    
+
     // Enqueue
     if (wr_en_i && !full_i && !timeout_q_i)begin : proc_txn_enqueue
       match_in_id = mst_req_i.aw.id;
-      match_in_id_valid = 1'b1;  
+      match_in_id_valid = 1'b1;
       awvld_wfirst_budget = accum_burst_length + 2; // to-do: if not the first txn in ld, use w_fifo
-      wfirst_wlast_budget = (mst_req_i.aw.len + 1) << $clog2(PrescalerDiv) + 2;
+      wfirst_wlast_budget = ((mst_req_i.aw.len + 1) >> $clog2(PrescalerDiv)) + 2;
       if (mst_req_i.aw_valid && !fifo_full_q_i) begin: proc_w_fifo
         w_fifo_o[wr_ptr_d_o] = linked_data_free_idx_i;
         wr_ptr_d_o = (wr_ptr_q_i + 1)  % MaxWrTxns;//circular buffer
@@ -145,7 +146,7 @@ module wr_txn_manager
           tail: linked_data_free_idx_i,
           free: 1'b0
         };
-      end else begin 
+      end else begin
         linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
         head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
       end
@@ -162,8 +163,8 @@ module wr_txn_manager
 
     // Transaction states handling
     for ( int i = 0; i < MaxWrTxns; i++ ) begin : proc_wr_txn_states
-      if (!linked_data_q[i].free) begin 
-        case ( linked_data_q[i].write_state ) 
+      if (!linked_data_q[i].free) begin
+        case ( linked_data_q[i].write_state )
           WRITE_ADDRESS: begin
             if (linked_data_q[i].counters.cnt_awvalid_awready > budget_awvld_awrdy_i) begin
               timeout_o = 1'b1;
@@ -172,12 +173,12 @@ module wr_txn_manager
               hw2reg_o.irq.w0.d = 1'b1;
               hw2reg_o.irq.irq.d = 1'b1;
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-            end 
+            end
             if( linked_data_q[i].counters.cnt_awvalid_wfirst >  linked_data_q[i].w1_budget) begin
               timeout_o = 1'b1;
               hw2reg_o.irq.w1.d = 1'b1;
-              hw2reg_o.irq.irq.d = 1'b1; 
-              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id; 
+              hw2reg_o.irq.irq.d = 1'b1;
+              hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end
             // to enter write_data state, last txn has done one w channel
             // w_valid comes and next active transaction on w channel points to current one
@@ -185,13 +186,15 @@ module wr_txn_manager
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
               linked_data_d[i].write_state = WRITE_DATA;
-            end 
+            end
             // single transfer transaction where w_valid and w_last are shown at the same cycle
             if ( ( mst_req_i.w_valid && mst_req_i.w.last ) && !fifo_empty_q_i && (active_idx_i == i)) begin
               hw2reg_o.latency_awvld_awrdy.d = linked_data_q[i].counters.cnt_awvalid_awready;
               hw2reg_o.latency_awvld_wfirst.d = linked_data_q[i].w1_budget - linked_data_q[i].counters.cnt_awvalid_wfirst;
-              linked_data_d[i].write_state = WRITE_DATA;
-            end 
+              linked_data_d[i].write_state = WRITE_RESPONSE;
+              rd_ptr_d_o = (rd_ptr_q_i + 1)% MaxWrTxns;  //  some synthesis tool can optimize the % operation
+              fifo_empty_d_o = (rd_ptr_q_i == wr_ptr_q_i) && ( wr_ptr_q_i != 0);
+            end
           end
 
           WRITE_DATA: begin
@@ -202,19 +205,19 @@ module wr_txn_manager
               hw2reg_o.irq.w2.d = 1'b1;
               hw2reg_o.irq.irq.d = 1'b1;
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-            end 
+            end
             if (linked_data_q[i].counters.cnt_wfirst_wlast > linked_data_q[i].w3_budget) begin
               timeout_o = 1'b1;
               hw2reg_o.irq.w3.d = 1'b1;
               hw2reg_o.irq.irq.d = 1'b1;
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
-            end                                                                                                                        
+            end
             if ( mst_req_i.w.last ) begin
               hw2reg_o.latency_wvld_wrdy.d = linked_data_q[i].counters.cnt_wvalid_wready_first;
               hw2reg_o.latency_wvld_wlast.d = linked_data_q[i].w3_budget - linked_data_q[i].counters.cnt_wfirst_wlast;
               linked_data_d[i].write_state = WRITE_RESPONSE;
               rd_ptr_d_o = (rd_ptr_q_i + 1)% MaxWrTxns;  //  some synthesis tool can optimize the % operation
-              fifo_empty_d_o = (rd_ptr_q_i == wr_ptr_q_i) && ( wr_ptr_q_i != 0); 
+              fifo_empty_d_o = (rd_ptr_q_i == wr_ptr_q_i) && ( wr_ptr_q_i != 0);
             end
           end
 
@@ -240,9 +243,9 @@ module wr_txn_manager
       end
     end
 
-    if ( mst_req_i.b_ready && slv_rsp_i.b_valid ) begin 
-      if ( id_exists_i ) begin 
-        oup_req = 1; 
+    if ( mst_req_i.b_ready && slv_rsp_i.b_valid ) begin
+      if ( id_exists_i ) begin
+        oup_req = 1'b1;
         oup_id = slv_rsp_i.b.id;
         //$display("found match! oup_req = %0d, oup_id = %0d", oup_req, oup_id);
         hw2reg_o.latency_wlast_bvld.d = linked_data_q[head_tail_q[rsp_idx_i].head].counters.cnt_wlast_bvalid;
@@ -252,7 +255,7 @@ module wr_txn_manager
         hw2reg_o.reset.d = 1'b1;
         hw2reg_o.irq.unwanted_wr_resp.d = 'b1;
         hw2reg_o.irq.irq.d = 1'b1;
-      end 
+      end
     end
 
     if (reset_req || rd_rst_i || timeout_o) begin
@@ -266,7 +269,7 @@ module wr_txn_manager
       end
     end
 
-    // Dequeue 
+    // Dequeue
     if (oup_req) begin : proc_txn_dequeue // Same as id_exists_i
       oup_data_valid = 1'b1;
       oup_data_popped = 1;

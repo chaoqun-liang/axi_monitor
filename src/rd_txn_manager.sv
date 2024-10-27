@@ -30,7 +30,6 @@ module rd_txn_manager
   input  logic                          rd_en_i,
   input  logic                          wr_rst_i,
   input  logic                          full_i,
-  input  logic [1:0]                    budget_read,
   input  accu_cnt_t                     accum_burst_length,
   input  hs_cnt_t                       budget_rvld_rrdy_i,
   input  hs_cnt_t                       budget_arvld_arrdy_i,
@@ -58,7 +57,7 @@ module rd_txn_manager
   output logic                          oup_req,
   output id_t                           oup_id,
   output id_t                           match_in_id,
-  output logic                          match_in_id_valid, 
+  output logic                          match_in_id_valid,
   output logic                          oup_data_valid,
   output logic                          oup_data_popped,
   output logic                          oup_ht_popped,
@@ -85,6 +84,7 @@ module rd_txn_manager
     oup_req             = 1'b0;
     timeout_o           = 1'b0;
     reset_req           = 1'b0;
+    r_fifo_o            = '0;
     wr_ptr_d_o          = wr_ptr_q_i;
     rd_ptr_d_o          = rd_ptr_q_i;
     fifo_full_d_o       = fifo_full_q_i;
@@ -95,14 +95,14 @@ module rd_txn_manager
     hw2reg_o.irq.r3.de = 1'b1;
     hw2reg_o.irq_addr.de = 1'b1;
     hw2reg_o.irq.txn_id.de = 1'b1;
-    hw2reg_o.reset.de = 1'b1; 
+    hw2reg_o.reset.de = 1'b1;
     hw2reg_o.irq.irq.de = 1'b1;
     hw2reg_o.irq.unwanted_rd_resp.de = 1'b1;
     hw2reg_o.latency_arvld_arrdy.de = 1'b1;
     hw2reg_o.latency_arvld_rvld.de = 1'b1;
-    hw2reg_o.latency_rvld_rrdy.de = 1'b1; 
+    hw2reg_o.latency_rvld_rrdy.de = 1'b1;
     hw2reg_o.latency_rvld_rlast.de = 1'b1;
-    
+
     hw2reg_o.latency_arvld_arrdy.d = reg2hw_i.latency_arvld_arrdy.q;
     hw2reg_o.latency_arvld_rvld.d  = reg2hw_i.latency_arvld_rvld.q;
     hw2reg_o.latency_rvld_rrdy.d   = reg2hw_i.latency_rvld_rrdy.q;
@@ -115,14 +115,14 @@ module rd_txn_manager
     hw2reg_o.irq.r2.d              = reg2hw_i.irq.r2.q;
     hw2reg_o.irq.r3.d              = reg2hw_i.irq.r3.q;
     hw2reg_o.irq_addr.d            = reg2hw_i.irq_addr.q;
-    hw2reg_o.reset.d               = reg2hw_i.reset.q; 
-    
+    hw2reg_o.reset.d               = reg2hw_i.reset.q;
+
     // Enqueue
     if (rd_en_i && !full_i && !timeout_q_i) begin : proc_txn_enqueue
       match_in_id = mst_req_i.ar.id;
-      match_in_id_valid = 1'b1;  
+      match_in_id_valid = 1'b1;
       arvld_rfirst_budget = accum_burst_length + 2;
-      rfirst_rlast_budget = ( mst_req_i.ar.len + 1 ) << $clog2(PrescalerDiv) + 2;
+      rfirst_rlast_budget = ((mst_req_i.ar.len + 1) >> $clog2(PrescalerDiv)) + 2;
       if ( mst_req_i.ar_valid && !fifo_full_q_i) begin: proc_r_fifo
         r_fifo_o[wr_ptr_q_i] = linked_data_free_idx_i;
         wr_ptr_d_o = (wr_ptr_q_i + 1) % MaxRdTxns;//circular buffer
@@ -136,7 +136,7 @@ module rd_txn_manager
           tail: linked_data_free_idx_i,
           free: 1'b0
         };
-      end else begin 
+      end else begin
         linked_data_d[head_tail_q[match_in_idx_i].tail].next = linked_data_free_idx_i;
         head_tail_d[match_in_idx_i].tail = linked_data_free_idx_i;
       end
@@ -153,7 +153,7 @@ module rd_txn_manager
 
     // Transaction states handling
     for ( int i = 0; i < MaxRdTxns; i++ ) begin : proc_rd_txn_states
-      if (!linked_data_q[i].free) begin 
+      if (!linked_data_q[i].free) begin
         case ( linked_data_q[i].read_state )
           READ_ADDRESS: begin
             if (linked_data_q[i].counters.cnt_arvalid_arready > budget_arvld_arrdy_i) begin
@@ -168,7 +168,7 @@ module rd_txn_manager
               timeout_o = 1'b1;
               reset_req = 1'b1;
               hw2reg_o.reset.d = 1'b1;
-              hw2reg_o.irq.r1.d = 1'b1; 
+              hw2reg_o.irq.r1.d = 1'b1;
               hw2reg_o.irq.irq.d = 1'b1;
               hw2reg_o.irq.txn_id.d = linked_data_q[i].metadata.id;
             end
@@ -181,7 +181,7 @@ module rd_txn_manager
             if ( slv_rsp_i.r_valid && slv_rsp_i.r.last && (linked_data_q[i].metadata.id == slv_rsp_i.r.id) && !fifo_empty_q_i && (active_idx_i == i)) begin
               hw2reg_o.latency_arvld_arrdy.d = linked_data_q[i].counters.cnt_arvalid_arready;
               hw2reg_o.latency_arvld_rvld.d = linked_data_q[i].counters.cnt_arvalid_rfirst;
-              linked_data_d[i].read_state = READ_DATA;
+              linked_data_d[i].read_state = READ_IDLE;
             end
           end
 
@@ -205,27 +205,27 @@ module rd_txn_manager
             linked_data_d[i].read_state = READ_IDLE;
           end
         endcase
-      end 
+      end
     end
 
     // check transaction completion
     if ( slv_rsp_i.r.last && slv_rsp_i.r_valid && mst_req_i.r_ready ) begin
       if( id_exists_i ) begin
-        oup_req = 1; 
+        oup_req = 1'b1;
         oup_id = slv_rsp_i.r.id;
         hw2reg_o.latency_rvld_rrdy.d = linked_data_q[head_tail_q[rsp_idx_i].head].counters.cnt_rvalid_rready_first;
         hw2reg_o.latency_rvld_rlast.d = linked_data_q[head_tail_q[rsp_idx_i].head].r3_budget - linked_data_q[head_tail_q[rsp_idx_i].head].counters.cnt_rfirst_rlast;
         rd_ptr_d_o = (rd_ptr_q_i + 1)% MaxRdTxns;  // Update read pointer after last W data
         fifo_empty_d_o = (rd_ptr_q_i == wr_ptr_q_i) && ( wr_ptr_q_i != 0);
-      end else begin 
+      end else begin
         hw2reg_o.irq.unwanted_rd_resp.d = 'b1;
         hw2reg_o.reset.d = 1'b1;
         reset_req = 1'b1;
         hw2reg_o.irq.irq.d = 1'b1;
       end
     end
-    
-    // Dequeue 
+
+    // Dequeue
     if (oup_req) begin : proc_txn_dequeue
       oup_data_valid = 1'b1;
       oup_data_popped = 1;

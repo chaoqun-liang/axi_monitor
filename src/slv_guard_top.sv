@@ -6,29 +6,17 @@
 `include "axi/typedef.svh"
 `include "common_cells/registers.svh"
 
-module slv_guard_top 
+module slv_guard_top
   import slv_pkg::*;
 #(
-  parameter int unsigned AddrWidth     = 32,
-  parameter int unsigned DataWidth     = 32,
-  parameter int unsigned StrbWidth     = 4,
-  parameter int unsigned AxiIdWidth    = 2,
-  parameter int unsigned AxiUserWidth  = 1,
-
-  parameter int unsigned MaxUniqIds    = 2,
-  parameter int unsigned MaxTxnsPerId  = 2,
-  /// Counter width
-  parameter int unsigned CntWidth      = 2,
-  parameter int unsigned HsCntWidth    = 8,
-  parameter int unsigned PrescalerDiv  = 1,  
   /// Master request type
-  parameter type req_t                 = logic, 
+  parameter type req_t                 = logic,
   /// Master response type
   parameter type rsp_t                 = logic,
-  /// Subordinate request type 
-  parameter type slv_req_t             = logic, 
+  /// Subordinate request type
+  parameter type slv_req_t             = logic,
   /// Subordinate response type
-  parameter type slv_rsp_t             = logic, 
+  parameter type slv_rsp_t             = logic,
   /// Configuration register bus request type
   parameter type reg_req_t             = logic,
   /// Configuration register bus response type
@@ -72,8 +60,8 @@ module slv_guard_top
     .rst_ni,
     .reg_req_i ( reg_req_i    ),
     .reg_rsp_o ( reg_rsp_o    ),
-    .reg2hw    ( reg2hw       ), 
-    .hw2reg    ( hw2reg       ),  
+    .reg2hw    ( reg2hw       ),
+    .hw2reg    ( hw2reg       ),
     .devmode_i ( 1'b1         )
   );
 
@@ -95,22 +83,6 @@ module slv_guard_top
   assign reg2hw_r.budget_rvld_rrdy    = reg2hw.budget_rvld_rrdy;
   assign reg2hw_r.budget_unit_r       = reg2hw.budget_unit_r;
 
-  // min internal width
-  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1; 
-
-  typedef logic [AddrWidth-1:0] addr_t;
-  typedef logic [DataWidth-1:0] data_t;
-  typedef logic [StrbWidth-1:0] strb_t;
-  typedef logic [AxiIdWidth-1:0] id_t;
-  typedef logic [IntIdWidth-1:0] int_id_t;
-  typedef logic [AxiUserWidth-1:0] user_t;
-
-  /// Intermediate AXI types
-  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
-  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
-  `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
-  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
-
   /// Intermediate AXI channel
   slv_req_t  int_req, int_req_wr, int_req_rd;
   slv_rsp_t  int_rsp, rd_rsp, wr_rsp;
@@ -120,7 +92,7 @@ module slv_guard_top
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
     .AxiSlvPortMaxUniqIds ( MaxUniqIds    ),
     .AxiMaxTxnsPerId      ( MaxTxnsPerId  ),
-    .AxiMstPortIdWidth    ( IntIdWidth    ),
+    .AxiMstPortIdWidth    ( AxiIntIdWidth ),
     .slv_req_t            ( req_t         ),
     .slv_resp_t           ( rsp_t         ),
     .mst_req_t            ( slv_req_t     ),
@@ -177,7 +149,7 @@ module slv_guard_top
     .rst_ni,
     .rd_rst_i     ( rst_req_rd   ),
     .wr_en_i      ( wr_enqueue   ),
-    .mst_req_i    ( int_req_wr   ),  
+    .mst_req_i    ( int_req_wr   ),
     .slv_rsp_i    ( wr_rsp       ),
     .reset_req_o  ( rst_req_wr   ),
     .irq_o        ( write_irq    ),
@@ -188,7 +160,7 @@ module slv_guard_top
 
   read_guard #(
     .MaxUniqIds   ( MaxUniqIds   ),
-    .MaxRdTxns    ( MaxTxns      ), 
+    .MaxRdTxns    ( MaxTxns      ),
     .CntWidth     ( CntWidth     ),
     .PrescalerDiv ( PrescalerDiv ),
     .req_t        ( slv_req_t    ),
@@ -201,16 +173,16 @@ module slv_guard_top
     .clk_i,
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
-    .wr_rst_i     ( rst_req_wr   ),    
-    .mst_req_i    ( int_req_rd   ),  
-    .slv_rsp_i    ( rd_rsp       ),                                                                               
+    .wr_rst_i     ( rst_req_wr   ),
+    .mst_req_i    ( int_req_rd   ),
+    .slv_rsp_i    ( rd_rsp       ),
     .reset_req_o  ( rst_req_rd   ),
     .irq_o        ( read_irq     ),
     .reset_clear_i( rst_stat_i   ),
     .reg2hw_i     ( reg2hw_r     ),
     .hw2reg_o     ( hw2reg_r     )
   );
-  
+
 assign rst_req_o = rst_req_wr | rst_req_rd;
 assign irq_o     =  read_irq  | write_irq;
 
