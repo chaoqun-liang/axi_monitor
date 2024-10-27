@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-module rd_counter 
+module rd_counter
   import slv_pkg::*;
 #(
   parameter int unsigned CntWidth = 2,
@@ -15,7 +15,7 @@ module rd_counter
   input  id_t          slv_r_id_i,
   input  logic         ar_ready_sticky_i,
   input  logic         r_valid_sticky_i,
-  input  logic         r_ready_sticky_i, 
+  input  logic         r_ready_sticky_i,
   input  logic         r_last_sticky_i,
   input  linked_data_t linked_data_d_i, // Input data for the linked_data_q
   output linked_data_t linked_data_q_o  // Output data after processing
@@ -36,7 +36,7 @@ module rd_counter
       linked_data_q <= linked_data_d_i;
       // Only if this slot is in use (i.e., there is an outstanding transaction)
       if (!linked_data_q.free) begin
-        case (linked_data_q.read_state) 
+        case (linked_data_q.read_state)
           1: begin
             // Counter 0: AR Phase - AR_VALID to AR_READY, handshake is checked meanwhile
             if (!ar_ready_sticky_i && prescaled_en_i) begin

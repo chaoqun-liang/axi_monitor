@@ -13,13 +13,12 @@ module read_guard
   parameter int unsigned MaxUniqIds    = 32,
   /// Maximum read transactions
   parameter int unsigned MaxRdTxns     = 32,
-  /// Counter width
-  parameter int unsigned CntWidth      = 8,
-  parameter int unsigned HsCntWidth    = 8,
   /// Prescaler division value
-  parameter int unsigned PrescalerDiv = 1,
-  /// Accumulative Counterwidth. Don't Override.
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
+  parameter int unsigned PrescalerDiv  = 1,
+  parameter int unsigned AccuCntWidth  = 1,
+  parameter type accu_cnt_t            = logic,
+  parameter type hs_cnt_t              = logic,
+  parameter type cnt_t                 = logic,
   /// AXI request type
   parameter type req_t                 = logic,
   /// AXI response type
@@ -63,9 +62,11 @@ module read_guard
   // Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxRdTxns) ? MaxUniqIds : MaxRdTxns;
   localparam int unsigned HtIdxWidth = cf_math_pkg::idx_width(HtCapacity);
+    localparam int unsigned LdIdxWidth = cf_math_pkg::idx_width(MaxRdTxns);
 
   // Type for indexing the head-tail table.
   typedef logic [HtIdxWidth-1:0] ht_idx_t;
+  typedef logic [LdIdxWidth-1:0] ld_idx_t;
 
   // Type of an entry in the head-tail table.
   typedef struct packed {
@@ -74,6 +75,30 @@ module read_guard
                 tail;
     logic       free;
   } head_tail_t;
+
+  // Transaction counter type def
+  typedef struct packed {
+    // ARVALID to ARREADY
+    hs_cnt_t cnt_arvalid_arready;
+    // ARVALID to RVALID
+    accu_cnt_t cnt_arvalid_rfirst;
+    // RVALID to RREADY
+    hs_cnt_t cnt_rvalid_rready_first;
+    // RVALID to RLAST
+    cnt_t cnt_rfirst_rlast;
+  } read_cnters_t;
+
+  // Type of an entry in the linked data table.
+  typedef struct packed {
+    meta_t          metadata;
+    read_state_t    read_state;
+    read_cnters_t   counters;
+    // txn-specific dynamic budget
+    accu_cnt_t      r1_budget;
+    cnt_t           r3_budget;
+    ld_idx_t        next;
+    logic           free;
+  } linked_rd_data_t;
 
   // R fifo
   localparam int unsigned PtrWidth = $clog2(MaxRdTxns);

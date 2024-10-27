@@ -7,8 +7,23 @@
 `include "common_cells/registers.svh"
 
 module slv_guard_top
-  import slv_pkg::*;
+  //import slv_pkg::*;
 #(
+  parameter int unsigned AddrWidth     = 48,
+  parameter int unsigned DataWidth     = 32,
+  parameter int unsigned StrbWidth     = 4,
+  parameter int unsigned AxiIdWidth    = 6,
+  parameter int unsigned AxiUserWidth  = 1,
+
+  parameter int unsigned MaxUniqIds    = 32,
+  parameter int unsigned MaxTxnsPerId  = 1,
+  parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
+  /// Counter width
+  parameter int unsigned CounterWidth  = 10,
+  parameter int unsigned HsCntWidth    = 2,
+  parameter int unsigned PrescalerDiv  = 8,
+  parameter int unsigned CntWidth      = CounterWidth-$clog2(PrescalerDiv),
+  parameter int unsigned AccuCntWidth  = CounterWidth-$clog2(PrescalerDiv)+1,
   /// Master request type
   parameter type req_t                 = logic,
   /// Master response type
@@ -83,16 +98,41 @@ module slv_guard_top
   assign reg2hw_r.budget_rvld_rrdy    = reg2hw.budget_rvld_rrdy;
   assign reg2hw_r.budget_unit_r       = reg2hw.budget_unit_r;
 
+  // min internal width
+  localparam int unsigned IntIdWidth = (MaxUniqIds > 1) ? $clog2(MaxUniqIds) : 1;
+
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [DataWidth-1:0] data_t;
+  typedef logic [StrbWidth-1:0] strb_t;
+  typedef logic [AxiIdWidth-1:0] id_t;
+  typedef logic [IntIdWidth-1:0] int_id_t;
+  typedef logic [AxiUserWidth-1:0] user_t;
+
+  typedef logic [AccuCntWidth-1:0] accu_cnt_t;
+  typedef logic [CntWidth-1:0] cnt_t;
+  typedef logic [HsCntWidth-1:0] hs_cnt_t;
+
+  /// Intermediate AXI types
+  `AXI_TYPEDEF_AW_CHAN_T(int_aw_t, addr_t, int_id_t, user_t);
+  `AXI_TYPEDEF_W_CHAN_T(w_t, data_t, strb_t, user_t);
+  `AXI_TYPEDEF_B_CHAN_T(int_b_t, int_id_t, user_t);
+  `AXI_TYPEDEF_AR_CHAN_T(int_ar_t, addr_t, int_id_t, user_t);
+
   /// Intermediate AXI channel
   slv_req_t  int_req, int_req_wr, int_req_rd;
   slv_rsp_t  int_rsp, rd_rsp, wr_rsp;
+
+  typedef struct packed {
+    int_id_t        id;
+    axi_pkg::len_t  len; // 8 bits
+  } meta_t;
 
   /// Remap wider ID to narrower ID
   axi_id_remap #(
     .AxiSlvPortIdWidth    ( AxiIdWidth    ),
     .AxiSlvPortMaxUniqIds ( MaxUniqIds    ),
     .AxiMaxTxnsPerId      ( MaxTxnsPerId  ),
-    .AxiMstPortIdWidth    ( AxiIntIdWidth ),
+    .AxiMstPortIdWidth    ( IntIdWidth    ),
     .slv_req_t            ( req_t         ),
     .slv_resp_t           ( rsp_t         ),
     .mst_req_t            ( slv_req_t     ),
@@ -136,7 +176,10 @@ module slv_guard_top
   write_guard #(
     .MaxUniqIds   ( MaxUniqIds   ),
     .MaxWrTxns    ( MaxTxns      ), // total writes
-    .CntWidth     ( CntWidth     ),
+    .AccuCntWidth ( AccuCntWidth ),
+    .accu_cnt_t   ( accu_cnt_t   ),
+    .hs_cnt_t     ( hs_cnt_t     ),
+    .cnt_t        ( cnt_t        ),
     .PrescalerDiv ( PrescalerDiv ),
     .req_t        ( slv_req_t    ),
     .rsp_t        ( slv_rsp_t    ),
@@ -161,7 +204,10 @@ module slv_guard_top
   read_guard #(
     .MaxUniqIds   ( MaxUniqIds   ),
     .MaxRdTxns    ( MaxTxns      ),
-    .CntWidth     ( CntWidth     ),
+    .AccuCntWidth ( AccuCntWidth ),
+    .accu_cnt_t   ( accu_cnt_t   ),
+    .hs_cnt_t     ( hs_cnt_t     ),
+    .cnt_t        ( cnt_t        ),
     .PrescalerDiv ( PrescalerDiv ),
     .req_t        ( slv_req_t    ),
     .rsp_t        ( slv_rsp_t    ),

@@ -8,13 +8,9 @@
 
 package slv_pkg;
 
-// Monitor parameters
+ // Monitor parameters
   parameter int unsigned MaxUniqIds    = 32;
   parameter int unsigned MaxTxnsPerId  = 1;
-  parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId;
-  parameter int unsigned CounterWidth  = 10;
-  parameter int unsigned HsCntWidth    = 2;
-  parameter int unsigned PrescalerDiv  = 8;
   // AXI parameters
   parameter int unsigned AxiAddrWidth  = 48;
   parameter int unsigned AxiDataWidth  = 32;
@@ -58,76 +54,13 @@ package slv_pkg;
 
   `REG_BUS_TYPEDEF_ALL(cfg, reg_addr_t, reg_data_t, reg_strb_t);
 
-  localparam int unsigned LdIdxWidth = cf_math_pkg::idx_width(MaxTxns);
-
-  // Accumulative Counterwidth. Don't Override.
-  parameter int unsigned AccuCntWidth = CounterWidth-$clog2(PrescalerDiv)+1;
-  parameter int unsigned CntWidth = CounterWidth-$clog2(PrescalerDiv);
-
-  typedef logic [AxiIntIdWidth-1:0] int_id_t;
-  typedef logic [AccuCntWidth-1:0] accu_cnt_t;
-  typedef logic [CntWidth-1:0] cnt_t;
-  typedef logic [HsCntWidth-1:0] hs_cnt_t;
-  typedef logic [LdIdxWidth-1:0] ld_idx_t;
-  // Transaction counter type def
-  typedef struct packed {
-    // AWVALID to AWREADY
-    hs_cnt_t cnt_awvalid_awready;
-    // AWVALID to WFIRST
-    accu_cnt_t cnt_awvalid_wfirst;
-    // WVALID to WREADY of WFIRST
-    hs_cnt_t cnt_wvalid_wready_first;
-    // WFIRST to WLAST
-    cnt_t    cnt_wfirst_wlast;
-    // WLAST to BVALID
-    hs_cnt_t cnt_wlast_bvalid;
-    // WLAST to BREADY
-    hs_cnt_t cnt_bvalid_bready;
-  } write_cnters_t;
-
-  // FSM per each transaction
+  // Define the write_state_t enum
   typedef enum logic [1:0] {
-    WRITE_IDLE,// for idle LD entries retired from aw-w-b lifecycle
+    WRITE_IDLE,      // for idle LD entries retired from aw-w-b lifecycle
     WRITE_ADDRESS,
     WRITE_DATA,
     WRITE_RESPONSE
   } write_state_t;
-
-  typedef struct packed {
-    int_id_t        id;
-    axi_pkg::len_t  len; // 8 bits
-  } meta_t;
-
-  // LD entry for each txn
-  typedef struct packed {
-    // Txn meta info, put AW channel info
-    meta_t          metadata;
-    // AW, W, B or IDLE(after dequeue)
-    write_state_t   write_state;
-    // Six counters per each write txn
-    write_cnters_t  counters;
-    // W1 and w3 are dynamic budget determined by unit_budget given in sw and accum length in hw
-    // AW_VALID to W_VALID (W_FIRST)
-    accu_cnt_t      w1_budget;
-    // W_VALID to W_LAST (W_FIRST to W_LAST)
-    cnt_t           w3_budget;
-    // Next pointer in LD table
-    ld_idx_t        next;
-    // Is this LD entry occupied by any txn?
-    logic           free;
-  } linked_wr_data_t;
-
-  // Transaction counter type def
-  typedef struct packed {
-    // ARVALID to ARREADY
-    hs_cnt_t cnt_arvalid_arready;
-    // ARVALID to RVALID
-    accu_cnt_t cnt_arvalid_rfirst;
-    // RVALID to RREADY
-    hs_cnt_t cnt_rvalid_rready_first;
-    // RVALID to RLAST
-    cnt_t cnt_rfirst_rlast;
-  } read_cnters_t;
 
   // FSM state of each transaction
   typedef enum logic [1:0] {
@@ -137,15 +70,4 @@ package slv_pkg;
     READ_RESPONSE
   } read_state_t;
 
-  // Type of an entry in the linked data table.
-  typedef struct packed {
-    meta_t          metadata;
-    read_state_t    read_state;
-    read_cnters_t   counters;
-    // txn-specific dynamic budget
-    accu_cnt_t      r1_budget;
-    cnt_t           r3_budget;
-    ld_idx_t        next;
-    logic           free;
-  } linked_rd_data_t;
 endpackage

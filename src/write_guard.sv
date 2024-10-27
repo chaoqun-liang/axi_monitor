@@ -13,13 +13,12 @@ module write_guard
   parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
   parameter int unsigned MaxWrTxns    = 32,
-  /// Counter width
-  parameter int unsigned CntWidth     = 8,
-  parameter int unsigned HsCntWidth   = 8,
   /// Prescaler division value
   parameter int unsigned PrescalerDiv = 1,
-  // Accumulative Counterwidth. Don't Override.
-  parameter int unsigned AccuCntWidth = CntWidth-$clog2(PrescalerDiv)+1,
+  parameter int unsigned AccuCntWidth = 1,
+  parameter type hs_cnt_t             = logic,
+  parameter type cnt_t                = logic,
+  parameter type accu_cnt_t           = logic,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -69,9 +68,11 @@ module write_guard
   /// Capacity of the head-tail table, which associates an ID with corresponding head and tail indices.
   localparam int HtCapacity = (MaxUniqIds <= MaxWrTxns) ? MaxUniqIds : MaxWrTxns;
   localparam int unsigned HtIdxWidth = cf_math_pkg::idx_width(HtCapacity);
+  localparam int unsigned LdIdxWidth = cf_math_pkg::idx_width(MaxWrTxns);
 
   /// Type for indexing the head-tail table.
   typedef logic [HtIdxWidth-1:0] ht_idx_t;
+  typedef logic [LdIdxWidth-1:0] ld_idx_t;
 
   /// Type of an entry in the head-tail table.
   typedef struct packed {
@@ -80,6 +81,41 @@ module write_guard
                 tail;
     logic       free;
   } head_tail_t;
+
+  // Transaction counter type def
+  typedef struct packed {
+    // AWVALID to AWREADY
+    hs_cnt_t cnt_awvalid_awready;
+    // AWVALID to WFIRST
+    accu_cnt_t cnt_awvalid_wfirst;
+    // WVALID to WREADY of WFIRST
+    hs_cnt_t cnt_wvalid_wready_first;
+    // WFIRST to WLAST
+    cnt_t    cnt_wfirst_wlast;
+    // WLAST to BVALID
+    hs_cnt_t cnt_wlast_bvalid;
+    // WLAST to BREADY
+    hs_cnt_t cnt_bvalid_bready;
+  } write_cnters_t;
+
+  // LD entry for each txn
+  typedef struct packed {
+    // Txn meta info, put AW channel info
+    meta_t          metadata;
+    // AW, W, B or IDLE(after dequeue)
+    write_state_t   write_state;
+    // Six counters per each write txn
+    write_cnters_t  counters;
+    // W1 and w3 are dynamic budget determined by unit_budget given in sw and accum length in hw
+    // AW_VALID to W_VALID (W_FIRST)
+    accu_cnt_t      w1_budget;
+    // W_VALID to W_LAST (W_FIRST to W_LAST)
+    cnt_t           w3_budget;
+    // Next pointer in LD table
+    ld_idx_t        next;
+    // Is this LD entry occupied by any txn?
+    logic           free;
+  } linked_wr_data_t;
 
   // W fifo
   localparam int unsigned PtrWidth = $clog2(MaxWrTxns);
@@ -385,15 +421,4 @@ module write_guard
   assign  reset_req_o = reset_req_q;
   assign  irq_o = irq;
 
- // Validate parameters.
- `ifndef SYNTHESIS
- `ifndef COMMON_CELLS_ASSERTS_OFF
-    initial begin: validate_params
-        assert (CntWidth >= 0)
-           else $fatal(1, "AccuCntWidth must be non-zero!");
-        assert (MaxWrTxns >= 1)
-            else $fatal(1, "The queue must have capacity of at least one entry!");
-    end
- `endif
- `endif
 endmodule
