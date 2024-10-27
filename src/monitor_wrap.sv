@@ -10,7 +10,7 @@
 import axi_pkg::*;
 import slv_pkg::*;
 
- module monitor_wrap 
+ module monitor_wrap
 (
   /// Clock
   input  logic               clk_i,
@@ -36,7 +36,7 @@ import slv_pkg::*;
   output logic               rst_req_o,
   /// Reset status
   input  logic               rst_stat_i
-);  
+);
 
 slv_guard_top #(
   .AddrWidth    ( AxiAddrWidth   ),
@@ -46,12 +46,13 @@ slv_guard_top #(
   .AxiUserWidth ( AxiUserWidth   ),
   .MaxTxnsPerId ( MaxTxnsPerId   ),
   .MaxUniqIds   ( MaxUniqIds     ),
-  .CntWidth     ( CntWidth       ),
-  .req_t        ( mst_req_t      ), 
+  .PrescalerDiv ( PrescalerDiv   ),
+  .CounterWidth ( CounterWidth   ),
+  .req_t        ( mst_req_t      ),
   .rsp_t        ( mst_resp_t     ),
   .slv_req_t    ( slv_req_t      ),
   .slv_rsp_t    ( slv_resp_t     ),
-  .reg_req_t    ( cfg_req_t      ), 
+  .reg_req_t    ( cfg_req_t      ),
   .reg_rsp_t    ( cfg_rsp_t      )
 ) i_slv_guard (
   .clk_i      (clk_i),

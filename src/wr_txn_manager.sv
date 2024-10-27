@@ -36,7 +36,7 @@ module wr_txn_manager
   input  hs_cnt_t                       budget_bvld_brdy_i,
   input  accu_cnt_t                     accum_burst_length,
   input  logic                          id_exists_i,
-  output logic [LdIdxWidth-1:0]  w_fifo_o [MaxWrTxns-1:0],
+  output logic [LdIdxWidth-1:0]  [MaxWrTxns-1:0] w_fifo_o,
   input  ht_idx_t                       rsp_idx_i,
   input  req_t                          mst_req_i,
   input  rsp_t                          slv_rsp_i,

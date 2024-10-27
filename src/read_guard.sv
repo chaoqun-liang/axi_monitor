@@ -103,7 +103,7 @@ module read_guard
   // R fifo
   localparam int unsigned PtrWidth = $clog2(MaxRdTxns);
   // FIFO storage for transaction indices
-  logic [LdIdxWidth-1:0] [MaxRdTxns] r_fifo;
+  logic [LdIdxWidth-1:0] [MaxRdTxns-1:0] r_fifo;
   // Write and read pointers
   logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals

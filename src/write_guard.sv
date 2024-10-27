@@ -120,7 +120,7 @@ module write_guard
   // W fifo
   localparam int unsigned PtrWidth = $clog2(MaxWrTxns);
   // FIFO storage for transaction indices
-  logic [LdIdxWidth-1:0] w_fifo [MaxWrTxns-1:0] ;
+  logic [LdIdxWidth-1:0] [MaxWrTxns-1:0]  w_fifo;
   // Write and read pointers
   logic [PtrWidth-1:0] wr_ptr_d, wr_ptr_q, rd_ptr_d, rd_ptr_q;
   // Status signals
