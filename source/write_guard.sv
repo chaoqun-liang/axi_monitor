@@ -11,6 +11,7 @@ module write_guard #(
   parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
   parameter int unsigned MaxWrTxns    = 32,
+  parameter int unsigned PrescalerDiv = 1,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -140,6 +141,33 @@ module write_guard #(
   // The queue is full if and only if there are no free items in the id table structure.
   assign full = !(|id_table_free);
   
+  logic prescaled_en;
+  prescaler #(
+    .DivFactor  ( PrescalerDiv )
+    )i_wr_prescaler(
+    .clk_i      ( clk_i        ),
+    .rst_ni     ( rst_ni       ),
+    .prescaled_o( prescaled_en )
+  ); 
+  
+  logic b_valid_sticky, b_ready_sticky;
+  
+  sticky_bit i_wr_bvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.b_valid),
+    .sticky_o(b_valid_sticky)
+  );
+
+  sticky_bit i_wr_bready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.b_ready),
+    .sticky_o(b_ready_sticky)
+  );
+
   wr_txn_manager #(
     .IdCapacity        ( IdCapacity         ), 
     .id_track_t        ( id_track_t         ),
@@ -172,6 +200,7 @@ module write_guard #(
     .hw2reg_o              ( hw2reg_o             ),
     .reg2hw_i              ( reg2hw_i             )
   );
+  
 
   generate
   for (genvar i = 0; i < IdCapacity; i++) begin: gen_wr_counter
@@ -185,8 +214,8 @@ module write_guard #(
       .clk_i           ( clk_i             ),             
       .rst_ni          ( rst_ni            ),          
       .budget          ( budget            ),    
-      .b_valid         ( slv_rsp_i.b_valid ),   
-      .b_ready         ( mst_req_i.b_ready ),
+      .b_valid         ( b_valid_sticky    ),   
+      .b_ready         ( b_ready_sticky    ),
       .slv_rsp_id_i    ( slv_rsp_i.b.id    ),
       .idx_rsp_id      ( idx_rsp_id        ),  
       .id_track_d_i    ( id_track_d[i]     ), 

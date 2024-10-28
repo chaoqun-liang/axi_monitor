@@ -11,6 +11,7 @@ module read_guard #(
   parameter int unsigned MaxUniqIds   = 32,
   /// Maximum write transactions
   parameter int unsigned MaxRdTxns    = 32,
+  parameter int unsigned PrescalerDiv = 1,
   /// AXI request type
   parameter type req_t                = logic,
   /// AXI response type
@@ -139,6 +140,41 @@ module read_guard #(
   // The queue is full if and only if there are no free items in the id table structure.
   assign full = !(|id_table_free);
   
+  logic prescaled_en;
+  prescaler #(
+    .DivFactor  ( PrescalerDiv )
+    )i_rd_prescaler(
+    .clk_i      ( clk_i        ),
+    .rst_ni     ( rst_ni       ),
+    .prescaled_o( prescaled_en )
+  ); 
+  
+  logic r_valid_sticky, r_ready_sticky, r_last_sticky;
+
+  sticky_bit i_rd_rvalid_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.r_valid),
+    .sticky_o(r_valid_sticky)
+  );
+
+  sticky_bit i_rd_rready_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(mst_req_i.r_ready),
+    .sticky_o(r_ready_sticky)
+  );
+
+  sticky_bit i_rd_rlast_sticky (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .release_i(prescaled_en),
+    .sticky_i(slv_rsp_i.r.last),
+    .sticky_o(r_last_sticky)
+  );
+
   rd_txn_manager #(
     .IdCapacity        ( IdCapacity         ), 
     .id_track_t        ( id_track_t         ),
@@ -184,9 +220,9 @@ module read_guard #(
       .clk_i           ( clk_i             ),             
       .rst_ni          ( rst_ni            ),          
       .budget          ( budget            ),
-      .r_last          ( slv_rsp_i.r.last  ),
-      .r_valid         ( slv_rsp_i.r_valid ),   
-      .r_ready         ( mst_req_i.r_ready ), 
+      .r_last          ( r_last_sticky     ),
+      .r_valid         ( r_valid_sticky    ),   
+      .r_ready         ( r_ready_sticky    ), 
       .slv_rsp_id_i    ( slv_rsp_i.r.id    ),  
       .idx_rsp_id      ( idx_rsp_id        ),   
       .id_track_d_i    ( id_track_d[i]     ), 

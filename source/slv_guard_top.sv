@@ -20,7 +20,9 @@ module slv_guard_top #(
   // DONT OVERRIDE
   parameter int unsigned MaxTxns       = MaxUniqIds * MaxTxnsPerId,
   /// Counter width
-  parameter int unsigned CntWidth      = 6,
+  parameter int unsigned CntWidth      = 7, // number of txns of the id
+  parameter int unsigned TrackCntWidth = 8 -$clog2(PrescalerDiv),
+  parameter int unsigned PrescalerDiv  = 1, 
   /// Master request type
   parameter type req_t                 = logic, 
   /// Master response type
@@ -108,8 +110,8 @@ module slv_guard_top #(
   slv_req_t  int_req, int_req_wr, int_req_rd;
   slv_rsp_t  int_rsp, rd_rsp, wr_rsp;
 
-  typedef logic [CntWidth-1:0] num_cnt_t;
-  typedef logic [9:0]          track_cnt_t;
+  typedef logic [CntWidth-1:0] num_cnt_t;  // to count number of transactions in this id entry. cannot be prescaled
+  typedef logic [TrackCntWidth-1:0] track_cnt_t;
    
   /// Remap wider ID to narrower ID
   axi_id_remap #(
@@ -164,6 +166,7 @@ module slv_guard_top #(
     .rsp_t        ( slv_rsp_t    ),
     .num_cnt_t    ( num_cnt_t    ),
     .track_cnt_t  ( track_cnt_t  ),
+    .PrescalerDiv ( PrescalerDiv ), 
     .id_t         ( int_id_t     ),
     .reg2hw_t     ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t     ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
@@ -172,7 +175,7 @@ module slv_guard_top #(
     .rst_ni,
     //.rd_rst_i
     .wr_en_i      ( wr_enqueue   ),
-    .budget       ( 10'h3ff      ), // ? up to 10 bits
+    .budget       ( 8'hff        ), // ? up to 10 bits
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
     .reset_req_o  ( rst_req_wr   ),
@@ -189,6 +192,7 @@ module slv_guard_top #(
     .rsp_t        ( slv_rsp_t    ),
     .num_cnt_t    ( num_cnt_t    ),
     .track_cnt_t  ( track_cnt_t  ),
+    .PrescalerDiv ( PrescalerDiv ), 
     .id_t         ( int_id_t     ),
     .reg2hw_t     ( slv_guard_reg_pkg::slv_guard_reg2hw_t ),
     .hw2reg_t     ( slv_guard_reg_pkg::slv_guard_hw2reg_t )
@@ -196,7 +200,7 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
-    .budget       ( 10'h3ff      ),
+    .budget       ( 8'hff        ),
     //.wr_rst_i     
     .mst_req_i    ( int_req_rd   ),  
     .slv_rsp_i    ( rd_rsp       ),                                                                               
@@ -207,12 +211,8 @@ module slv_guard_top #(
     .hw2reg_o     ( hw2reg_r     )
   );
   
-// assign rst_req_o = rst_req_wr | rst_req_rd;
-// assign irq_o     =  read_irq  | write_irq;
-
-// to-do, interference
- assign rst_req_o = rst_req_wr ;
- assign irq_o     = write_irq;
+assign rst_req_o = rst_req_wr | rst_req_rd;
+assign irq_o     =  read_irq  | write_irq;
 
 always_comb begin
     // Default behavior for req_o and int_rsp

@@ -132,10 +132,11 @@ module tb_slv_guard #(
     .UserWidth         ( slv_pkg::AxiUserWidth  ),
     .axi_req_t         ( slv_pkg::slv_req_t     ),
     .axi_rsp_t         ( slv_pkg::slv_resp_t    ),
-    .WarnUninitialized ( 1'b0            ),
-    .ClearErrOnAccess  ( 1'b1            ),
-    .ApplDelay         ( ApplTime        ),
-    .AcqDelay          ( TestTime        )  
+    .WarnUninitialized ( 1'b0                   ),
+    .ClearErrOnAccess  ( 1'b1                   ),
+    .ApplDelay         ( ApplTime               ),
+    .AcqDelay          ( TestTime               ),
+    .UninitializedData ( "zeros"                )  
   ) i_tx_axi_sim_mem (
     .clk_i              ( clk           ),
     .rst_ni             ( rst_n         ),
@@ -163,20 +164,20 @@ module tb_slv_guard #(
   slv_guard_top
   // `ifndef TARGET_NETLIST_SIM
    #(
-    .AddrWidth    ( slv_pkg::AxiAddrWidth ),
-    .DataWidth    ( slv_pkg::AxiDataWidth ),
+    .AddrWidth    ( slv_pkg::AxiAddrWidth    ),
+    .DataWidth    ( slv_pkg::AxiDataWidth    ),
     .StrbWidth    ( slv_pkg::AxiDataWidth/8  ),
-    .AxiIdWidth   ( slv_pkg::AxiIdWidth   ),
-    .AxiUserWidth ( slv_pkg::AxiUserWidth ),
-    .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId ),
-    .MaxUniqIds   ( slv_pkg::MaxUniqIds   ),
-    .CntWidth     ( slv_pkg::CntWidth     ),
-    .req_t        ( slv_pkg::mst_req_t    ), 
-    .rsp_t        ( slv_pkg::mst_resp_t   ),
-    .slv_req_t    ( slv_pkg::slv_req_t    ),
-    .slv_rsp_t    ( slv_pkg::slv_resp_t   ),
-    .reg_req_t    ( slv_pkg::cfg_req_t    ), 
-    .reg_rsp_t    ( slv_pkg::cfg_rsp_t    )
+    .AxiIdWidth   ( slv_pkg::AxiIdWidth      ),
+    .AxiUserWidth ( slv_pkg::AxiUserWidth    ),
+    .MaxTxnsPerId ( slv_pkg::MaxTxnsPerId    ),
+    .MaxUniqIds   ( slv_pkg::MaxUniqIds      ),
+    .CntWidth     ( slv_pkg::CntWidth        ),
+    .req_t        ( slv_pkg::mst_req_t       ), 
+    .rsp_t        ( slv_pkg::mst_resp_t      ),
+    .slv_req_t    ( slv_pkg::slv_req_t       ),
+    .slv_rsp_t    ( slv_pkg::slv_resp_t      ),
+    .reg_req_t    ( slv_pkg::cfg_req_t       ), 
+    .reg_rsp_t    ( slv_pkg::cfg_rsp_t       )
   )
   //`endif
   //monitor_wrap
@@ -202,33 +203,25 @@ module tb_slv_guard #(
   initial begin : proc_axi_master
     automatic axi_file_master_t axi_file_master = new(master_dv);
     axi_file_master.reset();
-    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/axi_rt_reads.txt"), $sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/64_wr.txt"));
-    // tb metrics
-    // total_num_reads [i] = axi_file_master.num_reads;
-    // total_num_writes[i] = axi_file_master.num_writes;
-    // num_writes      [i] = 1;
-    // num_reads       [i] = 1;
-    // end_of_sim [i] = 1'b0;
+    axi_file_master.load_files($sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/rd.txt"), $sformatf("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/64_wr.txt"));
 
-    // wait for config
     @(posedge rst_n);
     @(posedge clk);
-
+    
+    $readmemh("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/read.vmem", i_tx_axi_sim_mem.mem);
     repeat (5) @(posedge clk);
     // run
     axi_file_master.run();
-
   end
  
   // configure slv units
   initial begin
     // register bus
     automatic reg_drv_t reg_drv = new(reg_bus);
-    guard_configured = 0;
     reg_drv.reset_master();
     @(posedge rst_n);
     @(posedge clk);
-
+    $readmemh("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/read.vmem", i_tx_axi_sim_mem.mem);
     // slave unit enable 1 / disable 0
     reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
 
@@ -238,11 +231,9 @@ module tb_slv_guard #(
     // read_budget
     reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
 
-    repeat (5) @(posedge clk);
+    repeat (1000) @(posedge clk);
 
-    // config is done
-    guard_configured = 1;
-    //$stop();
+    $stop();
   end
 
 endmodule

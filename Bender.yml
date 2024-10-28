@@ -27,6 +27,8 @@ sources:
       - source/wr_counter.sv
       - source/rd_counter.sv
       - source/id_lookup.sv 
+      - source/presclaer.sv
+      - source/sticky_bit.sv
       - source/id_free.sv
       - source/wr_txn_manager.sv
       - source/rd_txn_manager.sv
