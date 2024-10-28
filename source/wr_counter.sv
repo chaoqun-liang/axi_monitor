@@ -15,6 +15,7 @@ module wr_counter #(
   input  logic                  clk_i,          
   input  logic                  rst_ni,         
   input  track_cnt_t            budget,
+  input  logic                  prescaled_en,
   input  logic                  b_valid,         
   input  logic                  b_ready,
   input  id_t                   slv_rsp_id_i,
@@ -35,7 +36,7 @@ module wr_counter #(
       id_track_q <= id_track_d_i;
       // Only if this slot is in use (i.e., there is an outstanding transaction)
       if (!id_track_q.free) begin
-        if (!(b_valid && b_ready && (slv_rsp_id_i == id_track_q.id))) begin
+        if (!(b_valid && b_ready && (slv_rsp_id_i == id_track_q.id)) && prescaled_en) begin
           // all others without a matching id should 
           //id_track_q.num_txn <= id_track_q.num_txn - 1;
           //id_track_q.txn_budget <= budget;

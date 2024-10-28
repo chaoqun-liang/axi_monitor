@@ -223,13 +223,13 @@ module tb_slv_guard #(
     @(posedge clk);
     $readmemh("/scratch/chaol/slave_unit/perID/axi_monitor/test/stimuli/read.vmem", i_tx_axi_sim_mem.mem);
     // slave unit enable 1 / disable 0
-    reg_drv.send_write(32'h0000_0000, 32'h0000_0001, 4'h1, reg_error);
+    reg_drv.send_write(32'h0000_0000, 32'h0000_00ff, 4'h1, reg_error);
 
     // write_budget
-    reg_drv.send_write(32'h0000_0004, 32'h0000_0001, 'hff, reg_error); 
+    reg_drv.send_write(32'h0000_0004, 32'h0000_00ff, 'hff, reg_error); 
 
     // read_budget
-    reg_drv.send_write(32'h0000_0008, 32'h0000_0001, 4'hf, reg_error);
+    reg_drv.send_write(32'h0000_0008, 32'h0000_00ff, 4'hf, reg_error);
 
     repeat (1000) @(posedge clk);
 

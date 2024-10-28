@@ -112,6 +112,11 @@ module slv_guard_top #(
 
   typedef logic [CntWidth-1:0] num_cnt_t;  // to count number of transactions in this id entry. cannot be prescaled
   typedef logic [TrackCntWidth-1:0] track_cnt_t;
+
+  track_cnt_t txn_budget_wr, txn_budget_rd;
+
+  txn_budget_wr = reg2hw.budget_write;
+  txn_budget_rd = reg2hw.budget_read;
    
   /// Remap wider ID to narrower ID
   axi_id_remap #(
@@ -175,7 +180,7 @@ module slv_guard_top #(
     .rst_ni,
     //.rd_rst_i
     .wr_en_i      ( wr_enqueue   ),
-    .budget       ( 8'hff        ), // ? up to 10 bits
+    .budget       ( txn_budget_wr), 
     .mst_req_i    ( int_req_wr   ),  
     .slv_rsp_i    ( wr_rsp       ),
     .reset_req_o  ( rst_req_wr   ),
@@ -200,7 +205,7 @@ module slv_guard_top #(
     .clk_i,
     .rst_ni,
     .rd_en_i      ( rd_enqueue   ),
-    .budget       ( 8'hff        ),
+    .budget       ( txn_budget_rd),
     //.wr_rst_i     
     .mst_req_i    ( int_req_rd   ),  
     .slv_rsp_i    ( rd_rsp       ),                                                                               

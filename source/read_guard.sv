@@ -220,6 +220,7 @@ module read_guard #(
       .clk_i           ( clk_i             ),             
       .rst_ni          ( rst_ni            ),          
       .budget          ( budget            ),
+      .prescaled_en    ( prescaled_en      ),  
       .r_last          ( r_last_sticky     ),
       .r_valid         ( r_valid_sticky    ),   
       .r_ready         ( r_ready_sticky    ), 

@@ -213,7 +213,8 @@ module write_guard #(
     ) i_wr_counter (
       .clk_i           ( clk_i             ),             
       .rst_ni          ( rst_ni            ),          
-      .budget          ( budget            ),    
+      .budget          ( budget            ),
+      .prescaled_en    ( prescaled_en      ),      
       .b_valid         ( b_valid_sticky    ),   
       .b_ready         ( b_ready_sticky    ),
       .slv_rsp_id_i    ( slv_rsp_i.b.id    ),

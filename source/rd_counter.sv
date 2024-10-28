@@ -15,6 +15,7 @@ module rd_counter #(
   input  logic                  clk_i,          
   input  logic                  rst_ni,         
   input  track_cnt_t            budget,
+  input  logic                  prescaled_en,
   input  logic                  r_valid,         
   input  logic                  r_ready,
   input  logic                  r_last,
@@ -36,7 +37,7 @@ module rd_counter #(
       id_track_q <= id_track_d_i;
       // Only if this slot is in use (i.e., there is an outstanding transaction)
       if (!id_track_q.free) begin  
-        if (!(r_valid && r_ready && r_last && (slv_rsp_id_i == id_track_q.id))) begin
+        if (!(r_valid && r_ready && r_last && (slv_rsp_id_i == id_track_q.id)) && prescaled_en) begin
           id_track_q.txn_budget <= id_track_q.txn_budget - 1; // Note: cannot do self-decrement due to buggy tool
         end 
       end
